@@ -5,6 +5,7 @@ import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { useAuth } from '../context/AuthContext';
 import { HomePage as RealHomePage } from './HomePage';
+import { WalletPage as RealWalletPage } from './WalletPage';
 
 interface PlaceholderProps {
   title: string;
@@ -109,7 +110,7 @@ export function BrowsePage() {
 }
 
 export function WalletPage() {
-  return <PlaceholderPage title="Wallet" subtitle="Top up, spend, and view transactions" icon={WalletIcon} tag="User section" tagVariant="primary" />;
+  return <RealWalletPage />;
 }
 
 export function HistoryPage() {

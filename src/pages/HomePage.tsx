@@ -206,7 +206,7 @@ export function HomePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 sm:gap-4 pt-2">
+              <div className="grid grid-cols-3 gap-2.5 sm:gap-3.5 pt-1">
                 <WalletStatChip label="Attempts" value={stats.total} icon={<Target className="w-4 h-4" />} />
                 <WalletStatChip label="Avg score" value={stats.total ? stats.avg + '%' : '—'} icon={<Flame className="w-4 h-4" />} />
                 <WalletStatChip label="Day streak" value={stats.streak + (stats.streak === 1 ? ' day' : ' days')} icon={<Clock className="w-4 h-4" />} />
@@ -466,12 +466,12 @@ function WalletStatChip({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl bg-cream/10 border border-cream/15 p-3 sm:p-3.5 backdrop-blur-sm">
-      <div className="flex items-center gap-2 text-cream/80">
-        <span className="h-7 w-7 rounded-xl bg-cream/15 flex items-center justify-center text-cream">{icon}</span>
-        <p className="text-[10.5px] uppercase tracking-[0.14em] font-heading font-semibold">{label}</p>
+    <div className="rounded-2xl bg-cream/10 border border-cream/15 p-2 sm:p-3.5 backdrop-blur-sm min-h-0">
+      <div className="flex sm:flex-row flex-col items-start sm:items-center gap-1.5 sm:gap-2 text-cream/80 min-w-0">
+        <span className="h-5 w-5 sm:h-7 sm:w-7 rounded-xl bg-cream/15 flex items-center justify-center text-cream shrink-0">{icon}</span>
+        <p className="text-[8.5px] sm:text-[10.5px] uppercase tracking-[0.11em] sm:tracking-[0.14em] font-heading font-semibold leading-tight min-w-0 break-words">{label}</p>
       </div>
-      <p className="mt-2 font-heading font-bold text-xl leading-none text-cream">{value}</p>
+      <p className="mt-1.5 sm:mt-2 font-heading font-bold text-[15px] sm:text-xl leading-none text-cream break-words">{value}</p>
     </div>
   );
 }
