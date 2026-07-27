@@ -32,9 +32,9 @@ export const profiles: Profile[] = [
 ];
 
 export const purchasedQuizIdsByUser: Record<string, string[]> = {
-  user_001: ['quiz_001', 'quiz_003'],
-  creator_001: [],
-  admin_001: ['quiz_001', 'quiz_002', 'quiz_003', 'quiz_004'],
+  user_001: ['quiz_001', 'quiz_003', 'quiz_005'],
+  creator_001: ['quiz_006'],
+  admin_001: ['quiz_001', 'quiz_002', 'quiz_003', 'quiz_004', 'quiz_005', 'quiz_006'],
 };
 
 export const walletBalancesByUser: Record<string, number> = {

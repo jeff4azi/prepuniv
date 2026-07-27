@@ -15,6 +15,7 @@ import {
   HistoryPage,
   SettingsPage,
   MenuPage,
+  LibraryPage,
   CreatorDashboardPage,
   CreatorQuizzesPage,
   CreatorPayoutsPage,
@@ -73,10 +74,15 @@ function AppShell() {
             <Routes>
               <Route path="/home" element={<HomePage />} />
               <Route path="/browse" element={<BrowsePage />} />
+              <Route path="/library" element={<LibraryPage />} />
               <Route path="/wallet" element={<WalletPage />} />
               <Route path="/history" element={<HistoryPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/menu" element={<MenuPage />} />
+
+              <Route path="/quiz/:id" element={<BrowsePage />} />
+              <Route path="/attempt/:id/new" element={<HistoryPage />} />
+              <Route path="/attempt/:id/result" element={<HistoryPage />} />
 
               <Route path="/creator" element={<CreatorDashboardPage />} />
               <Route path="/creator/quizzes" element={<CreatorQuizzesPage />} />

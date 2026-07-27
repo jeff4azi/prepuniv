@@ -1,9 +1,10 @@
-import { Rocket, Compass, Wallet as WalletIcon, Clock as ClockIcon, Settings as SettingsIcon, LayoutDashboard, FileText, CreditCard, BarChart3, Users, BookOpen, ScrollText, ListChecks, ShieldCheck, Menu as MenuIcon } from 'lucide-react';
+import { Rocket, Compass, Wallet as WalletIcon, Clock as ClockIcon, Settings as SettingsIcon, LayoutDashboard, FileText, CreditCard, BarChart3, Users, BookOpen, ScrollText, ListChecks, ShieldCheck, Menu as MenuIcon, Library } from 'lucide-react';
 import { PageContainer } from '../components/PageContainer';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { useAuth } from '../context/AuthContext';
+import { HomePage as RealHomePage } from './HomePage';
 
 interface PlaceholderProps {
   title: string;
@@ -100,7 +101,7 @@ export function PlaceholderPage({ title, subtitle, icon: Icon, tag, tagVariant =
 }
 
 export function HomePage() {
-  return <PlaceholderPage title="Home" subtitle="Your learning dashboard" icon={Rocket} tag="User section" tagVariant="primary" />;
+  return <RealHomePage />;
 }
 
 export function BrowsePage() {
@@ -121,6 +122,10 @@ export function SettingsPage() {
 
 export function MenuPage() {
   return <PlaceholderPage title="All Menu" subtitle="Quick access to every corner of PrepUniv" icon={MenuIcon} tag="Mobile menu" tagVariant="secondary" />;
+}
+
+export function LibraryPage() {
+  return <PlaceholderPage title="My Library" subtitle="Every quiz you've ever purchased, unlocked forever" icon={Library} tag="User section" tagVariant="primary" />;
 }
 
 // Creator pages

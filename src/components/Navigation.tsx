@@ -59,11 +59,13 @@ const ADMIN_NAV: NavItem[] = [
 ];
 
 function formatCurrency(n: number) {
-  return `₦${n.toLocaleString()}`;
+  const kobo = Math.abs(n);
+  const base = '₦' + (kobo / 100).toLocaleString('en-NG', { maximumFractionDigits: 0 });
+  return n < 0 ? '-' + base : base;
 }
 
 function formatNaira(n: number) {
-  return `₦${(n / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return formatCurrency(n);
 }
 
 function filterByRole(items: NavItem[], role: UserRole, isApprovedCreator: boolean) {
@@ -81,7 +83,7 @@ function filterByRole(items: NavItem[], role: UserRole, isApprovedCreator: boole
 }
 
 const MOBILE_TABS: NavItem[] = [
-  { to: '/', label: 'Home', icon: Home },
+  { to: '/home', label: 'Home', icon: Home },
   { to: '/browse', label: 'Browse', icon: Search },
   { to: '/wallet', label: 'Wallet', icon: Wallet },
   { to: '/history', label: 'History', icon: Clock },
@@ -283,7 +285,7 @@ export function BottomNav() {
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to === '/'}
+              end={item.to === '/home' || item.to === '/'}
               className={({ isActive }) =>
                 `relative flex flex-col items-center justify-center gap-1 py-2.5 min-h-[56px] transition-all duration-150 active:scale-95 ${
                   isActive ? 'text-primary' : 'text-muted hover:text-text-soft'
