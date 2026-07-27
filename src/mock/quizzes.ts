@@ -1,0 +1,58 @@
+import type { Quiz } from './types';
+
+export const quizzes: Quiz[] = [
+  {
+    id: 'quiz_001',
+    creator_id: 'creator_001',
+    course_id: 'course_001',
+    title: 'JAMB Use of English - Full Mock 2024',
+    price: 1500,
+    is_published: true,
+    question_count: 100,
+  },
+  {
+    id: 'quiz_002',
+    creator_id: 'creator_001',
+    course_id: 'course_002',
+    title: 'JAMB Mathematics - Problem Solving Pack',
+    price: 2000,
+    is_published: true,
+    question_count: 50,
+  },
+  {
+    id: 'quiz_003',
+    creator_id: 'creator_001',
+    course_id: 'course_003',
+    title: 'JAMB Physics - Mechanics Masterclass',
+    price: 1800,
+    is_published: true,
+    question_count: 40,
+  },
+  {
+    id: 'quiz_004',
+    creator_id: 'creator_001',
+    course_id: 'course_004',
+    title: 'JAMB Chemistry - Organic Chemistry Drills',
+    price: 1700,
+    is_published: false,
+    question_count: 35,
+  },
+  {
+    id: 'quiz_005',
+    creator_id: 'creator_001',
+    course_id: 'course_005',
+    title: 'WAEC English - Comprehension & Summary',
+    price: 1200,
+    is_published: true,
+    question_count: 60,
+  },
+  {
+    id: 'quiz_006',
+    creator_id: 'creator_001',
+    course_id: 'course_006',
+    title: 'WAEC Math - Algebra & Calculus',
+    price: 1500,
+    is_published: true,
+    question_count: 50,
+  },
+];

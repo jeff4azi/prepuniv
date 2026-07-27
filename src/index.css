@@ -1,1 +1,89 @@
 @import "tailwindcss";
+
+@theme {
+  --color-primary: #44612e;
+  --color-primary-hover: #4c5f37;
+  --color-secondary: #667351;
+  --color-muted: #859173;
+  --color-border: #b1b89c;
+  --color-surface: #d8dbc3;
+  --color-background: #f2ecd7;
+  --color-text: #1f2a17;
+  --color-text-soft: #3a4a2c;
+  --color-cream: #fbf8ee;
+  --color-danger: #a34336;
+  --color-danger-bg: #f2d4cf;
+  --color-success: #3e6b33;
+  --color-success-bg: #d6e6d0;
+  --color-warning: #8a671e;
+  --color-warning-bg: #f0e3c4;
+
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-heading: "Lexend", "Inter", system-ui, sans-serif;
+
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+
+  --shadow-soft: 0 2px 8px rgba(68, 97, 46, 0.06), 0 1px 3px rgba(68, 97, 46, 0.04);
+  --shadow-card: 0 4px 16px rgba(68, 97, 46, 0.08), 0 1px 4px rgba(68, 97, 46, 0.04);
+  --shadow-elevated: 0 8px 32px rgba(68, 97, 46, 0.12), 0 2px 8px rgba(68, 97, 46, 0.06);
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background-color: var(--color-background);
+    color: var(--color-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer utilities {
+  .font-heading {
+    font-family: var(--font-heading);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .page-fade-enter {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  .page-fade-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 200ms ease-out, transform 200ms ease-out;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
