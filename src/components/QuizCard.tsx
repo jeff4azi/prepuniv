@@ -1,12 +1,19 @@
-import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, Clock, FileQuestion, PlayCircle, Target } from 'lucide-react';
-import { Card } from './Card';
-import { Badge } from './Badge';
-import { Button } from './Button';
-import { Avatar } from './Avatar';
-import type { Quiz, Course, Profile, QuizAttempt } from '../mock';
+import { Link } from "react-router-dom";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Clock,
+  FileQuestion,
+  PlayCircle,
+  Target,
+} from "lucide-react";
+import { Card } from "./Card";
+import { Badge } from "./Badge";
+import { Button } from "./Button";
+import { Avatar } from "./Avatar";
+import type { Quiz, Course, Profile, QuizAttempt } from "../mock";
 
-type QuizCardVariant = 'purchased' | 'locked' | 'attempted';
+type QuizCardVariant = "purchased" | "locked" | "attempted";
 
 export interface QuizCardProps {
   quiz: Quiz;
@@ -19,40 +26,46 @@ export interface QuizCardProps {
 
 export function formatNaira(amount: number) {
   const naira = Math.abs(amount) / 100;
-  const base = '₦' + naira.toLocaleString('en-NG', { maximumFractionDigits: 0 });
-  if (amount < 0) return '-' + base;
+  const base =
+    "₦" + naira.toLocaleString("en-NG", { maximumFractionDigits: 0 });
+  if (amount < 0) return "-" + base;
   return base;
 }
 
 export function formatDate(iso: string) {
   const d = new Date(iso);
-  return d.toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' });
+  return d.toLocaleDateString("en-NG", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 export function shortCourseName(name: string) {
-  if (name.startsWith('JAMB UTME - ')) return name.slice('JAMB UTME - '.length);
-  if (name.startsWith('WAEC - ')) return name.slice('WAEC - '.length);
+  if (name.startsWith("JAMB UTME - ")) return name.slice("JAMB UTME - ".length);
+  if (name.startsWith("WAEC - ")) return name.slice("WAEC - ".length);
   return name;
 }
 
 const VARIANT_BG: Record<QuizCardVariant, string> = {
-  purchased: 'ring-primary/15 bg-cream',
-  locked: 'bg-cream',
-  attempted: 'bg-cream',
+  purchased: "ring-primary/15 bg-cream",
+  locked: "bg-cream",
+  attempted: "bg-cream",
 };
 
 export function QuizCard({
   quiz,
   course,
   creator,
-  variant = 'locked',
+  variant = "locked",
   attempt,
-  className = '',
+  className = "",
 }: QuizCardProps) {
-  const cardClass = 'group relative overflow-hidden ' + VARIANT_BG[variant] + ' ' + className;
+  const cardClass =
+    "group relative overflow-hidden " + VARIANT_BG[variant] + " " + className;
 
   const ctaRow = (() => {
-    if (variant === 'purchased') {
+    if (variant === "purchased") {
       return (
         <Link to={`/attempt/${quiz.id}/new`} className="block">
           <Button fullWidth variant="primary" size="md" className="h-11">
@@ -63,9 +76,9 @@ export function QuizCard({
         </Link>
       );
     }
-    if (variant === 'attempted') {
+    if (variant === "attempted") {
       return (
-        <Link to={`/attempt/${attempt?.id ?? '0'}/result`} className="block">
+        <Link to={`/attempt/${attempt?.id ?? "0"}/result`} className="block">
           <Button fullWidth variant="secondary" size="md" className="h-11">
             <FileQuestion className="w-[17px] h-[17px]" />
             View result
@@ -76,7 +89,9 @@ export function QuizCard({
     return (
       <Link to={`/quiz/${quiz.id}`} className="block">
         <Button fullWidth variant="outline" size="md" className="h-11">
-          <span className="font-heading font-bold text-text">{formatNaira(quiz.price)}</span>
+          <span className="font-heading font-bold text-text">
+            {formatNaira(quiz.price)}
+          </span>
           <span className="h-4 w-px bg-border mx-1" />
           <span>Pay &amp; start</span>
           <ArrowRight className="w-[17px] h-[17px]" />
@@ -86,18 +101,19 @@ export function QuizCard({
   })();
 
   const topRightBadge = (() => {
-    if (variant === 'purchased') {
+    if (variant === "purchased") {
       return (
         <Badge variant="primary" size="md" dot>
           <CheckCircle2 className="w-3.5 h-3.5" />
-          Unlocked forever
+          Purchased
         </Badge>
       );
     }
-    if (variant === 'attempted' && attempt) {
+    if (variant === "attempted" && attempt) {
       const score = attempt.score;
-      const color = score >= 80 ? 'success' : score >= 60 ? 'primary' : 'warning';
-      const variantBadge = color as 'success' | 'primary' | 'warning';
+      const color =
+        score >= 80 ? "success" : score >= 60 ? "primary" : "warning";
+      const variantBadge = color as "success" | "primary" | "warning";
       return (
         <Badge variant={variantBadge} size="md" dot>
           {score}% score
@@ -118,7 +134,7 @@ export function QuizCard({
           <div className="min-w-0 flex-1">
             <Badge variant="secondary" size="sm" className="mb-2">
               <Target className="w-3 h-3" />
-              {course ? shortCourseName(course.name) : 'Quiz'}
+              {course ? shortCourseName(course.name) : "Quiz"}
             </Badge>
             <h3 className="font-heading font-semibold text-text text-[15px] leading-snug line-clamp-2">
               {quiz.title}
@@ -130,7 +146,7 @@ export function QuizCard({
         <div className="flex items-center gap-2 text-xs text-text-soft">
           <FileQuestion className="w-4 h-4 text-muted" />
           <span>{quiz.question_count.toLocaleString()} questions</span>
-          {variant === 'attempted' && attempt?.completed_at && (
+          {variant === "attempted" && attempt?.completed_at && (
             <>
               <span className="h-1 w-1 rounded-full bg-muted/60" />
               <Clock className="w-4 h-4 text-muted" />
@@ -139,19 +155,21 @@ export function QuizCard({
           )}
         </div>
 
-        {variant === 'attempted' && attempt && (
+        {variant === "attempted" && attempt && (
           <ScoreStrip score={attempt.score} />
         )}
 
-        {variant !== 'attempted' && (
+        {variant !== "attempted" && (
           <div className="h-1 w-full rounded-full bg-surface overflow-hidden">
             <div
               className="h-full rounded-full bg-gradient-to-r from-primary/60 to-secondary/50"
               style={{
                 width:
-                  variant === 'purchased'
-                    ? '100%'
-                    : String(Math.min(100, 25 + ((quiz.question_count * 7) % 60))) + '%',
+                  variant === "purchased"
+                    ? "100%"
+                    : String(
+                        Math.min(100, 25 + ((quiz.question_count * 7) % 60)),
+                      ) + "%",
               }}
             />
           </div>
@@ -162,14 +180,14 @@ export function QuizCard({
             <div className="flex items-center gap-2 min-w-0">
               <Avatar name={creator.full_name} size="xs" />
               <span className="text-[12px] text-text-soft truncate max-w-[140px]">
-                by {creator.full_name.split(' ').slice(0, 2).join(' ')}
+                by {creator.full_name.split(" ").slice(0, 2).join(" ")}
               </span>
             </div>
           ) : (
             <span className="text-[12px] text-muted">Verified creator</span>
           )}
           <Badge variant="muted" size="sm">
-            {quiz.is_published ? 'Published' : 'Draft'}
+            {quiz.is_published ? "Published" : "Draft"}
           </Badge>
         </div>
       </div>
@@ -181,24 +199,24 @@ export function QuizCard({
 
 function ScoreStrip({ score }: { score: number }) {
   const tone =
-    score >= 80 ? 'bg-success' : score >= 60 ? 'bg-primary' : 'bg-warning';
+    score >= 80 ? "bg-success" : score >= 60 ? "bg-primary" : "bg-warning";
   const toneSoft =
     score >= 80
-      ? 'bg-success-bg text-success border-success/20'
+      ? "bg-success-bg text-success border-success/20"
       : score >= 60
-        ? 'bg-primary/10 text-primary border-primary/20'
-        : 'bg-warning-bg text-warning border-warning/20';
+        ? "bg-primary/10 text-primary border-primary/20"
+        : "bg-warning-bg text-warning border-warning/20";
   return (
     <div className="flex items-center gap-3">
-      <div className={'flex-1 h-2.5 rounded-full bg-surface overflow-hidden'}>
+      <div className={"flex-1 h-2.5 rounded-full bg-surface overflow-hidden"}>
         <div
-          className={'h-full rounded-full ' + tone}
-          style={{ width: String(Math.max(4, Math.min(100, score))) + '%' }}
+          className={"h-full rounded-full " + tone}
+          style={{ width: String(Math.max(4, Math.min(100, score))) + "%" }}
         />
       </div>
       <span
         className={
-          'shrink-0 inline-flex items-center gap-1 rounded-xl border px-2.5 py-1 text-[11px] font-heading font-semibold ' +
+          "shrink-0 inline-flex items-center gap-1 rounded-xl border px-2.5 py-1 text-[11px] font-heading font-semibold " +
           toneSoft
         }
       >
