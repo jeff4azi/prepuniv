@@ -28,6 +28,10 @@ import {
   AdminQuizzesPage,
 } from './pages';
 import { LandingPage } from './pages/LandingPage';
+import { SignupPage } from './pages/SignupPage';
+import { LoginPage } from './pages/LoginPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { AuthPlaceholderPage } from './pages/AuthPlaceholder';
 import { useEffect } from 'react';
 
@@ -104,16 +108,25 @@ function PublicRoutes() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
-      <Route path="/login" element={<AuthPlaceholderPage mode="login" />} />
-      <Route path="/signup" element={<AuthPlaceholderPage mode="signup" />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
       <Route path="/apply-creator" element={<AuthPlaceholderPage mode="apply" />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
     </Routes>
   );
 }
 
 function RoutingSwitch() {
   const loc = useLocation();
-  const publicPaths = ['/', '/login', '/signup', '/apply-creator'];
+  const publicPaths = [
+    '/',
+    '/login',
+    '/signup',
+    '/apply-creator',
+    '/forgot-password',
+    '/reset-password',
+  ];
   const isPublic = publicPaths.includes(loc.pathname);
   return isPublic ? <PublicRoutes /> : <AppShell />;
 }
