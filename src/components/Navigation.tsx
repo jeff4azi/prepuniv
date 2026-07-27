@@ -34,7 +34,7 @@ interface NavItem {
 }
 
 const USER_NAV: NavItem[] = [
-  { to: '/', label: 'Home', icon: Home },
+  { to: '/home', label: 'Home', icon: Home },
   { to: '/browse', label: 'Browse', icon: Search },
   { to: '/wallet', label: 'Wallet', icon: Wallet },
   { to: '/history', label: 'History', icon: Clock },

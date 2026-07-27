@@ -27,6 +27,8 @@ import {
   AdminCoursesPage,
   AdminQuizzesPage,
 } from './pages';
+import { LandingPage } from './pages/LandingPage';
+import { AuthPlaceholderPage } from './pages/AuthPlaceholder';
 import { useEffect } from 'react';
 
 function PageTransition({ children }: { children: React.ReactNode }) {
@@ -54,7 +56,7 @@ function PageTransition({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Shell() {
+function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -65,7 +67,7 @@ function Shell() {
         <main className="flex-1 w-full pb-24 lg:pb-0">
           <PageTransition>
             <Routes>
-              <Route path="/" element={<HomePage />} />
+              <Route path="/home" element={<HomePage />} />
               <Route path="/browse" element={<BrowsePage />} />
               <Route path="/wallet" element={<WalletPage />} />
               <Route path="/history" element={<HistoryPage />} />
@@ -98,11 +100,29 @@ function Shell() {
   );
 }
 
+function PublicRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<AuthPlaceholderPage mode="login" />} />
+      <Route path="/signup" element={<AuthPlaceholderPage mode="signup" />} />
+      <Route path="/apply-creator" element={<AuthPlaceholderPage mode="apply" />} />
+    </Routes>
+  );
+}
+
+function RoutingSwitch() {
+  const loc = useLocation();
+  const publicPaths = ['/', '/login', '/signup', '/apply-creator'];
+  const isPublic = publicPaths.includes(loc.pathname);
+  return isPublic ? <PublicRoutes /> : <AppShell />;
+}
+
 export function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Shell />
+        <RoutingSwitch />
       </AuthProvider>
     </BrowserRouter>
   );
