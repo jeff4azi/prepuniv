@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Plus,
   ArrowUpRight,
@@ -157,8 +158,9 @@ export function WalletPage() {
   }, [sheetOpen]);
 
   return (
-    <PageContainer className="!max-w-[1100px]">
-      <div className="space-y-6 lg:space-y-7">
+    <>
+      <PageContainer className="!max-w-[1100px]">
+        <div className="space-y-6 lg:space-y-7">
         {/* === 1. BALANCE HEADER === */}
         <Card
           padded={false}
@@ -341,9 +343,12 @@ export function WalletPage() {
             </div>
           )}
         </Card>
-      </div>
+        </div>
+      </PageContainer>
 
-      {/* === 2. TOP UP FLOW: Modal (desktop) + Sheet (mobile) === */}
+      {createPortal(
+        <>
+          {/* === 2. TOP UP FLOW: Modal (desktop) + Sheet (mobile) === */}
       <div
         className={`fixed inset-0 z-50 transition-opacity duration-200 ${
           sheetOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -561,14 +566,17 @@ export function WalletPage() {
         </div>
       </div>
 
-      <style>{`
-        @keyframes pop {
-          0% { transform: scale(0.3); opacity: 0; }
-          60% { transform: scale(1.08); opacity: 1; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-      `}</style>
-    </PageContainer>
+          <style>{`
+            @keyframes pop {
+              0% { transform: scale(0.3); opacity: 0; }
+              60% { transform: scale(1.08); opacity: 1; }
+              100% { transform: scale(1); opacity: 1; }
+            }
+          `}</style>
+        </>,
+        document.body,
+      )}
+    </>
   );
 }
 
