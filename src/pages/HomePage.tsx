@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import {
   Plus,
   ArrowRight,
@@ -13,14 +13,14 @@ import {
   Wand2,
   Compass,
   Search,
-} from 'lucide-react';
-import { PageContainer } from '../components/PageContainer';
-import { Card } from '../components/Card';
-import { Badge } from '../components/Badge';
-import { Button } from '../components/Button';
-import { Avatar } from '../components/Avatar';
-import { QuizCard, formatNaira, formatDate } from '../components/QuizCard';
-import { useAuth } from '../context/AuthContext';
+} from "lucide-react";
+import { PageContainer } from "../components/PageContainer";
+import { Card } from "../components/Card";
+import { Badge } from "../components/Badge";
+import { Button } from "../components/Button";
+import { Avatar } from "../components/Avatar";
+import { QuizCard, formatNaira, formatDate } from "../components/QuizCard";
+import { useAuth } from "../context/AuthContext";
 import {
   quizzes as allQuizzes,
   courses as allCourses,
@@ -29,31 +29,38 @@ import {
   walletTransactions as allWalletTxns,
   type Quiz,
   type QuizAttempt,
-} from '../mock';
+} from "../mock";
 
 function greetingByTime() {
   const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 16) return 'Good afternoon';
-  return 'Good evening';
+  if (h < 12) return "Good morning";
+  if (h < 16) return "Good afternoon";
+  return "Good evening";
 }
 
 function firstName(full: string) {
-  return full.split(' ')[0] ?? full;
+  return full.split(" ")[0] ?? full;
 }
 
 function computeWalletBalance(userId: string) {
   return allWalletTxns
-    .filter((t) => t.user_id === userId && t.status === 'success')
+    .filter((t) => t.user_id === userId && t.status === "success")
     .reduce((sum, t) => sum + t.amount, 0);
 }
 
 function attemptDateKey(a: QuizAttempt) {
-  return (a.completed_at ?? a.started_at).valueOf ? (new Date(a.completed_at ?? a.started_at)).getTime() : 0;
+  return (a.completed_at ?? a.started_at).valueOf
+    ? new Date(a.completed_at ?? a.started_at).getTime()
+    : 0;
 }
 
 export function HomePage() {
-  const { currentUser, purchasedQuizIds, walletBalance: cachedBalance, hasPurchasedQuiz } = useAuth();
+  const {
+    currentUser,
+    purchasedQuizIds,
+    walletBalance: cachedBalance,
+    hasPurchasedQuiz,
+  } = useAuth();
 
   const walletBalance = useMemo(
     () => computeWalletBalance(currentUser.id),
@@ -63,10 +70,10 @@ export function HomePage() {
 
   const greeting = greetingByTime();
   const userFirst = firstName(currentUser.full_name);
-  const todayLabel = new Date().toLocaleDateString('en-NG', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
+  const todayLabel = new Date().toLocaleDateString("en-NG", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
   });
 
   const coursesById = useMemo(() => {
@@ -117,7 +124,9 @@ export function HomePage() {
 
   const suggestedQuizzes = useMemo(() => {
     const unpurchased = publishedQuizzes.filter((q) => !hasPurchasedQuiz(q.id));
-    const sameCourse = unpurchased.filter((q) => attemptedCourseIds.has(q.course_id));
+    const sameCourse = unpurchased.filter((q) =>
+      attemptedCourseIds.has(q.course_id),
+    );
     const ordered = [...sameCourse];
     for (const q of unpurchased) {
       if (!ordered.find((o) => o.id === q.id)) ordered.push(q);
@@ -151,7 +160,7 @@ export function HomePage() {
               </h1>
               <p className="mt-1.5 text-sm text-text-soft max-w-md leading-relaxed">
                 {stats.total
-                  ? `You've attempted ${stats.total} ${stats.total === 1 ? 'quiz' : 'quizzes'}. Your best score so far is ${stats.best}% — keep that momentum going.`
+                  ? `You've attempted ${stats.total} ${stats.total === 1 ? "quiz" : "quizzes"}. Your best score so far is ${stats.best}% — keep that momentum going.`
                   : "You haven't attempted any quizzes yet. Start with one from your library or browse for something new below."}
               </p>
             </div>
@@ -198,7 +207,8 @@ export function HomePage() {
                     {formatNaira(balanceToShow)}
                   </p>
                   <p className="mt-1.5 text-[13px] text-cream/75">
-                    Ready to spend on any PrepUniv quiz. Pay once, and it's yours forever.
+                    Ready to spend on any PrepUniv quiz. Pay once, and it's
+                    yours forever.
                   </p>
                 </div>
                 <div className="hidden sm:flex h-12 w-12 rounded-2xl bg-cream/15 border border-cream/20 items-center justify-center shrink-0">
@@ -207,9 +217,21 @@ export function HomePage() {
               </div>
 
               <div className="grid grid-cols-3 gap-2.5 sm:gap-3.5 pt-1">
-                <WalletStatChip label="Attempts" value={stats.total} icon={<Target className="w-4 h-4" />} />
-                <WalletStatChip label="Avg score" value={stats.total ? stats.avg + '%' : '—'} icon={<Flame className="w-4 h-4" />} />
-                <WalletStatChip label="Day streak" value={stats.streak + (stats.streak === 1 ? ' day' : ' days')} icon={<Clock className="w-4 h-4" />} />
+                <WalletStatChip
+                  label="Attempts"
+                  value={stats.total}
+                  icon={<Target className="w-4 h-4" />}
+                />
+                <WalletStatChip
+                  label="Avg score"
+                  value={stats.total ? stats.avg + "%" : "—"}
+                  icon={<Flame className="w-4 h-4" />}
+                />
+                <WalletStatChip
+                  label="Day streak"
+                  value={stats.streak + (stats.streak === 1 ? " day" : " days")}
+                  icon={<Clock className="w-4 h-4" />}
+                />
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-1">
@@ -257,8 +279,8 @@ export function HomePage() {
               <div className="flex-1">
                 <p className="text-xs text-text-soft leading-relaxed">
                   {purchasedQuizzes.length
-                    ? 'Unlimited retakes, no extra fees. Jump into one whenever you\'re ready.'
-                    : 'Buy a quiz once, keep it in your library forever. Start by browsing.'}
+                    ? "Unlimited retakes, no extra fees. Jump into one whenever you're ready."
+                    : "Buy a quiz once, keep it in your library forever. Start by browsing."}
                 </p>
               </div>
               <Link to="/library">
@@ -279,15 +301,15 @@ export function HomePage() {
                     Next up
                   </p>
                   <p className="font-heading font-semibold text-sm text-text leading-tight mt-1 line-clamp-2">
-                    {suggestedQuizzes[0]?.title ?? 'Nothing queued yet'}
+                    {suggestedQuizzes[0]?.title ?? "Nothing queued yet"}
                   </p>
                 </div>
               </div>
               <div className="flex-1">
                 <p className="text-xs text-text-soft leading-relaxed">
                   {suggestedQuizzes[0]
-                    ? 'Based on quizzes you already practice — this one fits the pattern.'
-                    : 'Browse a little and PrepUniv will start recommending quizzes for you.'}
+                    ? "Based on quizzes you already practice — this one fits the pattern."
+                    : "Browse a little and PrepUniv will start recommending quizzes for you."}
                 </p>
               </div>
               {suggestedQuizzes[0] ? (
@@ -314,8 +336,8 @@ export function HomePage() {
           title="Continue practicing"
           subtitle={
             recentAttempts.length
-              ? `Pick up where you left off on ${recentAttempts.length} recent ${recentAttempts.length === 1 ? 'attempt' : 'attempts'}.`
-              : 'You haven\'t attempted any quizzes yet — your last attempts will appear here.'
+              ? `Pick up where you left off on ${recentAttempts.length} recent ${recentAttempts.length === 1 ? "attempt" : "attempts"}.`
+              : "You haven't attempted any quizzes yet — your last attempts will appear here."
           }
           action={
             recentAttempts.length ? (
@@ -356,7 +378,11 @@ export function HomePage() {
             icon={History}
             title="No attempts yet"
             description="Once you attempt a quiz, it'll show up here so you can review or try again."
-            primaryCta={{ label: 'Browse quizzes', to: '/browse', icon: Compass }}
+            primaryCta={{
+              label: "Browse quizzes",
+              to: "/browse",
+              icon: Compass,
+            }}
           />
         )}
 
@@ -365,8 +391,8 @@ export function HomePage() {
           title="My quizzes"
           subtitle={
             purchasedQuizzes.length
-              ? `Purchased once, unlocked forever. Retake any of these ${purchasedQuizzes.length} ${purchasedQuizzes.length === 1 ? 'quizzes' : 'quiz'} as many times as you want.`
-              : 'Your purchased library lives here. Buy a quiz once and practice it forever.'
+              ? `Purchased once, unlocked forever. Retake any of these ${purchasedQuizzes.length} ${purchasedQuizzes.length === 1 ? "quizzes" : "quiz"} as many times as you want.`
+              : "Your purchased library lives here. Buy a quiz once and practice it forever."
           }
           action={
             purchasedQuizzes.length > 4 ? (
@@ -402,7 +428,11 @@ export function HomePage() {
             icon={Library}
             title="Your library is empty"
             description="Every quiz you purchase lives here forever. Find one in the marketplace and unlock it for life."
-            primaryCta={{ label: 'Browse quizzes', to: '/browse', icon: Compass }}
+            primaryCta={{
+              label: "Browse quizzes",
+              to: "/browse",
+              icon: Compass,
+            }}
           />
         )}
 
@@ -411,8 +441,8 @@ export function HomePage() {
           title="Suggested for you"
           subtitle={
             suggestedQuizzes.length
-              ? 'Quizzes you haven\'t unlocked yet — pay the small fee once and keep them forever.'
-              : 'Everything in the marketplace is already in your library. Nice work!'
+              ? "Quizzes you haven't unlocked yet — pay the small fee once and keep them forever."
+              : "Everything in the marketplace is already in your library. Nice work!"
           }
           action={
             suggestedQuizzes.length ? (
@@ -448,7 +478,11 @@ export function HomePage() {
             icon={Sparkles}
             title="All caught up"
             description="Every published quiz in the marketplace is already in your library. Retry them in My quizzes above."
-            primaryCta={{ label: 'Go to my quizzes', to: '/library', icon: Library }}
+            primaryCta={{
+              label: "Go to my quizzes",
+              to: "/library",
+              icon: Library,
+            }}
           />
         )}
       </div>
@@ -468,10 +502,16 @@ function WalletStatChip({
   return (
     <div className="rounded-2xl bg-cream/10 border border-cream/15 p-2 sm:p-3.5 backdrop-blur-sm min-h-0">
       <div className="flex sm:flex-row flex-col items-start sm:items-center gap-1.5 sm:gap-2 text-cream/80 min-w-0">
-        <span className="h-5 w-5 sm:h-7 sm:w-7 rounded-xl bg-cream/15 flex items-center justify-center text-cream shrink-0">{icon}</span>
-        <p className="text-[8.5px] sm:text-[10.5px] uppercase tracking-[0.11em] sm:tracking-[0.14em] font-heading font-semibold leading-tight min-w-0 break-words">{label}</p>
+        <span className="h-5 w-5 sm:h-7 sm:w-7 rounded-xl bg-cream/15 flex items-center justify-center text-cream shrink-0">
+          {icon}
+        </span>
+        <p className="text-[8.5px] sm:text-[10.5px] uppercase tracking-[0.11em] sm:tracking-[0.14em] font-heading font-semibold leading-tight min-w-0 break-words">
+          {label}
+        </p>
       </div>
-      <p className="mt-1.5 sm:mt-2 font-heading font-bold text-[15px] sm:text-xl leading-none text-cream break-words">{value}</p>
+      <p className="mt-1.5 sm:mt-2 font-heading font-bold text-[15px] sm:text-xl leading-none text-cream break-words">
+        {value}
+      </p>
     </div>
   );
 }
@@ -492,12 +532,16 @@ function SectionHeader({
   return (
     <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4">
       <div className="min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">{children ?? tag}</div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {children ?? tag}
+        </div>
         <h2 className="mt-2 font-heading font-semibold text-xl lg:text-[22px] text-text tracking-tight leading-tight">
           {title}
         </h2>
         {subtitle && (
-          <p className="mt-1 text-sm text-text-soft leading-relaxed max-w-2xl">{subtitle}</p>
+          <p className="mt-1 text-sm text-text-soft leading-relaxed max-w-2xl">
+            {subtitle}
+          </p>
         )}
       </div>
       {action && <div className="shrink-0 flex sm:pb-0.5">{action}</div>}
@@ -512,10 +556,10 @@ function QuizGrid({
   children: React.ReactNode;
   rowOnMobile?: boolean;
 }) {
-  const desk = 'hidden lg:grid lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5';
+  const desk = "hidden lg:grid lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5";
   const mob = rowOnMobile
-    ? 'lg:hidden flex gap-4 overflow-x-auto snap-x snap-mandatory no-scrollbar -mx-4 px-4 pb-2 [&>*]:min-w-[78%] [&>*]:snap-start sm:[&>*]:min-w-[calc(50%-0.5rem)]'
-    : 'lg:hidden grid grid-cols-1 sm:grid-cols-2 gap-4';
+    ? "lg:hidden flex gap-4 overflow-x-auto snap-x snap-mandatory no-scrollbar -mx-4 px-4 scroll-pl-4 pb-2 [&>*]:min-w-[78%] [&>*]:snap-start sm:[&>*]:min-w-[calc(50%-0.5rem)] [&>*]:ml-0 first:[&>*]:ml-0"
+    : "lg:hidden grid grid-cols-1 sm:grid-cols-2 gap-4";
   return (
     <>
       <div className={desk}>{children}</div>
@@ -543,17 +587,22 @@ function EmptyState({
             <Icon className="w-7 h-7" strokeWidth={1.9} />
           </div>
           <div className="min-w-0">
-            <h3 className="font-heading font-bold text-lg text-text leading-tight">{title}</h3>
-            <p className="mt-1.5 text-sm text-text-soft leading-relaxed max-w-lg">{description}</p>
+            <h3 className="font-heading font-bold text-lg text-text leading-tight">
+              {title}
+            </h3>
+            <p className="mt-1.5 text-sm text-text-soft leading-relaxed max-w-lg">
+              {description}
+            </p>
           </div>
         </div>
         {primaryCta && (
           <Link to={primaryCta.to} className="shrink-0 w-full sm:w-auto">
             <Button variant="primary" size="md" fullWidth>
-              {primaryCta.icon && (() => {
-                const Ico = primaryCta.icon;
-                return <Ico className="w-4 h-4" />;
-              })()}
+              {primaryCta.icon &&
+                (() => {
+                  const Ico = primaryCta.icon;
+                  return <Ico className="w-4 h-4" />;
+                })()}
               {primaryCta.label}
               <ArrowRight className="w-4 h-4" />
             </Button>
@@ -569,14 +618,19 @@ function computeStreak(attempts: QuizAttempt[]) {
   const days = new Set(
     attempts.map((a) => {
       const d = new Date(a.completed_at ?? a.started_at);
-      return d.getUTCFullYear() + '-' + d.getUTCMonth() + '-' + d.getUTCDate();
+      return d.getUTCFullYear() + "-" + d.getUTCMonth() + "-" + d.getUTCDate();
     }),
   );
   let streak = 0;
   const cursor = new Date();
   cursor.setUTCHours(0, 0, 0, 0);
   while (true) {
-    const key = cursor.getUTCFullYear() + '-' + cursor.getUTCMonth() + '-' + cursor.getUTCDate();
+    const key =
+      cursor.getUTCFullYear() +
+      "-" +
+      cursor.getUTCMonth() +
+      "-" +
+      cursor.getUTCDate();
     if (days.has(key)) {
       streak += 1;
       cursor.setUTCDate(cursor.getUTCDate() - 1);
