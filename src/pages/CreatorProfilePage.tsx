@@ -21,6 +21,7 @@ import {
   quizzes as allQuizzes,
   courses as allCourses,
   quizAttempts as allAttempts,
+  type QuizAttempt,
 } from "../mock";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -63,7 +64,7 @@ function StatChip({
 export function CreatorProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { hasPurchasedQuiz } = useAuth();
+  const { currentUser, hasPurchasedQuiz } = useAuth();
 
   const coursesById = useMemo(
     () => new Map(allCourses.map((c) => [c.id, c])),
@@ -117,6 +118,23 @@ export function CreatorProfilePage() {
     const sum = relevant.reduce((s, a) => s + a.score, 0);
     return Math.round(sum / relevant.length);
   }, [publishedQuizzes]);
+
+  // Current user's last attempt per quiz (for variant + retake)
+  const lastAttemptByQuizId = useMemo(() => {
+    const m = new Map<string, QuizAttempt>();
+    const quizIds = new Set(publishedQuizzes.map((q) => q.id));
+    const userAttempts = allAttempts
+      .filter((a) => a.user_id === currentUser.id && quizIds.has(a.quiz_id))
+      .sort(
+        (a, b) =>
+          new Date(b.completed_at ?? b.started_at).getTime() -
+          new Date(a.completed_at ?? a.started_at).getTime(),
+      );
+    for (const a of userAttempts) {
+      if (!m.has(a.quiz_id)) m.set(a.quiz_id, a);
+    }
+    return m;
+  }, [publishedQuizzes, currentUser.id]);
 
   return (
     <PageContainer className="max-w-290!">
@@ -239,16 +257,27 @@ export function CreatorProfilePage() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
-              {publishedQuizzes.map((quiz) => (
-                <QuizCard
-                  key={quiz.id}
-                  quiz={quiz}
-                  course={coursesById.get(quiz.course_id)}
-                  creator={profile}
-                  variant={hasPurchasedQuiz(quiz.id) ? "purchased" : "locked"}
-                  hideCreatorLink
-                />
-              ))}
+              {publishedQuizzes.map((quiz) => {
+                const lastAttempt = lastAttemptByQuizId.get(quiz.id);
+                const purchased = hasPurchasedQuiz(quiz.id);
+                const variant = lastAttempt
+                  ? "attempted"
+                  : purchased
+                    ? "purchased"
+                    : "locked";
+                return (
+                  <QuizCard
+                    key={quiz.id}
+                    quiz={quiz}
+                    course={coursesById.get(quiz.course_id)}
+                    creator={profile}
+                    variant={variant}
+                    attempt={lastAttempt}
+                    retakeTo={lastAttempt ? `/quiz/${quiz.id}` : undefined}
+                    hideCreatorLink
+                  />
+                );
+              })}
             </div>
           )}
         </div>

@@ -416,15 +416,28 @@ export function HomePage() {
 
         {purchasedQuizzes.length ? (
           <QuizGrid>
-            {purchasedQuizzes.slice(0, 4).map((q) => (
-              <QuizCard
-                key={q.id}
-                quiz={q}
-                course={coursesById.get(q.course_id)}
-                creator={profilesById.get(q.creator_id)}
-                variant="purchased"
-              />
-            ))}
+            {purchasedQuizzes.slice(0, 4).map((q) => {
+              const lastAttempt = userAttempts.find((a) => a.quiz_id === q.id);
+              return lastAttempt ? (
+                <QuizCard
+                  key={q.id}
+                  quiz={q}
+                  course={coursesById.get(q.course_id)}
+                  creator={profilesById.get(q.creator_id)}
+                  variant="attempted"
+                  attempt={lastAttempt}
+                  retakeTo={`/quiz/${q.id}`}
+                />
+              ) : (
+                <QuizCard
+                  key={q.id}
+                  quiz={q}
+                  course={coursesById.get(q.course_id)}
+                  creator={profilesById.get(q.creator_id)}
+                  variant="purchased"
+                />
+              );
+            })}
           </QuizGrid>
         ) : (
           <EmptyState

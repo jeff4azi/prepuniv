@@ -190,8 +190,8 @@ export function QuizCard({
   })();
 
   return (
-    <Card hover padded={false} className={cardClass}>
-      <div className="relative px-5 pt-5 pb-4 flex flex-col gap-4 min-h-full">
+    <Card hover padded={false} className={"flex flex-col " + cardClass}>
+      <div className="relative px-5 pt-5 pb-4 flex flex-col gap-4 flex-1">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <Badge variant="secondary" size="sm" className="mb-2">
