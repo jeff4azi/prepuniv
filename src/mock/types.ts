@@ -1,4 +1,4 @@
-export type UserRole = 'user' | 'creator' | 'admin';
+export type UserRole = "user" | "creator" | "admin";
 
 export interface Profile {
   id: string;
@@ -22,6 +22,7 @@ export interface Quiz {
   creator_id: string;
   course_id: string;
   title: string;
+  description: string;
   price: number;
   is_published: boolean;
   question_count: number;
@@ -29,8 +30,13 @@ export interface Quiz {
   created_at: string;
 }
 
-export type TransactionType = 'deposit' | 'withdrawal' | 'purchase' | 'payout' | 'refund';
-export type TransactionStatus = 'pending' | 'success' | 'failed';
+export type TransactionType =
+  | "deposit"
+  | "withdrawal"
+  | "purchase"
+  | "payout"
+  | "refund";
+export type TransactionStatus = "pending" | "success" | "failed";
 
 export interface WalletTransaction {
   id: string;
@@ -49,6 +55,40 @@ export interface QuizAttempt {
   quiz_id: string;
   score: number;
   is_timed: boolean;
+  started_at: string;
+  completed_at: string;
+}
+
+export type QuestionType = "mcq" | "fill_blank";
+
+export interface Question {
+  id: string;
+  quiz_id: string;
+  question_text: string;
+  type: QuestionType;
+  /** MCQ only: list of answer choices */
+  options?: string[];
+  /** The correct answer. For fill_blank, pipe-separated acceptable answers: "answer1|answer2" */
+  correct_answer: string;
+}
+
+/** A graded answer within a completed attempt result */
+export interface AttemptAnswer {
+  question_id: string;
+  given: string;
+  correct: string;
+  is_correct: boolean;
+}
+
+/** The full result object passed to the result page via route state */
+export interface AttemptResult {
+  attempt_id: string;
+  quiz_id: string;
+  quiz_title: string;
+  is_timed: boolean;
+  score: number;
+  total: number;
+  answers: AttemptAnswer[];
   started_at: string;
   completed_at: string;
 }

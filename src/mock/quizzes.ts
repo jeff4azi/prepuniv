@@ -1,6 +1,8 @@
 import type { Quiz } from './types';
 
-export const quizzes: Quiz[] = [
+type QuizSeed = Omit<Quiz, 'description'>;
+
+const quizSeeds: QuizSeed[] = [
   {
     id: 'quiz_001',
     creator_id: 'creator_001',
@@ -266,3 +268,61 @@ export const quizzes: Quiz[] = [
     created_at: '2026-07-26T14:30:00Z',
   },
 ];
+
+const QUIZ_DESCRIPTIONS: Record<string, string> = {
+  quiz_001:
+    'A full-length JAMB Use of English mock exam covering comprehension, lexis, structure, and oral forms. Ideal for final-week revision before the UTME.',
+  quiz_002:
+    'Sharpen your problem-solving with 50 curated mathematics questions spanning algebra, geometry, and number theory. Each item mirrors recent JAMB patterns.',
+  quiz_003:
+    'Master mechanics — forces, motion, energy, and momentum — with exam-style physics questions. Includes worked-style prompts common in JAMB Physics.',
+  quiz_004:
+    'Focused drills on organic chemistry reactions, nomenclature, and functional groups. Best for students who want targeted practice before the main exam.',
+  quiz_005:
+    'Cover supply, demand, elasticity, and market equilibrium with real-world microeconomics scenarios. Great for building intuition, not just memorising definitions.',
+  quiz_006:
+    'Probability, distributions, and data interpretation in one compact pack. Designed for students tackling statistics for the first time at exam level.',
+  quiz_007:
+    'From pre-colonial kingdoms to independence movements across West Africa. Essay-style and multiple-choice items test both recall and analysis.',
+  quiz_008:
+    'Cell structure, organelles, and biological processes explained through practice questions. Perfect for WAEC and JAMB biology prep.',
+  quiz_009:
+    'Limits, continuity, and introductory derivatives with step-by-step style prompts. Computational timing applies per question in timed mode.',
+  quiz_010:
+    'Electric circuits, fields, and electromagnetic induction — the high-yield topics that show up every JAMB season.',
+  quiz_011:
+    'GDP, inflation, fiscal policy, and monetary tools in macroeconomics. Scenario-based questions help you apply theory to Nigeria and global cases.',
+  quiz_012:
+    'Comprehension passages and summary exercises to boost reading speed and accuracy. Written by an experienced English tutor.',
+  quiz_013:
+    'Mean, median, mode, variance, and basic data presentation — the descriptive stats foundation every student needs.',
+  quiz_014:
+    'Nigeria from the civil war through the return to democracy. Context-rich questions that go beyond dates and names.',
+  quiz_015:
+    'Mendelian genetics, inheritance patterns, and introductory evolution. Diagram-based and text-based items included.',
+  quiz_016:
+    'Periodic trends, bonding, and inorganic reactions in a focused 38-question set. High-yield for JAMB Chemistry.',
+  quiz_017:
+    'Affordable WAEC-style algebra and number theory practice. A quick win for students who need confidence in fundamentals.',
+  quiz_018:
+    'Light, sound, and wave phenomena with calculation and concept questions. Timed mode uses per-question timing for this subject.',
+  quiz_019:
+    'Development economics through Nigerian case studies — poverty, growth, and policy trade-offs you can relate to.',
+  quiz_020:
+    'Hypothesis testing, confidence intervals, and inferential methods for advanced statistics students. Premium depth for serious prep.',
+  quiz_021:
+    'Grammar bootcamp covering tenses, agreement, voice, and sentence structure. Eighty questions to drill the rules until they stick.',
+  quiz_022:
+    'Industrial revolution, world wars, and modern global history in one accessible pack. Good for both JAMB and general knowledge.',
+  quiz_023:
+    'Ecosystems, biodiversity, and environmental issues with application-focused questions. Comprehensive but concise.',
+  quiz_024:
+    'Thermodynamics laws, enthalpy, and equilibrium basics in physical chemistry. Advanced topic, beginner-friendly explanations in each stem.',
+};
+
+export const quizzes: Quiz[] = quizSeeds.map((q) => ({
+  ...q,
+  description:
+    QUIZ_DESCRIPTIONS[q.id] ??
+    `A ${q.question_count}-question practice quiz designed to help you prepare with confidence.`,
+}));
