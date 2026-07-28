@@ -68,11 +68,20 @@ function PageTransition({ children }: { children: React.ReactNode }) {
   );
 }
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [pathname]);
+  return null;
+}
+
 function AppShell() {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   return (
     <div className="min-h-dvh w-full bg-background text-text flex">
+      <ScrollToTop />
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 lg:min-h-screen">
         <TopBar onOpenAccountMenu={() => setAccountMenuOpen(true)} />
