@@ -1,27 +1,58 @@
-import { Rocket, Compass, Wallet as WalletIcon, Clock as ClockIcon, Settings as SettingsIcon, LayoutDashboard, FileText, CreditCard, BarChart3, Users, BookOpen, ScrollText, ListChecks, ShieldCheck, Menu as MenuIcon, Library } from 'lucide-react';
-import { PageContainer } from '../components/PageContainer';
-import { Card } from '../components/Card';
-import { Badge } from '../components/Badge';
-import { Button } from '../components/Button';
-import { useAuth } from '../context/AuthContext';
-import { HomePage as RealHomePage } from './HomePage';
-import { BrowsePage as RealBrowsePage } from './BrowsePage';
-import { WalletPage as RealWalletPage } from './WalletPage';
+import {
+  Rocket,
+  Compass,
+  Wallet as WalletIcon,
+  Clock as ClockIcon,
+  Settings as SettingsIcon,
+  LayoutDashboard,
+  FileText,
+  CreditCard,
+  BarChart3,
+  Users,
+  BookOpen,
+  ScrollText,
+  ListChecks,
+  ShieldCheck,
+  Library,
+} from "lucide-react";
+import { PageContainer } from "../components/PageContainer";
+import { Card } from "../components/Card";
+import { Badge } from "../components/Badge";
+import { Button } from "../components/Button";
+import { useAuth } from "../context/AuthContext";
+import { HomePage as RealHomePage } from "./HomePage";
+import { BrowsePage as RealBrowsePage } from "./BrowsePage";
+import { WalletPage as RealWalletPage } from "./WalletPage";
 
 interface PlaceholderProps {
   title: string;
   subtitle?: string;
   icon?: React.ElementType;
   tag?: string;
-  tagVariant?: 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'muted';
+  tagVariant?:
+    | "primary"
+    | "secondary"
+    | "success"
+    | "warning"
+    | "danger"
+    | "muted";
 }
 
-export function PlaceholderPage({ title, subtitle, icon: Icon, tag, tagVariant = 'primary' }: PlaceholderProps) {
+export function PlaceholderPage({
+  title,
+  subtitle,
+  icon: Icon,
+  tag,
+  tagVariant = "primary",
+}: PlaceholderProps) {
   const { currentUser, purchasedQuizIds } = useAuth();
   return (
     <PageContainer
       title={title}
-      subtitle={subtitle ?? 'Coming soon — this page is a placeholder shell while we build.'}
+      subtitle={
+        subtitle ??
+        "Coming soon — this page is a placeholder shell while we build."
+      }
       rightSlot={
         tag ? (
           <Badge variant={tagVariant} dot>
@@ -33,15 +64,19 @@ export function PlaceholderPage({ title, subtitle, icon: Icon, tag, tagVariant =
       <Card className="overflow-hidden">
         <div className="flex flex-col items-center text-center py-12 lg:py-16 px-4">
           <div className="h-20 w-20 rounded-3xl bg-primary/10 text-primary flex items-center justify-center mb-6 shadow-card">
-            {Icon ? <Icon className="w-10 h-10" strokeWidth={1.9} /> : <Rocket className="w-10 h-10" strokeWidth={1.9} />}
+            {Icon ? (
+              <Icon className="w-10 h-10" strokeWidth={1.9} />
+            ) : (
+              <Rocket className="w-10 h-10" strokeWidth={1.9} />
+            )}
           </div>
           <h2 className="text-xl lg:text-2xl font-heading font-bold text-text tracking-tight">
             {title}
           </h2>
           <p className="mt-2 text-sm lg:text-base text-muted max-w-md">
-            This is a routing stub. Full content will be built in a future prompt.
-            The nav, shell, and responsive behaviour below are all wired up and
-            ready to go.
+            This is a routing stub. Full content will be built in a future
+            prompt. The nav, shell, and responsive behaviour below are all wired
+            up and ready to go.
           </p>
 
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl text-left">
@@ -81,20 +116,19 @@ export function PlaceholderPage({ title, subtitle, icon: Icon, tag, tagVariant =
                 </p>
               </div>
               <p className="font-heading font-semibold text-text">
-                {currentUser.is_approved_creator ? 'Yes' : 'No'}
+                {currentUser.is_approved_creator ? "Yes" : "No"}
               </p>
             </div>
           </div>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Button variant="outline">View docs</Button>
-            <Button rightIcon={<Rocket className="w-4 h-4" />}>
-              Let's go
-            </Button>
+            <Button rightIcon={<Rocket className="w-4 h-4" />}>Let's go</Button>
           </div>
 
           <p className="mt-10 text-[11px] font-medium text-muted uppercase tracking-widest">
-            Tip: use the Dev Role Switcher in the corner to preview all nav states
+            Tip: use the Dev Role Switcher in the corner to preview all nav
+            states
           </p>
         </div>
       </Card>
@@ -115,63 +149,171 @@ export function WalletPage() {
 }
 
 export function HistoryPage() {
-  return <PlaceholderPage title="History" subtitle="Your past quiz attempts & scores" icon={ClockIcon} tag="User section" tagVariant="primary" />;
+  return (
+    <PlaceholderPage
+      title="History"
+      subtitle="Your past quiz attempts & scores"
+      icon={ClockIcon}
+      tag="User section"
+      tagVariant="primary"
+    />
+  );
 }
 
 export function SettingsPage() {
-  return <PlaceholderPage title="Settings" subtitle="Profile, security, and preferences" icon={SettingsIcon} tag="User section" tagVariant="muted" />;
-}
-
-export function MenuPage() {
-  return <PlaceholderPage title="All Menu" subtitle="Quick access to every corner of PrepUniv" icon={MenuIcon} tag="Mobile menu" tagVariant="secondary" />;
+  return (
+    <PlaceholderPage
+      title="Settings"
+      subtitle="Profile, security, and preferences"
+      icon={SettingsIcon}
+      tag="User section"
+      tagVariant="muted"
+    />
+  );
 }
 
 export function LibraryPage() {
-  return <PlaceholderPage title="My Library" subtitle="Every quiz you've ever purchased, unlocked forever" icon={Library} tag="User section" tagVariant="primary" />;
+  return (
+    <PlaceholderPage
+      title="My Library"
+      subtitle="Every quiz you've ever purchased, unlocked forever"
+      icon={Library}
+      tag="User section"
+      tagVariant="primary"
+    />
+  );
 }
 
 // Creator pages
 export function CreatorDashboardPage() {
-  return <PlaceholderPage title="Creator Dashboard" subtitle="Earnings, engagement, and growth overview" icon={LayoutDashboard} tag="Creator section" tagVariant="secondary" />;
+  return (
+    <PlaceholderPage
+      title="Creator Dashboard"
+      subtitle="Earnings, engagement, and growth overview"
+      icon={LayoutDashboard}
+      tag="Creator section"
+      tagVariant="secondary"
+    />
+  );
 }
 
 export function CreatorQuizzesPage() {
-  return <PlaceholderPage title="My Quizzes" subtitle="Create, edit, and publish your quizzes" icon={FileText} tag="Creator section" tagVariant="secondary" />;
+  return (
+    <PlaceholderPage
+      title="My Quizzes"
+      subtitle="Create, edit, and publish your quizzes"
+      icon={FileText}
+      tag="Creator section"
+      tagVariant="secondary"
+    />
+  );
 }
 
 export function CreatorPayoutsPage() {
-  return <PlaceholderPage title="Creator Payouts" subtitle="Withdraw earnings and view payout history" icon={CreditCard} tag="Creator section" tagVariant="secondary" />;
+  return (
+    <PlaceholderPage
+      title="Creator Payouts"
+      subtitle="Withdraw earnings and view payout history"
+      icon={CreditCard}
+      tag="Creator section"
+      tagVariant="secondary"
+    />
+  );
 }
 
 export function CreatorReportsPage() {
-  return <PlaceholderPage title="Creator Reports" subtitle="Detailed analytics & insights" icon={BarChart3} tag="Creator section" tagVariant="secondary" />;
+  return (
+    <PlaceholderPage
+      title="Creator Reports"
+      subtitle="Detailed analytics & insights"
+      icon={BarChart3}
+      tag="Creator section"
+      tagVariant="secondary"
+    />
+  );
 }
 
 // Admin pages
 export function AdminDashboardPage() {
-  return <PlaceholderPage title="Admin Dashboard" subtitle="Platform-wide overview & key metrics" icon={ShieldCheck} tag="Admin section" tagVariant="warning" />;
+  return (
+    <PlaceholderPage
+      title="Admin Dashboard"
+      subtitle="Platform-wide overview & key metrics"
+      icon={ShieldCheck}
+      tag="Admin section"
+      tagVariant="warning"
+    />
+  );
 }
 
 export function AdminApplicationsPage() {
-  return <PlaceholderPage title="Creator Applications" subtitle="Review and approve creator applications" icon={ListChecks} tag="Admin section" tagVariant="warning" />;
+  return (
+    <PlaceholderPage
+      title="Creator Applications"
+      subtitle="Review and approve creator applications"
+      icon={ListChecks}
+      tag="Admin section"
+      tagVariant="warning"
+    />
+  );
 }
 
 export function AdminPayoutsPage() {
-  return <PlaceholderPage title="Admin Payouts" subtitle="Review, process, and audit all payouts" icon={CreditCard} tag="Admin section" tagVariant="warning" />;
+  return (
+    <PlaceholderPage
+      title="Admin Payouts"
+      subtitle="Review, process, and audit all payouts"
+      icon={CreditCard}
+      tag="Admin section"
+      tagVariant="warning"
+    />
+  );
 }
 
 export function AdminReportsPage() {
-  return <PlaceholderPage title="Admin Reports" subtitle="Full platform analytics & reports" icon={BarChart3} tag="Admin section" tagVariant="warning" />;
+  return (
+    <PlaceholderPage
+      title="Admin Reports"
+      subtitle="Full platform analytics & reports"
+      icon={BarChart3}
+      tag="Admin section"
+      tagVariant="warning"
+    />
+  );
 }
 
 export function AdminUsersPage() {
-  return <PlaceholderPage title="User Management" subtitle="View, search, and manage all users" icon={Users} tag="Admin section" tagVariant="warning" />;
+  return (
+    <PlaceholderPage
+      title="User Management"
+      subtitle="View, search, and manage all users"
+      icon={Users}
+      tag="Admin section"
+      tagVariant="warning"
+    />
+  );
 }
 
 export function AdminCoursesPage() {
-  return <PlaceholderPage title="Courses" subtitle="Manage the course catalog" icon={BookOpen} tag="Admin section" tagVariant="warning" />;
+  return (
+    <PlaceholderPage
+      title="Courses"
+      subtitle="Manage the course catalog"
+      icon={BookOpen}
+      tag="Admin section"
+      tagVariant="warning"
+    />
+  );
 }
 
 export function AdminQuizzesPage() {
-  return <PlaceholderPage title="Quizzes (Admin)" subtitle="Moderate and manage all quizzes" icon={ScrollText} tag="Admin section" tagVariant="warning" />;
+  return (
+    <PlaceholderPage
+      title="Quizzes (Admin)"
+      subtitle="Moderate and manage all quizzes"
+      icon={ScrollText}
+      tag="Admin section"
+      tagVariant="warning"
+    />
+  );
 }

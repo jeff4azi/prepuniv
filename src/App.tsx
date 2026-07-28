@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
-import { Sidebar, TopBar, BottomNav, MenuSheet } from "./components/Navigation";
+import { Sidebar, TopBar, BottomNav } from "./components/Navigation";
+import { AccountSheet } from "./components/AccountMenu";
 import { DevRoleSwitcher } from "./components/DevRoleSwitcher";
 import {
   HomePage,
@@ -9,7 +10,6 @@ import {
   WalletPage,
   HistoryPage,
   SettingsPage,
-  MenuPage,
   LibraryPage,
   CreatorDashboardPage,
   CreatorQuizzesPage,
@@ -62,13 +62,13 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 }
 
 function AppShell() {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen min-h-[100dvh] w-full bg-background text-text flex">
+    <div className="min-h-dvh w-full bg-background text-text flex">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 lg:min-h-screen">
-        <TopBar onOpenMenu={() => setMenuOpen(true)} />
+        <TopBar onOpenAccountMenu={() => setAccountMenuOpen(true)} />
         <main className="flex-1 w-full pb-24 lg:pb-0">
           <PageTransition>
             <Routes>
@@ -78,7 +78,6 @@ function AppShell() {
               <Route path="/wallet" element={<WalletPage />} />
               <Route path="/history" element={<HistoryPage />} />
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/menu" element={<MenuPage />} />
 
               <Route path="/quiz/:id" element={<QuizDetailPage />} />
 
@@ -102,10 +101,14 @@ function AppShell() {
             </Routes>
           </PageTransition>
         </main>
-        <BottomNav />
+        <BottomNav onOpenAccountMenu={() => setAccountMenuOpen(true)} />
       </div>
 
-      <MenuSheet open={menuOpen} onClose={() => setMenuOpen(false)} />
+      {/* Single unified Account Menu sheet (mobile only; desktop uses the sidebar popover) */}
+      <AccountSheet
+        open={accountMenuOpen}
+        onClose={() => setAccountMenuOpen(false)}
+      />
       <DevRoleSwitcher />
     </div>
   );
@@ -148,7 +151,6 @@ function RoutingSwitch() {
     "/forgot-password",
     "/reset-password",
   ];
-
   const isPublic = publicPaths.includes(loc.pathname);
   const isAttempt = /^\/attempt\//.test(loc.pathname);
 
