@@ -92,3 +92,11 @@ export interface AttemptResult {
   started_at: string;
   completed_at: string;
 }
+
+/**
+ * A persisted attempt result record used for standalone page lookups
+ * (e.g. revisiting /attempt/:id/result from History after a page refresh).
+ */
+export interface AttemptResultRecord extends AttemptResult {
+  user_id: string;
+}
