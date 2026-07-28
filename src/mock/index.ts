@@ -10,6 +10,12 @@ export { walletTransactions } from "./walletTransactions";
 export { quizAttempts } from "./quizAttempts";
 export { attemptResults } from "./attemptResults";
 export { reports, addReport } from "./reports";
+export {
+  creatorApplications,
+  getApplicationByUserId,
+  addApplication,
+  updateApplicationStatus,
+} from "./creatorApplications";
 export type {
   Profile,
   Course,
@@ -26,4 +32,6 @@ export type {
   QuestionType,
   QuizReport,
   ReportReason,
+  CreatorApplication,
+  ApplicationStatus,
 } from "./types";

@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { Sidebar, TopBar, BottomNav } from "./components/Navigation";
 import { AccountSheet } from "./components/AccountMenu";
@@ -28,10 +34,10 @@ import { SignupPage } from "./pages/SignupPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
-import { AuthPlaceholderPage } from "./pages/AuthPlaceholder";
 import { QuizDetailPage } from "./pages/QuizDetailPage";
 import { AttemptPage } from "./pages/AttemptPage";
 import { AttemptResultPage } from "./pages/AttemptResultPage";
+import { CreatorApplyPage } from "./pages/CreatorApplyPage";
 import { useEffect } from "react";
 
 function PageTransition({ children }: { children: React.ReactNode }) {
@@ -82,6 +88,7 @@ function AppShell() {
               <Route path="/quiz/:id" element={<QuizDetailPage />} />
 
               <Route path="/creator" element={<CreatorDashboardPage />} />
+              <Route path="/creator/apply" element={<CreatorApplyPage />} />
               <Route path="/creator/quizzes" element={<CreatorQuizzesPage />} />
               <Route path="/creator/payouts" element={<CreatorPayoutsPage />} />
               <Route path="/creator/reports" element={<CreatorReportsPage />} />
@@ -132,7 +139,7 @@ function PublicRoutes() {
       <Route path="/signup" element={<SignupPage />} />
       <Route
         path="/apply-creator"
-        element={<AuthPlaceholderPage mode="apply" />}
+        element={<Navigate to="/creator/apply" replace />}
       />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -147,7 +154,6 @@ function RoutingSwitch() {
     "/",
     "/login",
     "/signup",
-    "/apply-creator",
     "/forgot-password",
     "/reset-password",
   ];

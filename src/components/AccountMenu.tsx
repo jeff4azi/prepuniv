@@ -224,7 +224,7 @@ function MobileMenuBody({ onClose }: { onClose: () => void }) {
         {/* "Become a Creator" for non-approved users */}
         {!isApproved && role === "user" && (
           <NavItem
-            to="/apply-creator"
+            to="/creator/apply"
             icon={UserPlus}
             label="Become a Creator"
             iconClass="text-secondary"

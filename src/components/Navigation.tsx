@@ -202,7 +202,7 @@ export function Sidebar() {
         {role === "user" && !isApproved && (
           <div>
             <div className="border-t border-border/50 -mx-3 mb-4" />
-            <NavLink to="/apply-creator" className={navLinkClass}>
+            <NavLink to="/creator/apply" className={navLinkClass}>
               <UserPlus
                 className="w-4.5 h-4.5 shrink-0 text-secondary"
                 strokeWidth={2.1}

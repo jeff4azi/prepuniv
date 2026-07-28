@@ -118,3 +118,17 @@ export interface QuizReport {
   details?: string;
   created_at: string;
 }
+
+export type ApplicationStatus = "pending" | "approved" | "rejected";
+
+export interface CreatorApplication {
+  id: string;
+  user_id: string;
+  status: ApplicationStatus;
+  courses: string;
+  background: string;
+  quiz_plans: string;
+  links?: string;
+  notes?: string;
+  submitted_at: string;
+}
