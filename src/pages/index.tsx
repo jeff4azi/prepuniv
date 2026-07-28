@@ -5,6 +5,7 @@ import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { useAuth } from '../context/AuthContext';
 import { HomePage as RealHomePage } from './HomePage';
+import { BrowsePage as RealBrowsePage } from './BrowsePage';
 import { WalletPage as RealWalletPage } from './WalletPage';
 
 interface PlaceholderProps {
@@ -106,7 +107,7 @@ export function HomePage() {
 }
 
 export function BrowsePage() {
-  return <PlaceholderPage title="Browse" subtitle="Discover courses & quizzes from top creators" icon={Compass} tag="User section" tagVariant="primary" />;
+  return <RealBrowsePage />;
 }
 
 export function WalletPage() {

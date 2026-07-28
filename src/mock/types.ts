@@ -25,6 +25,8 @@ export interface Quiz {
   price: number;
   is_published: boolean;
   question_count: number;
+  attempt_count: number;
+  created_at: string;
 }
 
 export type TransactionType = 'deposit' | 'withdrawal' | 'purchase' | 'payout' | 'refund';
