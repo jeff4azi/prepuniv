@@ -17,6 +17,7 @@ import {
   ListChecks,
   Sparkles,
   Library,
+  UserPlus,
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -196,6 +197,20 @@ export function Sidebar() {
             );
           })}
         </nav>
+
+        {/* ── Become a Creator — only for non-approved regular learners ── */}
+        {role === "user" && !isApproved && (
+          <div>
+            <div className="border-t border-border/50 -mx-3 mb-4" />
+            <NavLink to="/apply-creator" className={navLinkClass}>
+              <UserPlus
+                className="w-4.5 h-4.5 shrink-0 text-secondary"
+                strokeWidth={2.1}
+              />
+              <span>Become a Creator</span>
+            </NavLink>
+          </div>
+        )}
 
         {creatorNav.length > 0 && (
           <div>
