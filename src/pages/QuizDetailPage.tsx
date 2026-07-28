@@ -301,15 +301,18 @@ export function QuizDetailPage() {
 
               {/* creator */}
               {creator && (
-                <div className="flex items-center gap-2.5 pt-1">
+                <Link
+                  to={`/profile/creator/${creator.id}`}
+                  className="group/creator inline-flex items-center gap-2.5 pt-1 rounded-xl -mx-1 px-1 py-1 hover:bg-surface/60 active:opacity-70 transition-all duration-150 w-fit"
+                >
                   <Avatar name={creator.full_name} size="xs" />
                   <span className="text-sm text-text-soft">
                     by{" "}
-                    <span className="font-heading font-semibold text-text">
+                    <span className="font-heading font-semibold text-text group-hover/creator:underline underline-offset-2">
                       {creator.full_name}
                     </span>
                   </span>
-                </div>
+                </Link>
               )}
 
               {/* ── STATE SPLIT: purchased vs not ── */}

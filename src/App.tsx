@@ -38,6 +38,7 @@ import { QuizDetailPage } from "./pages/QuizDetailPage";
 import { AttemptPage } from "./pages/AttemptPage";
 import { AttemptResultPage } from "./pages/AttemptResultPage";
 import { CreatorApplyPage } from "./pages/CreatorApplyPage";
+import { CreatorProfilePage } from "./pages/CreatorProfilePage";
 import { useEffect } from "react";
 
 function PageTransition({ children }: { children: React.ReactNode }) {
@@ -86,6 +87,10 @@ function AppShell() {
               <Route path="/settings" element={<SettingsPage />} />
 
               <Route path="/quiz/:id" element={<QuizDetailPage />} />
+              <Route
+                path="/profile/creator/:id"
+                element={<CreatorProfilePage />}
+              />
 
               <Route path="/creator" element={<CreatorDashboardPage />} />
               <Route path="/creator/apply" element={<CreatorApplyPage />} />

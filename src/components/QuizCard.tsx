@@ -22,6 +22,13 @@ export interface QuizCardProps {
   variant?: QuizCardVariant;
   attempt?: QuizAttempt;
   className?: string;
+  /** Pass true when already on the creator's own profile page to avoid a
+   *  self-referencing link loop. The creator row still renders, just not
+   *  as a clickable link. */
+  hideCreatorLink?: boolean;
+  /** When set on the `attempted` variant, renders a "Retake" primary CTA
+   *  linking to this URL, and moves "View result" to a small secondary link. */
+  retakeTo?: string;
 }
 
 export function formatNaira(amount: number) {
@@ -60,6 +67,8 @@ export function QuizCard({
   variant = "locked",
   attempt,
   className = "",
+  hideCreatorLink = false,
+  retakeTo,
 }: QuizCardProps) {
   const cardClass =
     "group relative overflow-hidden " + VARIANT_BG[variant] + " " + className;
@@ -67,20 +76,39 @@ export function QuizCard({
   const ctaRow = (() => {
     if (variant === "purchased") {
       return (
-        <Link to={`/attempt/${quiz.id}/new`} className="block">
+        <Link to={`/quiz/${quiz.id}`} className="block">
           <Button fullWidth variant="primary" size="md" className="h-11">
             <PlayCircle className="w-4.5 h-4.5" />
             Start attempt
-            <ArrowRight className="w-[17px] h-[17px]" />
+            <ArrowRight className="w-4.25 h-4.25" />
           </Button>
         </Link>
       );
     }
     if (variant === "attempted") {
+      if (retakeTo) {
+        return (
+          <div className="space-y-2">
+            <Link to={retakeTo} className="block">
+              <Button fullWidth variant="primary" size="md" className="h-11">
+                <PlayCircle className="w-4.5 h-4.5" />
+                Retake
+                <ArrowRight className="w-4.25 h-4.25" />
+              </Button>
+            </Link>
+            <Link
+              to={`/attempt/${attempt?.id ?? "0"}/result`}
+              className="flex items-center justify-center gap-1 text-xs font-heading font-medium text-muted hover:text-text-soft transition-colors py-0.5"
+            >
+              View last result →
+            </Link>
+          </div>
+        );
+      }
       return (
         <Link to={`/attempt/${attempt?.id ?? "0"}/result`} className="block">
           <Button fullWidth variant="secondary" size="md" className="h-11">
-            <FileQuestion className="w-[17px] h-[17px]" />
+            <FileQuestion className="w-4.25 h-4.25" />
             View result
           </Button>
         </Link>
@@ -94,7 +122,7 @@ export function QuizCard({
           </span>
           <span className="h-4 w-px bg-border mx-1" />
           <span>Pay &amp; start</span>
-          <ArrowRight className="w-[17px] h-[17px]" />
+          <ArrowRight className="w-4.25 h-4.25" />
         </Button>
       </Link>
     );
@@ -124,6 +152,40 @@ export function QuizCard({
       <Badge variant="muted" size="md" dot>
         New
       </Badge>
+    );
+  })();
+
+  // ── Creator row: combined avatar + name tap target → /profile/creator/:id ──
+  const creatorRow = (() => {
+    if (!creator) {
+      return <span className="text-[12px] text-muted">Verified creator</span>;
+    }
+
+    const inner = (
+      <span className="flex items-center gap-2 min-w-0">
+        <Avatar name={creator.full_name} size="xs" />
+        <span className="text-[12px] text-text-soft truncate max-w-35 group-hover/creator:text-text transition-colors">
+          by {creator.full_name.split(" ").slice(0, 2).join(" ")}
+        </span>
+      </span>
+    );
+
+    if (
+      hideCreatorLink ||
+      (creator.role !== "creator" && creator.role !== "admin")
+    ) {
+      return <span className="flex items-center gap-2 min-w-0">{inner}</span>;
+    }
+
+    return (
+      <Link
+        to={`/profile/creator/${creator.id}`}
+        onClick={(e) => e.stopPropagation()}
+        className="group/creator inline-flex items-center min-w-0 rounded-xl -mx-1 px-1 py-0.5 hover:bg-surface/70 active:opacity-70 active:scale-[0.98] transition-all duration-150"
+        aria-label={`View ${creator.full_name}'s profile`}
+      >
+        {inner}
+      </Link>
     );
   })();
 
@@ -162,7 +224,7 @@ export function QuizCard({
         {variant !== "attempted" && (
           <div className="h-1 w-full rounded-full bg-surface overflow-hidden">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-primary/60 to-secondary/50"
+              className="h-full rounded-full bg-linear-to-r from-primary/60 to-secondary/50"
               style={{
                 width:
                   variant === "purchased"
@@ -176,16 +238,7 @@ export function QuizCard({
         )}
 
         <div className="flex items-center justify-between pt-1">
-          {creator ? (
-            <div className="flex items-center gap-2 min-w-0">
-              <Avatar name={creator.full_name} size="xs" />
-              <span className="text-[12px] text-text-soft truncate max-w-[140px]">
-                by {creator.full_name.split(" ").slice(0, 2).join(" ")}
-              </span>
-            </div>
-          ) : (
-            <span className="text-[12px] text-muted">Verified creator</span>
-          )}
+          {creatorRow}
           <Badge variant="muted" size="sm">
             {quiz.is_published ? "Published" : "Draft"}
           </Badge>

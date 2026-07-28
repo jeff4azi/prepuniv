@@ -361,6 +361,8 @@ export function HomePage() {
             {recentAttempts.map((attempt) => {
               const quiz = quizzesById.get(attempt.quiz_id);
               if (!quiz) return null;
+              const retakeId =
+                "atmp_" + Math.random().toString(36).slice(2, 10);
               return (
                 <QuizCard
                   key={attempt.id}
@@ -369,6 +371,7 @@ export function HomePage() {
                   creator={profilesById.get(quiz.creator_id)}
                   variant="attempted"
                   attempt={attempt}
+                  retakeTo={`/quiz/${quiz.id}`}
                 />
               );
             })}

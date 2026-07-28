@@ -9,6 +9,8 @@ export interface Profile {
   bank_account_number?: string;
   bank_code?: string;
   avatar_url?: string;
+  bio?: string;
+  joined_at?: string;
 }
 
 export interface Course {
