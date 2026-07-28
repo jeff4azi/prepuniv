@@ -11,12 +11,13 @@ import {
   Flag,
   ChevronDown,
   ChevronUp,
-  X,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
+import { ReportModal } from "../components/ReportModal";
+import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
 import {
   quizzes as allQuizzes,
@@ -119,49 +120,6 @@ function ScoreRing({ score, stroke }: { score: number; stroke: string }) {
         <span className="font-heading font-bold text-[28px] leading-none text-text">
           {score}%
         </span>
-      </div>
-    </div>
-  );
-}
-
-// ─── Report modal (placeholder) ───────────────────────────────────────────────
-
-function ReportModal({
-  quizTitle,
-  onClose,
-}: {
-  quizTitle: string;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-text/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div className="relative w-full max-w-md rounded-3xl bg-cream shadow-elevated p-6 space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="font-heading font-bold text-lg text-text">
-              Report this quiz
-            </h2>
-            <p className="text-sm text-text-soft mt-0.5">"{quizTitle}"</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="h-8 w-8 rounded-xl flex items-center justify-center text-muted hover:bg-surface/70 transition-colors"
-            aria-label="Close"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <p className="text-sm text-text-soft leading-relaxed">
-          The full reporting flow will be built in a future prompt. Your report
-          has been noted and the moderation team will review it within 48 hours.
-        </p>
-        <Button variant="primary" fullWidth onClick={onClose}>
-          Got it
-        </Button>
       </div>
     </div>
   );
@@ -362,6 +320,7 @@ export function AttemptResultPage() {
   // ── UI state ───────────────────────────────────────────────────────────────
   const [filter, setFilter] = useState<FilterMode>("all");
   const [showReport, setShowReport] = useState(false);
+  const [toast, showToast, dismissToast] = useToast();
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const answers = result?.answers ?? [];
@@ -416,10 +375,21 @@ export function AttemptResultPage() {
 
   return (
     <>
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          onDismiss={dismissToast}
+        />
+      )}
       {showReport && (
         <ReportModal
+          quizId={result.quiz_id}
           quizTitle={result.quiz_title}
           onClose={() => setShowReport(false)}
+          onSuccess={() =>
+            showToast({ message: "Report submitted. Our team will review it." })
+          }
         />
       )}
 

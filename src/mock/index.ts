@@ -9,6 +9,7 @@ export { questions } from "./questions";
 export { walletTransactions } from "./walletTransactions";
 export { quizAttempts } from "./quizAttempts";
 export { attemptResults } from "./attemptResults";
+export { reports, addReport } from "./reports";
 export type {
   Profile,
   Course,
@@ -23,4 +24,6 @@ export type {
   TransactionType,
   TransactionStatus,
   QuestionType,
+  QuizReport,
+  ReportReason,
 } from "./types";

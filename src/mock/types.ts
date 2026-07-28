@@ -100,3 +100,21 @@ export interface AttemptResult {
 export interface AttemptResultRecord extends AttemptResult {
   user_id: string;
 }
+
+export type ReportReason =
+  | "incorrect_answers"
+  | "low_quality"
+  | "inappropriate"
+  | "copyright"
+  | "other";
+
+export interface QuizReport {
+  id: string;
+  user_id: string;
+  quiz_id: string;
+  quiz_title: string;
+  reason: ReportReason;
+  other_text?: string;
+  details?: string;
+  created_at: string;
+}

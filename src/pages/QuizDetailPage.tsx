@@ -16,13 +16,14 @@ import {
   Calculator,
   History,
   ChevronRight,
-  X,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Avatar } from "../components/Avatar";
+import { ReportModal } from "../components/ReportModal";
+import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
 import {
   quizzes as allQuizzes,
@@ -36,77 +37,6 @@ import { formatNaira } from "../components/QuizCard";
 
 function fakeAttemptId() {
   return "atmp_" + Math.random().toString(36).slice(2, 10);
-}
-
-// ─── Report Modal ────────────────────────────────────────────────────────────
-
-function ReportModal({
-  quizTitle,
-  onClose,
-}: {
-  quizTitle: string;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-text/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div className="relative w-full max-w-md rounded-3xl bg-cream shadow-elevated p-6 space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="font-heading font-bold text-lg text-text leading-tight">
-              Report this quiz
-            </h2>
-            <p className="text-sm text-text-soft mt-0.5 leading-snug">
-              "{quizTitle}"
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="h-8 w-8 rounded-xl flex items-center justify-center text-muted hover:bg-surface/70 hover:text-text transition-colors"
-            aria-label="Close"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <p className="text-sm text-text-soft leading-relaxed">
-          The full reporting flow will be built in a future prompt. For now,
-          your report has been noted. The moderation team reviews all reports
-          within 48 hours.
-        </p>
-
-        <Button variant="primary" fullWidth onClick={onClose}>
-          Got it
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Toast / success banner ──────────────────────────────────────────────────
-
-function SuccessToast({
-  message,
-  onDismiss,
-}: {
-  message: string;
-  onDismiss: () => void;
-}) {
-  return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl bg-primary text-cream shadow-elevated animate-in slide-in-from-top-2 duration-300 max-w-sm w-[calc(100%-2rem)]">
-      <CheckCircle2 className="w-5 h-5 shrink-0" />
-      <span className="font-heading font-medium text-sm flex-1">{message}</span>
-      <button
-        onClick={onDismiss}
-        className="shrink-0 opacity-70 hover:opacity-100"
-      >
-        <X className="w-4 h-4" />
-      </button>
-    </div>
-  );
 }
 
 // ─── Confirm payment step ────────────────────────────────────────────────────
@@ -214,8 +144,8 @@ export function QuizDetailPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [insufficientFunds, setInsufficientFunds] = useState(false);
-  const [showToast, setShowToast] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [toast, showToast, dismissToast] = useToast();
 
   if (!quiz) {
     return (
@@ -260,8 +190,7 @@ export function QuizDetailPage() {
     setIsPaying(false);
     if (ok) {
       setShowConfirm(false);
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 4000);
+      showToast({ message: "Unlocked! You can now retake this quiz anytime." });
     }
   }
 
@@ -283,16 +212,21 @@ export function QuizDetailPage() {
 
   return (
     <>
-      {showToast && (
-        <SuccessToast
-          message="Unlocked! You can now retake this quiz anytime."
-          onDismiss={() => setShowToast(false)}
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          onDismiss={dismissToast}
         />
       )}
       {showReport && (
         <ReportModal
+          quizId={quiz.id}
           quizTitle={quiz.title}
           onClose={() => setShowReport(false)}
+          onSuccess={() =>
+            showToast({ message: "Report submitted. Our team will review it." })
+          }
         />
       )}
 

@@ -23,6 +23,11 @@ import { useAuth } from "../context/AuthContext";
 import { HomePage as RealHomePage } from "./HomePage";
 import { BrowsePage as RealBrowsePage } from "./BrowsePage";
 import { WalletPage as RealWalletPage } from "./WalletPage";
+import { HistoryPage as RealHistoryPage } from "./HistoryPage";
+import { SettingsPage as RealSettingsPage } from "./SettingsPage";
+
+// suppress "unused" linter warnings for icons still used by placeholder pages
+void (ClockIcon, SettingsIcon, WalletIcon);
 
 interface PlaceholderProps {
   title: string;
@@ -149,27 +154,11 @@ export function WalletPage() {
 }
 
 export function HistoryPage() {
-  return (
-    <PlaceholderPage
-      title="History"
-      subtitle="Your past quiz attempts & scores"
-      icon={ClockIcon}
-      tag="User section"
-      tagVariant="primary"
-    />
-  );
+  return <RealHistoryPage />;
 }
 
 export function SettingsPage() {
-  return (
-    <PlaceholderPage
-      title="Settings"
-      subtitle="Profile, security, and preferences"
-      icon={SettingsIcon}
-      tag="User section"
-      tagVariant="muted"
-    />
-  );
+  return <RealSettingsPage />;
 }
 
 export function LibraryPage() {
