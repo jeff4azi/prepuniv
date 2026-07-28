@@ -162,7 +162,7 @@ export function AuthPlaceholderPage({ mode }: AuthPlaceholderProps) {
                 <p>
                   Need help? Email{' '}
                   <a href="#" className="font-semibold text-primary hover:underline">
-                    creators@prepuniv.ng
+                    creators@prepuniv.com
                   </a>
                 </p>
               )}

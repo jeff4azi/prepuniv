@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   ListChecks,
   Sparkles,
+  Library,
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -36,6 +37,7 @@ interface NavItem {
 const USER_NAV: NavItem[] = [
   { to: "/home", label: "Home", icon: Home },
   { to: "/browse", label: "Browse", icon: Search },
+  { to: "/library", label: "Library", icon: Library },
   { to: "/wallet", label: "Wallet", icon: Wallet },
   { to: "/history", label: "History", icon: Clock },
   { to: "/settings", label: "Settings", icon: Settings },
@@ -102,8 +104,8 @@ const ADMIN_NAV: NavItem[] = [
 const MOBILE_TABS: NavItem[] = [
   { to: "/home", label: "Home", icon: Home },
   { to: "/browse", label: "Browse", icon: Search },
+  { to: "/library", label: "Library", icon: Library },
   { to: "/wallet", label: "Wallet", icon: Wallet },
-  { to: "/history", label: "History", icon: Clock },
 ];
 
 const ROLE_LABELS: Record<

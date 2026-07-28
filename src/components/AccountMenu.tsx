@@ -24,6 +24,8 @@ import {
   X,
   ChevronRight,
   Wallet,
+  Library,
+  Clock,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import type { UserRole } from "../mock";
@@ -174,7 +176,14 @@ function MobileMenuBody({ onClose }: { onClose: () => void }) {
       <UserHeader />
 
       <div className="px-3 pb-1 space-y-0.5">
-        {/* ── Settings (Home/Browse/Wallet/History/Library are on the bottom nav) ── */}
+        {/* ── Settings (Home/Browse/Library/Wallet are on the bottom nav) ── */}
+        <NavItem
+          to="/library"
+          icon={Library}
+          label="My Library"
+          onClose={onClose}
+        />
+        <NavItem to="/history" icon={Clock} label="History" onClose={onClose} />
         <NavItem
           to="/settings"
           icon={Settings}

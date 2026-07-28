@@ -25,6 +25,7 @@ import { BrowsePage as RealBrowsePage } from "./BrowsePage";
 import { WalletPage as RealWalletPage } from "./WalletPage";
 import { HistoryPage as RealHistoryPage } from "./HistoryPage";
 import { SettingsPage as RealSettingsPage } from "./SettingsPage";
+import { LibraryPage as RealLibraryPage } from "./LibraryPage";
 
 // suppress "unused" linter warnings for icons still used by placeholder pages
 void (ClockIcon, SettingsIcon, WalletIcon);
@@ -162,15 +163,7 @@ export function SettingsPage() {
 }
 
 export function LibraryPage() {
-  return (
-    <PlaceholderPage
-      title="My Library"
-      subtitle="Every quiz you've ever purchased, unlocked forever"
-      icon={Library}
-      tag="User section"
-      tagVariant="primary"
-    />
-  );
+  return <RealLibraryPage />;
 }
 
 // Creator pages

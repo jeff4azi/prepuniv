@@ -122,7 +122,7 @@ export function ResetPasswordPage() {
               <p className="text-sm text-text-soft max-w-sm leading-relaxed">
                 Use it the next time you log in. If this wasn't you, please reach out to{' '}
                 <a href="#" className="font-semibold text-primary hover:underline">
-                  support@prepuniv.ng
+                  support@prepuniv.com
                 </a>{' '}
                 immediately.
               </p>

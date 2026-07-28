@@ -169,10 +169,10 @@ function ProfileSection({ onSaved }: { onSaved: () => void }) {
           <p className="mt-1.5 text-xs text-muted leading-snug">
             Contact{" "}
             <a
-              href="mailto:support@prepuniv.ng"
+              href="mailto:support@prepuniv.com"
               className="font-semibold text-primary hover:underline"
             >
-              support@prepuniv.ng
+              support@prepuniv.com
             </a>{" "}
             to change your email address.
           </p>

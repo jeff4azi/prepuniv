@@ -785,7 +785,7 @@ function Footer() {
               Payments secured by Flutterwave
             </span>
             <span>·</span>
-            <span>support@prepuniv.ng</span>
+            <span>support@prepuniv.com</span>
           </div>
         </div>
       </div>
