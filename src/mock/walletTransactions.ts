@@ -377,15 +377,26 @@ export const walletTransactions: WalletTransaction[] = [
     created_at: "2026-07-08T10:40:00Z",
   },
 
-  // July payout
+  // July 5 payout attempt (TRANSFER FAILED per pr_003 — reversed, so balance not deducted)
   {
     id: "payout_001",
     user_id: "creator_001",
     amount: -3500000,
     type: "payout",
-    reference: "PAYOUT-JUL-2026",
-    status: "success",
+    reference: "PAYOUT-JUL-2026-FAILED",
+    status: "failed",
     created_at: "2026-07-05T10:00:00Z",
+  },
+
+  // Mid-July payout (approved & disbursed — pr_004)
+  {
+    id: "payout_003",
+    user_id: "creator_001",
+    amount: -4200000,
+    type: "payout",
+    reference: "PAYOUT-JUL16-2026",
+    status: "success",
+    created_at: "2026-07-16T10:15:00Z",
   },
 
   // June 2026 earnings

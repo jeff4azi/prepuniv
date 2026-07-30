@@ -38,7 +38,7 @@ export const payoutRequests: PayoutRequest[] = [
     bank_account_number: "0123456789",
     bank_code: "044",
   },
-  // Approved, awaiting disbursement
+  // Approved → now PAID (disbursed successfully to creator's bank)
   {
     id: "pr_004",
     creator_id: "creator_001",

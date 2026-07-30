@@ -150,13 +150,19 @@ export function CreatorPayoutsPage() {
     });
   }
 
-  async function handleConfirmPayout() {
+  async function handleConfirmPayout(requestedAmountKobo: number) {
+    if (
+      requestedAmountKobo < MINIMUM_PAYOUT_THRESHOLD ||
+      requestedAmountKobo > earningsBalance ||
+      !Number.isFinite(requestedAmountKobo)
+    )
+      return;
     setSubmitting(true);
     await new Promise((r) => setTimeout(r, 800));
     const newReq: PayoutRequest = {
       id: "pr_new_" + Math.random().toString(36).slice(2, 9),
       creator_id: currentUser.id,
-      amount: earningsBalance,
+      amount: requestedAmountKobo,
       status: "pending",
       requested_at: new Date().toISOString(),
       bank_account_number: currentUser.bank_account_number ?? "",
@@ -167,8 +173,7 @@ export function CreatorPayoutsPage() {
     setSubmitting(false);
     setPayoutSheetOpen(false);
     showToast({
-      message:
-        "Payout request submitted — our team will review within 2 business days.",
+      message: `Payout request for ${formatNaira(requestedAmountKobo)} submitted — our team will review within 2 business days.`,
       variant: "success",
     });
   }
@@ -225,7 +230,8 @@ export function CreatorPayoutsPage() {
                   {formatNaira(earningsBalance)}
                 </p>
                 <p className="mt-1.5 text-[12px] text-cream/70 leading-relaxed max-w-xs">
-                  Net of paid-out amounts. This is what's available to withdraw.
+                  Net of paid-out amounts. Request a partial payout or withdraw
+                  everything — minimum is {formatNaira(MINIMUM_PAYOUT_THRESHOLD)}.
                 </p>
               </div>
               <div className="shrink-0">
@@ -320,7 +326,7 @@ export function CreatorPayoutsPage() {
       {payoutSheetOpen &&
         createPortal(
           <PayoutRequestSheet
-            amount={earningsBalance}
+            maxEarningsKobo={earningsBalance}
             bankCode={currentUser.bank_code ?? ""}
             accountNumber={currentUser.bank_account_number ?? ""}
             resolvedName={resolvedAccountName}
@@ -581,7 +587,7 @@ function EligibilityCard({
           <span className="font-semibold text-text">
             {formatNaira(earningsBalance)}
           </span>{" "}
-          meets the minimum and no request is pending.
+          meets the minimum — request any amount up to the total above.
         </p>
         <button
           onClick={onRequest}
@@ -660,8 +666,12 @@ function PayoutRow({ request }: { request: PayoutRequest }) {
 
 // ─── PayoutRequestSheet ───────────────────────────────────────────────────────
 
+type PayoutStep = "amount" | "confirm";
+
+const PAYOUT_PRESETS_KOBO = [200000, 500000, 1000000, 2500000]; // ₦2k / ₦5k / ₦10k / ₦25k
+
 function PayoutRequestSheet({
-  amount,
+  maxEarningsKobo,
   bankCode,
   accountNumber,
   resolvedName,
@@ -669,17 +679,31 @@ function PayoutRequestSheet({
   onConfirm,
   onClose,
 }: {
-  amount: number;
+  maxEarningsKobo: number;
   bankCode: string;
   accountNumber: string;
   resolvedName?: string;
   submitting: boolean;
-  onConfirm: () => void;
+  onConfirm: (requestedKobo: number) => void;
   onClose: () => void;
 }) {
+  const [step, setStep] = useState<PayoutStep>("amount");
+  const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
+  const [customAmount, setCustomAmount] = useState("");
+
+  // Reset internal state whenever sheet (re)opens
+  useEffect(() => {
+    setStep("amount");
+    setSelectedPreset(null);
+    setCustomAmount("");
+  }, []);
+
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !submitting) {
+        if (step === "confirm") setStep("amount");
+        else onClose();
+      }
     };
     document.addEventListener("keydown", h);
     document.body.style.overflow = "hidden";
@@ -687,7 +711,25 @@ function PayoutRequestSheet({
       document.removeEventListener("keydown", h);
       document.body.style.overflow = "";
     };
-  }, [onClose]);
+  }, [onClose, submitting, step]);
+
+  // Convert kobo <-> naira for display
+  const maxNaira = maxEarningsKobo / 100;
+  const minNaira = MINIMUM_PAYOUT_THRESHOLD / 100; // = 2000
+
+  const customKobo = Number(customAmount) * 100;
+  const selectedKobo: number =
+    selectedPreset ?? (customAmount ? customKobo : 0);
+
+  const meetsMin = selectedKobo >= MINIMUM_PAYOUT_THRESHOLD;
+  const withinMax = selectedKobo > 0 && selectedKobo <= maxEarningsKobo;
+  const validSelection = meetsMin && withinMax;
+
+  // When moving to confirm, always re-validate
+  function handleContinue() {
+    if (!validSelection) return;
+    setStep("confirm");
+  }
 
   return (
     <div className="fixed inset-0 z-50">
@@ -701,7 +743,9 @@ function PayoutRequestSheet({
         </div>
         <div className="px-5 sm:px-6 lg:px-7 pt-3 lg:pt-5 pb-3 flex items-center justify-between">
           <p className="font-heading font-bold text-lg text-text">
-            Request payout
+            {step === "amount"
+              ? "Request payout"
+              : "Review & confirm payout"}
           </p>
           {!submitting && (
             <button
@@ -713,91 +757,281 @@ function PayoutRequestSheet({
           )}
         </div>
         <div className="px-5 sm:px-6 lg:px-7 pb-6 lg:pb-7 space-y-4">
-          {/* Amount */}
-          <div className="rounded-2xl bg-surface/50 border border-border/50 p-4 flex items-center gap-3.5">
-            <div className="h-10 w-10 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
-              <Banknote className="w-5 h-5" strokeWidth={2} />
-            </div>
-            <div>
-              <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted">
-                Amount to withdraw
-              </p>
-              <p className="font-heading font-bold text-2xl text-text leading-tight mt-0.5">
-                {formatNaira(amount)}
-              </p>
-            </div>
-          </div>
-
-          {/* Destination account */}
-          <div className="rounded-2xl bg-surface/50 border border-border/50 p-4 space-y-1.5">
-            <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted">
-              Transfer to
-            </p>
-            <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-xl bg-secondary/12 text-secondary flex items-center justify-center shrink-0 font-heading font-bold text-sm">
-                {getBankName(bankCode).charAt(0)}
+          {/* ── STEP 1: Choose amount ───────────────────────────── */}
+          {step === "amount" && (
+            <div className="space-y-5">
+              {/* Balance banner */}
+              <div className="rounded-2xl bg-secondary/10 border border-secondary/15 p-4 flex items-center gap-3.5">
+                <div className="h-10 w-10 rounded-2xl bg-secondary/12 text-secondary flex items-center justify-center shrink-0">
+                  <Banknote className="w-5 h-5" strokeWidth={2} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted">
+                    Available to withdraw
+                  </p>
+                  <p className="font-heading font-bold text-2xl text-text leading-tight mt-0.5">
+                    {formatNaira(maxEarningsKobo)}
+                  </p>
+                </div>
               </div>
+
+              {/* Preset chips */}
               <div>
-                <p className="font-heading font-semibold text-[14px] text-text leading-tight">
-                  {getBankName(bankCode)}
+                <p className="text-[11px] font-heading font-semibold uppercase tracking-[0.16em] text-muted mb-2.5">
+                  Quick amounts
                 </p>
-                <p className="text-[12px] text-text-soft font-mono tracking-wider">
-                  {maskAccountNumber(accountNumber)}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {PAYOUT_PRESETS_KOBO.map((amtKobo) => {
+                    const presetDisabled = amtKobo > maxEarningsKobo;
+                    const active = selectedPreset === amtKobo;
+                    return (
+                      <button
+                        key={amtKobo}
+                        disabled={presetDisabled}
+                        onClick={() => {
+                          setSelectedPreset(amtKobo);
+                          setCustomAmount("");
+                        }}
+                        className={`h-12 rounded-2xl font-heading font-semibold text-[15px] transition-all duration-150 active:scale-[0.98] border disabled:opacity-40 disabled:cursor-not-allowed ${
+                          active
+                            ? "bg-secondary text-cream border-secondary shadow-soft"
+                            : presetDisabled
+                              ? "bg-surface/20 text-muted border-border/30"
+                              : "bg-surface/40 text-text border-border/60 hover:border-secondary/40 hover:bg-surface"
+                        }`}
+                      >
+                        {formatNaira(amtKobo)}
+                      </button>
+                    );
+                  })}
+                </div>
+                {maxEarningsKobo < PAYOUT_PRESETS_KOBO[0] ? null : (
+                  <button
+                    onClick={() => {
+                      setSelectedPreset(maxEarningsKobo);
+                      setCustomAmount("");
+                    }}
+                    className={`mt-2.5 w-full h-10 px-3 rounded-xl text-[12px] font-heading font-semibold transition-all duration-150 active:scale-[0.98] border ${
+                      selectedPreset === maxEarningsKobo
+                        ? "bg-secondary text-cream border-secondary"
+                        : "bg-surface/40 text-text-soft border-border/50 hover:border-secondary/30 hover:text-text"
+                    }`}
+                  >
+                    Withdraw all ({formatNaira(maxEarningsKobo)})
+                  </button>
+                )}
+              </div>
+
+              {/* Custom amount input */}
+              <div>
+                <p className="text-[11px] font-heading font-semibold uppercase tracking-[0.16em] text-muted mb-2.5">
+                  Or enter custom amount
                 </p>
+                <div
+                  className={`flex items-center h-12 rounded-2xl border transition-colors ${
+                    customAmount
+                      ? "bg-surface/40 border-secondary/40"
+                      : "bg-surface/40 border-border/60 focus-within:border-secondary/40"
+                  }`}
+                >
+                  <span className="pl-4 pr-2 font-heading font-semibold text-lg text-text-soft">
+                    ₦
+                  </span>
+                  <input
+                    type="number"
+                    min={minNaira}
+                    max={maxNaira}
+                    step={100}
+                    value={customAmount}
+                    onChange={(e) => {
+                      setCustomAmount(e.target.value);
+                      setSelectedPreset(null);
+                    }}
+                    placeholder={`e.g. ${formatNaira(MINIMUM_PAYOUT_THRESHOLD)}`}
+                    className="flex-1 bg-transparent outline-none font-heading font-semibold text-lg text-text placeholder:text-muted/60 pr-4 h-full w-full rounded-2xl"
+                  />
+                </div>
+              </div>
+
+              {/* Validation hints */}
+              <div className="space-y-2">
+                {!withinMax && selectedKobo > 0 ? (
+                  <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-2xl bg-danger-bg/40 border border-danger/20">
+                    <AlertTriangle
+                      className="w-4 h-4 text-danger shrink-0 mt-0.5"
+                      strokeWidth={2}
+                    />
+                    <p className="text-[12px] text-danger leading-relaxed">
+                      Amount exceeds your available balance of{" "}
+                      <span className="font-semibold">
+                        {formatNaira(maxEarningsKobo)}
+                      </span>
+                      .
+                    </p>
+                  </div>
+                ) : null}
+                {!meetsMin && selectedKobo > 0 ? (
+                  <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-2xl bg-warning/12 border border-warning/20">
+                    <AlertTriangle
+                      className="w-4 h-4 text-warning shrink-0 mt-0.5"
+                      strokeWidth={2}
+                    />
+                    <p className="text-[12px] text-warning leading-relaxed">
+                      Minimum payout is{" "}
+                      <span className="font-semibold">
+                        {formatNaira(MINIMUM_PAYOUT_THRESHOLD)}
+                      </span>
+                      .
+                    </p>
+                  </div>
+                ) : selectedKobo === 0 ? (
+                  <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-2xl bg-primary/8 border border-primary/15">
+                    <Info
+                      className="w-4 h-4 text-primary shrink-0 mt-0.5"
+                      strokeWidth={2}
+                    />
+                    <p className="text-[12px] text-text leading-relaxed">
+                      Choose an amount between{" "}
+                      <span className="font-semibold">
+                        {formatNaira(MINIMUM_PAYOUT_THRESHOLD)}
+                      </span>{" "}
+                      and{" "}
+                      <span className="font-semibold">
+                        {formatNaira(maxEarningsKobo)}
+                      </span>
+                      . Processing typically takes 1–2 business days.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-2xl bg-success/12 border border-success/20">
+                    <CheckCircle2
+                      className="w-4 h-4 text-success shrink-0 mt-0.5"
+                      strokeWidth={2.4}
+                    />
+                    <p className="text-[12px] text-text leading-relaxed">
+                      <span className="font-semibold">
+                        {formatNaira(selectedKobo)}
+                      </span>{" "}
+                      ready to send —{" "}
+                      <span className="font-semibold">
+                        {formatNaira(maxEarningsKobo - selectedKobo)}
+                      </span>{" "}
+                      will remain in your earnings balance.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-1">
+                <button
+                  onClick={handleContinue}
+                  disabled={!validSelection}
+                  className="w-full h-12 rounded-2xl bg-secondary text-cream text-sm font-heading font-semibold flex items-center justify-center gap-2 hover:bg-secondary/90 transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Continue
+                  {validSelection ? (
+                    <span className="ml-1.5 font-bold bg-cream/15 rounded-xl px-2.5 py-0.5 -mr-1">
+                      {formatNaira(selectedKobo)}
+                    </span>
+                  ) : null}
+                </button>
               </div>
             </div>
-            {resolvedName && (
-              <div className="flex items-center gap-1.5 pt-0.5">
-                <Shield
-                  className="w-3 h-3 text-success shrink-0"
-                  strokeWidth={2.5}
-                />
-                <p className="text-[12px] text-success font-heading font-semibold">
-                  {resolvedName}
+          )}
+
+          {/* ── STEP 2: Confirm + submit ────────────────────────── */}
+          {step === "confirm" && (
+            <div className="space-y-4">
+              {/* Amount to withdraw */}
+              <div className="rounded-2xl bg-surface/50 border border-border/50 p-4 flex items-center gap-3.5">
+                <div className="h-10 w-10 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
+                  <Banknote className="w-5 h-5" strokeWidth={2} />
+                </div>
+                <div>
+                  <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted">
+                    Amount to withdraw
+                  </p>
+                  <p className="font-heading font-bold text-2xl text-text leading-tight mt-0.5">
+                    {formatNaira(selectedKobo)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Destination account */}
+              <div className="rounded-2xl bg-surface/50 border border-border/50 p-4 space-y-1.5">
+                <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted">
+                  Transfer to
+                </p>
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-xl bg-secondary/12 text-secondary flex items-center justify-center shrink-0 font-heading font-bold text-sm">
+                    {getBankName(bankCode).charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-heading font-semibold text-[14px] text-text leading-tight">
+                      {getBankName(bankCode)}
+                    </p>
+                    <p className="text-[12px] text-text-soft font-mono tracking-wider">
+                      {maskAccountNumber(accountNumber)}
+                    </p>
+                  </div>
+                </div>
+                {resolvedName && (
+                  <div className="flex items-center gap-1.5 pt-0.5">
+                    <Shield
+                      className="w-3 h-3 text-success shrink-0"
+                      strokeWidth={2.5}
+                    />
+                    <p className="text-[12px] text-success font-heading font-semibold">
+                      {resolvedName}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Remaining balance */}
+              <div className="rounded-2xl bg-primary/8 border border-primary/15 p-4 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Info
+                    className="w-4 h-4 text-primary shrink-0"
+                    strokeWidth={2}
+                  />
+                  <p className="text-[12px] text-text leading-relaxed">
+                    Remaining in earnings after this request
+                  </p>
+                </div>
+                <p className="font-heading font-bold text-[15px] text-text">
+                  {formatNaira(maxEarningsKobo - selectedKobo)}
                 </p>
               </div>
-            )}
-          </div>
 
-          {/* Info */}
-          <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-2xl bg-primary/8 border border-primary/15">
-            <Info
-              className="w-4 h-4 text-primary shrink-0 mt-0.5"
-              strokeWidth={2}
-            />
-            <p className="text-[12px] text-text leading-relaxed">
-              Your full available earnings balance will be transferred.
-              Processing typically takes{" "}
-              <span className="font-semibold">1–2 business days</span>.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2.5 pt-1">
-            <button
-              onClick={onClose}
-              disabled={submitting}
-              className="flex-1 h-11 rounded-2xl border border-border/60 bg-surface/40 text-sm font-heading font-semibold text-text hover:bg-surface transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={onConfirm}
-              disabled={submitting}
-              className="flex-1 h-11 rounded-2xl bg-secondary text-cream text-sm font-heading font-semibold flex items-center justify-center gap-2 hover:bg-secondary/90 transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Submitting…
-                </>
-              ) : (
-                <>
-                  <CreditCard className="w-4 h-4" strokeWidth={2.2} />
-                  Confirm request
-                </>
-              )}
-            </button>
-          </div>
+              <div className="flex items-center gap-2.5 pt-1">
+                <button
+                  onClick={() => setStep("amount")}
+                  disabled={submitting}
+                  className="flex-1 h-11 rounded-2xl border border-border/60 bg-surface/40 text-sm font-heading font-semibold text-text hover:bg-surface transition-colors disabled:opacity-50"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={() => onConfirm(selectedKobo)}
+                  disabled={submitting || !validSelection}
+                  className="flex-1 h-11 rounded-2xl bg-secondary text-cream text-sm font-heading font-semibold flex items-center justify-center gap-2 hover:bg-secondary/90 transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Submitting…
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4" strokeWidth={2.2} />
+                      Confirm request
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
