@@ -19,6 +19,7 @@ import {
   LibraryPage,
   CreatorDashboardPage,
   CreatorQuizzesPage,
+  CreatorQuizzesNewPage,
   CreatorPayoutsPage,
   CreatorReportsPage,
   AdminDashboardPage,
@@ -104,6 +105,10 @@ function AppShell() {
               <Route path="/creator" element={<CreatorDashboardPage />} />
               <Route path="/creator/apply" element={<CreatorApplyPage />} />
               <Route path="/creator/quizzes" element={<CreatorQuizzesPage />} />
+              <Route
+                path="/creator/quizzes/new"
+                element={<CreatorQuizzesNewPage />}
+              />
               <Route path="/creator/payouts" element={<CreatorPayoutsPage />} />
               <Route path="/creator/reports" element={<CreatorReportsPage />} />
 

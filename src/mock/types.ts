@@ -37,7 +37,8 @@ export type TransactionType =
   | "withdrawal"
   | "purchase"
   | "payout"
-  | "refund";
+  | "refund"
+  | "creator_earning";
 export type TransactionStatus = "pending" | "success" | "failed";
 
 export interface WalletTransaction {

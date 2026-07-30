@@ -14,6 +14,7 @@ import {
   ListChecks,
   ShieldCheck,
   Library,
+  Plus,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -26,6 +27,7 @@ import { WalletPage as RealWalletPage } from "./WalletPage";
 import { HistoryPage as RealHistoryPage } from "./HistoryPage";
 import { SettingsPage as RealSettingsPage } from "./SettingsPage";
 import { LibraryPage as RealLibraryPage } from "./LibraryPage";
+import { CreatorDashboardPage as RealCreatorDashboardPage } from "./CreatorDashboardPage";
 
 // suppress "unused" linter warnings for icons still used by placeholder pages
 void (ClockIcon, SettingsIcon, WalletIcon);
@@ -168,15 +170,7 @@ export function LibraryPage() {
 
 // Creator pages
 export function CreatorDashboardPage() {
-  return (
-    <PlaceholderPage
-      title="Creator Dashboard"
-      subtitle="Earnings, engagement, and growth overview"
-      icon={LayoutDashboard}
-      tag="Creator section"
-      tagVariant="secondary"
-    />
-  );
+  return <RealCreatorDashboardPage />;
 }
 
 export function CreatorQuizzesPage() {
@@ -185,6 +179,18 @@ export function CreatorQuizzesPage() {
       title="My Quizzes"
       subtitle="Create, edit, and publish your quizzes"
       icon={FileText}
+      tag="Creator section"
+      tagVariant="secondary"
+    />
+  );
+}
+
+export function CreatorQuizzesNewPage() {
+  return (
+    <PlaceholderPage
+      title="Create New Quiz"
+      subtitle="Build a new quiz to publish on PrepUniv"
+      icon={Plus}
       tag="Creator section"
       tagVariant="secondary"
     />
