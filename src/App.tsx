@@ -109,6 +109,14 @@ function AppShell() {
                 path="/creator/quizzes/new"
                 element={<CreatorQuizzesNewPage />}
               />
+              <Route
+                path="/creator/quizzes/:id/edit"
+                element={<CreatorQuizzesNewPage />}
+              />
+              <Route
+                path="/creator/quizzes/:id/analytics"
+                element={<CreatorQuizzesNewPage />}
+              />
               <Route path="/creator/payouts" element={<CreatorPayoutsPage />} />
               <Route path="/creator/reports" element={<CreatorReportsPage />} />
 

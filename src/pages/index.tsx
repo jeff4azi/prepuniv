@@ -28,6 +28,7 @@ import { HistoryPage as RealHistoryPage } from "./HistoryPage";
 import { SettingsPage as RealSettingsPage } from "./SettingsPage";
 import { LibraryPage as RealLibraryPage } from "./LibraryPage";
 import { CreatorDashboardPage as RealCreatorDashboardPage } from "./CreatorDashboardPage";
+import { CreatorQuizzesPage as RealCreatorQuizzesPage } from "./CreatorQuizzesPage";
 
 // suppress "unused" linter warnings for icons still used by placeholder pages
 void (ClockIcon, SettingsIcon, WalletIcon);
@@ -174,15 +175,7 @@ export function CreatorDashboardPage() {
 }
 
 export function CreatorQuizzesPage() {
-  return (
-    <PlaceholderPage
-      title="My Quizzes"
-      subtitle="Create, edit, and publish your quizzes"
-      icon={FileText}
-      tag="Creator section"
-      tagVariant="secondary"
-    />
-  );
+  return <RealCreatorQuizzesPage />;
 }
 
 export function CreatorQuizzesNewPage() {
