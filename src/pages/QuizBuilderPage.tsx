@@ -670,6 +670,7 @@ export function QuizBuilderPage() {
               </div>
             )}
           </Card>
+          <div className="hidden lg:block h-5" />
         </div>
       </PageContainer>
 
