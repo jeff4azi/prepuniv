@@ -35,6 +35,12 @@ interface AuthContextValue {
   extraTransactions: WalletTransaction[];
   addWalletTransaction: (txn: WalletTransaction) => void;
   purchaseQuiz: (quizId: string, price: number) => Promise<boolean>;
+  updateBankDetails: (
+    bankCode: string,
+    accountNumber: string,
+    resolvedName: string,
+  ) => void;
+  resolvedAccountName: string | undefined;
 
   sessionUser: SessionUser | null;
   isLoggedIn: boolean;
@@ -60,6 +66,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     WalletTransaction[]
   >([]);
   const [sessionPurchasedIds, setSessionPurchasedIds] = useState<string[]>([]);
+  // Per-user bank detail overrides — persists within the session
+  const [bankOverrides, setBankOverrides] = useState<
+    Record<
+      string,
+      {
+        bank_code: string;
+        bank_account_number: string;
+        resolved_account_name?: string;
+      }
+    >
+  >({});
 
   const allProfiles = useMemo(
     () => [...extraProfiles, ...profiles],
@@ -67,15 +84,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const currentUser = useMemo(() => {
+    let base: Profile;
     if (sessionUserId) {
       const match = allProfiles.find((p) => p.id === sessionUserId);
-      if (match) return match;
+      base =
+        match ??
+        allProfiles.find((p) => p.id === ROLE_TO_PROFILE_ID[currentRole]) ??
+        profiles[0];
+    } else {
+      base =
+        allProfiles.find((p) => p.id === ROLE_TO_PROFILE_ID[currentRole]) ??
+        profiles[0];
     }
-    return (
-      allProfiles.find((p) => p.id === ROLE_TO_PROFILE_ID[currentRole]) ??
-      profiles[0]
-    );
-  }, [sessionUserId, currentRole, allProfiles]);
+    // Apply any in-session bank overrides
+    const override = bankOverrides[base.id];
+    if (override) {
+      return {
+        ...base,
+        bank_code: override.bank_code,
+        bank_account_number: override.bank_account_number,
+      };
+    }
+    return base;
+  }, [sessionUserId, currentRole, allProfiles, bankOverrides]);
 
   useEffect(() => {
     setExtraTransactions([]);
@@ -160,6 +191,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSessionUserId(null);
   }, []);
 
+  const updateBankDetails = useCallback(
+    (bankCode: string, accountNumber: string, resolvedName: string) => {
+      setBankOverrides((prev) => ({
+        ...prev,
+        [currentUser.id]: {
+          bank_code: bankCode,
+          bank_account_number: accountNumber,
+          resolved_account_name: resolvedName,
+        },
+      }));
+    },
+    [currentUser.id],
+  );
+
+  const resolvedAccountName =
+    bankOverrides[currentUser.id]?.resolved_account_name;
+
   const value: AuthContextValue = {
     currentUser,
     currentRole: currentUser.role,
@@ -170,6 +218,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     extraTransactions,
     addWalletTransaction,
     purchaseQuiz,
+    updateBankDetails,
+    resolvedAccountName,
 
     sessionUser: sessionUserId ? currentUser : null,
     isLoggedIn: !!sessionUserId,

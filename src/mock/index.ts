@@ -26,6 +26,13 @@ export {
   MINIMUM_PAYOUT_THRESHOLD,
   PAYOUT_FREQUENCY_CAP_MS,
 } from "./payoutConfig";
+export {
+  NIGERIAN_BANKS,
+  mockVerifyAccount,
+  getBankName,
+  maskAccountNumber,
+  type Bank,
+} from "./banks";
 export type {
   Profile,
   Course,

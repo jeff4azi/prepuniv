@@ -1,13 +1,6 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  User,
-  Lock,
-  Building2,
-  LogOut,
-  ChevronDown,
-  AlertTriangle,
-} from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { User, Lock, Building2, LogOut } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
@@ -20,30 +13,6 @@ import {
 } from "../components/Form";
 import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
-
-// ─── Mock Nigerian banks ──────────────────────────────────────────────────────
-
-const BANKS = [
-  { code: "044", name: "Access Bank" },
-  { code: "023", name: "Citibank Nigeria" },
-  { code: "050", name: "EcoBank Nigeria" },
-  { code: "070", name: "Fidelity Bank" },
-  { code: "011", name: "First Bank of Nigeria" },
-  { code: "214", name: "First City Monument Bank (FCMB)" },
-  { code: "058", name: "GTBank (Guaranty Trust)" },
-  { code: "030", name: "Heritage Bank" },
-  { code: "301", name: "Jaiz Bank" },
-  { code: "082", name: "Keystone Bank" },
-  { code: "526", name: "Parallex Bank" },
-  { code: "076", name: "Polaris Bank" },
-  { code: "039", name: "Stanbic IBTC Bank" },
-  { code: "232", name: "Sterling Bank" },
-  { code: "032", name: "Union Bank of Nigeria" },
-  { code: "033", name: "United Bank for Africa (UBA)" },
-  { code: "215", name: "Unity Bank" },
-  { code: "035", name: "Wema Bank" },
-  { code: "057", name: "Zenith Bank" },
-];
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 
@@ -75,47 +44,6 @@ function SettingsSection({
       </div>
       <div className="border-t border-border/40 pt-5 space-y-4">{children}</div>
     </Card>
-  );
-}
-
-// ─── Select (bank) ────────────────────────────────────────────────────────────
-
-function BankSelect({
-  id,
-  label,
-  value,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="w-full">
-      <label
-        htmlFor={id}
-        className="block mb-1.5 text-xs sm:text-[13px] font-heading font-semibold text-text-soft tracking-tight"
-      >
-        {label}
-      </label>
-      <div className="relative">
-        <select
-          id={id}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full h-12 sm:h-12.5 px-4 pr-10 rounded-xl text-sm bg-cream text-text border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all appearance-none cursor-pointer disabled:opacity-60"
-        >
-          <option value="">Select a bank…</option>
-          {BANKS.map((b) => (
-            <option key={b.code} value={b.code}>
-              {b.name}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-      </div>
-    </div>
   );
 }
 
@@ -283,97 +211,68 @@ function PasswordSection({ onSaved }: { onSaved: () => void }) {
 
 // ─── Creator bank details section ─────────────────────────────────────────────
 
-function BankDetailsSection({ onSaved }: { onSaved: () => void }) {
-  const { currentUser } = useAuth();
-  const [accountNumber, setAccountNumber] = useState(
-    currentUser.bank_account_number ?? "",
-  );
-  const [bankCode, setBankCode] = useState(currentUser.bank_code ?? "");
-  const [acctError, setAcctError] = useState<string | null>(null);
-  const [bankError, setBankError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  function validate() {
-    let ok = true;
-    if (!accountNumber.trim() || !/^\d{10}$/.test(accountNumber.trim())) {
-      setAcctError("Enter a valid 10-digit account number");
-      ok = false;
-    } else {
-      setAcctError(null);
-    }
-    if (!bankCode) {
-      setBankError("Please select your bank");
-      ok = false;
-    } else {
-      setBankError(null);
-    }
-    return ok;
-  }
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!validate()) return;
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 700));
-    setSaving(false);
-    onSaved();
-  }
+function BankDetailsSection() {
+  const { currentUser, resolvedAccountName } = useAuth();
+  const hasBankDetails =
+    !!currentUser.bank_account_number && !!currentUser.bank_code;
 
   return (
     <SettingsSection
       icon={Building2}
-      title="Creator Bank Details"
-      description="Needed before you can request a payout. Withdrawals go to this account."
+      title="Creator Bank Account"
+      description="Your payout destination. Manage your bank details from the Payouts page."
     >
-      <form onSubmit={handleSubmit} noValidate className="space-y-4">
-        <div className="flex items-start gap-3 px-4 py-3 rounded-2xl bg-warning-bg border border-warning/20">
-          <AlertTriangle
-            className="w-4.5 h-4.5 text-warning shrink-0 mt-0.5"
-            strokeWidth={2}
-          />
-          <p className="text-xs text-warning leading-relaxed font-heading font-medium">
-            Ensure the account matches the name registered with PrepUniv.
-            Incorrect details can delay your payout.
-          </p>
+      {hasBankDetails ? (
+        <div className="space-y-3">
+          <div className="rounded-2xl bg-surface/50 border border-border/50 p-4 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] text-muted font-heading font-medium">
+                Bank
+              </span>
+              <span className="text-[13px] font-heading font-semibold text-text">
+                {currentUser.bank_code}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] text-muted font-heading font-medium">
+                Account
+              </span>
+              <span className="text-[13px] font-mono font-semibold text-text tracking-wider">
+                {"•••• •••• " +
+                  (currentUser.bank_account_number ?? "").slice(-4)}
+              </span>
+            </div>
+            {resolvedAccountName && (
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] text-muted font-heading font-medium">
+                  Verified name
+                </span>
+                <span className="text-[13px] font-heading font-semibold text-success">
+                  {resolvedAccountName}
+                </span>
+              </div>
+            )}
+          </div>
+          <Link to="/creator/payouts">
+            <Button variant="outline" size="sm">
+              Manage bank account in Payouts
+            </Button>
+          </Link>
         </div>
-
-        <BankSelect
-          id="settings-bank"
-          label="Bank Name"
-          value={bankCode}
-          onChange={(v) => {
-            setBankCode(v);
-            if (v) setBankError(null);
-          }}
-        />
-        {bankError && (
-          <p className="mt-1 text-xs text-danger flex items-center gap-1.5">
-            <span className="w-1 h-1 rounded-full bg-danger inline-block" />
-            {bankError}
+      ) : (
+        <div className="space-y-3">
+          <p className="text-sm text-text-soft leading-relaxed">
+            No bank account on file yet. Add one from the Payouts page to enable
+            withdrawals.
           </p>
-        )}
-
-        <TextInput
-          id="settings-account"
-          label="Account Number"
-          placeholder="10-digit NUBAN number"
-          value={accountNumber}
-          inputMode="numeric"
-          maxLength={10}
-          onChange={(e) => {
-            const v = e.target.value.replace(/\D/g, "");
-            setAccountNumber(v);
-            if (acctError) setAcctError(null);
-          }}
-          error={acctError ?? undefined}
-        />
-
-        <div className="flex justify-end pt-1">
-          <Button type="submit" variant="primary" size="md" isLoading={saving}>
-            Save bank details
-          </Button>
+          <Link to="/creator/payouts">
+            <Button variant="primary" size="sm">
+              <Building2 className="w-4 h-4" />
+              Add bank account
+            </Button>
+          </Link>
         </div>
-      </form>
+      )}
     </SettingsSection>
   );
 }
@@ -480,15 +379,7 @@ export function SettingsPage() {
               showToast({ message: "Password updated successfully." })
             }
           />
-          {isCreator && (
-            <BankDetailsSection
-              onSaved={() =>
-                showToast({
-                  message: "Bank details saved. Payouts are now enabled.",
-                })
-              }
-            />
-          )}
+          {isCreator && <BankDetailsSection />}
           <DangerSection />
         </div>
       </PageContainer>

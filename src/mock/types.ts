@@ -60,6 +60,7 @@ export interface QuizAttempt {
   is_timed: boolean;
   started_at: string;
   completed_at: string;
+  time_taken_seconds?: number;
 }
 
 export type QuestionType = "mcq" | "fill_blank";

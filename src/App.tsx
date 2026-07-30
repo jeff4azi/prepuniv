@@ -40,6 +40,7 @@ import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { QuizDetailPage } from "./pages/QuizDetailPage";
 import { AttemptPage } from "./pages/AttemptPage";
 import { AttemptResultPage } from "./pages/AttemptResultPage";
+import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { CreatorApplyPage } from "./pages/CreatorApplyPage";
 import { CreatorProfilePage } from "./pages/CreatorProfilePage";
 import { useEffect } from "react";
@@ -99,6 +100,10 @@ function AppShell() {
               <Route path="/settings" element={<SettingsPage />} />
 
               <Route path="/quiz/:id" element={<QuizDetailPage />} />
+              <Route
+                path="/quiz/:id/leaderboard"
+                element={<LeaderboardPage />}
+              />
               <Route
                 path="/profile/creator/:id"
                 element={<CreatorProfilePage />}

@@ -16,6 +16,7 @@ import {
   Calculator,
   History,
   ChevronRight,
+  Trophy,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -289,6 +290,13 @@ export function QuizDetailPage() {
                   <Timer className="w-4 h-4 text-muted" />
                   Timed or untimed — your choice
                 </span>
+                <Link
+                  to={`/quiz/${quiz.id}/leaderboard`}
+                  className="inline-flex items-center gap-1.5 text-primary font-heading font-semibold hover:underline underline-offset-2 transition-colors"
+                >
+                  <Trophy className="w-4 h-4" />
+                  View Leaderboard
+                </Link>
               </div>
 
               {/* computational note */}

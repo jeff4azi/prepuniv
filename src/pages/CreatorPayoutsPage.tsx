@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { Link, Navigate } from "react-router-dom";
 import {
   CreditCard,
@@ -9,12 +9,15 @@ import {
   X,
   Building2,
   AlertTriangle,
-  ExternalLink,
   Loader2,
   Banknote,
   Sparkles,
   XCircle,
   Info,
+  Search,
+  ChevronDown,
+  Edit2,
+  Shield,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { PageContainer } from "../components/PageContainer";
@@ -29,6 +32,10 @@ import {
   addPayoutRequest,
   MINIMUM_PAYOUT_THRESHOLD,
   PAYOUT_FREQUENCY_CAP_MS,
+  NIGERIAN_BANKS,
+  mockVerifyAccount,
+  getBankName,
+  maskAccountNumber,
   type PayoutRequest,
   type PayoutRequestStatus,
 } from "../mock";
@@ -55,7 +62,7 @@ function formatDate(iso: string) {
   });
 }
 
-function addDays(iso: string, ms: number): Date {
+function addMs(iso: string, ms: number): Date {
   return new Date(new Date(iso).getTime() + ms);
 }
 
@@ -79,15 +86,13 @@ const STATUS_CONFIG: Record<
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function CreatorPayoutsPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, updateBankDetails, resolvedAccountName } = useAuth();
 
-  // All hooks first — gate after
   const earningsBalance = useMemo(
     () => computeEarningsBalance(currentUser.id),
     [currentUser.id],
   );
 
-  // Local payout list so new requests appear immediately
   const [payoutList, setPayoutList] = useState<PayoutRequest[]>(() =>
     basePayoutRequests
       .filter((p) => p.creator_id === currentUser.id)
@@ -98,38 +103,54 @@ export function CreatorPayoutsPage() {
       ),
   );
 
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [bankSheetOpen, setBankSheetOpen] = useState(false);
+  const [payoutSheetOpen, setPayoutSheetOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [toast, showToast, dismissToast] = useToast();
 
-  // ── Eligibility logic ───────────────────────────────────────────────────
-  const meetsThreshold = earningsBalance >= MINIMUM_PAYOUT_THRESHOLD;
+  const hasBankDetails =
+    !!currentUser.bank_account_number && !!currentUser.bank_code;
 
   const mostRecentRequest = payoutList[0];
   const nextEligibleDate =
     mostRecentRequest &&
     (mostRecentRequest.status === "pending" ||
       mostRecentRequest.status === "approved")
-      ? null // blocked until resolved
+      ? null
       : mostRecentRequest
-        ? addDays(mostRecentRequest.requested_at, PAYOUT_FREQUENCY_CAP_MS)
+        ? addMs(mostRecentRequest.requested_at, PAYOUT_FREQUENCY_CAP_MS)
         : null;
 
   const now = new Date();
+  const meetsThreshold = earningsBalance >= MINIMUM_PAYOUT_THRESHOLD;
   const frequencyCapped = nextEligibleDate !== null && nextEligibleDate > now;
-
-  const hasBankDetails =
-    !!currentUser.bank_account_number && !!currentUser.bank_code;
-
   const hasPendingRequest =
     mostRecentRequest?.status === "pending" ||
     mostRecentRequest?.status === "approved";
-
   const canRequest =
     meetsThreshold && !frequencyCapped && hasBankDetails && !hasPendingRequest;
 
-  // ── Submit handler ──────────────────────────────────────────────────────
-  async function handleConfirmRequest() {
+  const thresholdPct = Math.min(
+    100,
+    Math.round((earningsBalance / MINIMUM_PAYOUT_THRESHOLD) * 100),
+  );
+
+  function handleBankSaved(
+    bankCode: string,
+    accountNumber: string,
+    resolvedName: string,
+  ) {
+    updateBankDetails(bankCode, accountNumber, resolvedName);
+    setBankSheetOpen(false);
+    showToast({
+      message: hasBankDetails
+        ? "Bank account updated successfully."
+        : "Bank account added. You can now request payouts.",
+      variant: "success",
+    });
+  }
+
+  async function handleConfirmPayout() {
     setSubmitting(true);
     await new Promise((r) => setTimeout(r, 800));
     const newReq: PayoutRequest = {
@@ -144,7 +165,7 @@ export function CreatorPayoutsPage() {
     addPayoutRequest(newReq);
     setPayoutList((prev) => [newReq, ...prev]);
     setSubmitting(false);
-    setSheetOpen(false);
+    setPayoutSheetOpen(false);
     showToast({
       message:
         "Payout request submitted — our team will review within 2 business days.",
@@ -154,11 +175,6 @@ export function CreatorPayoutsPage() {
 
   if (!currentUser.is_approved_creator)
     return <Navigate to="/creator/apply" replace />;
-
-  const thresholdPct = Math.min(
-    100,
-    Math.round((earningsBalance / MINIMUM_PAYOUT_THRESHOLD) * 100),
-  );
 
   return (
     <>
@@ -172,25 +188,23 @@ export function CreatorPayoutsPage() {
 
       <PageContainer className="!max-w-[900px]">
         <div className="space-y-6 lg:space-y-7">
-          {/* ── Header ────────────────────────────────────────────── */}
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Badge variant="secondary" size="sm" dot>
-                  <Sparkles className="w-3 h-3" />
-                  Creator mode
-                </Badge>
-              </div>
-              <h1 className="font-heading font-bold text-2xl lg:text-[28px] text-text tracking-tight leading-tight">
-                Payout Requests
-              </h1>
-              <p className="mt-1 text-sm text-text-soft">
-                Request transfers of your earnings to your bank account.
-              </p>
+          {/* ── Header ──────────────────────────────────────────── */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant="secondary" size="sm" dot>
+                <Sparkles className="w-3 h-3" />
+                Creator mode
+              </Badge>
             </div>
+            <h1 className="font-heading font-bold text-2xl lg:text-[28px] text-text tracking-tight leading-tight">
+              Payout Requests
+            </h1>
+            <p className="mt-1 text-sm text-text-soft">
+              Request transfers of your earnings to your bank account.
+            </p>
           </div>
 
-          {/* ── Earnings balance mini-card ─────────────────────── */}
+          {/* ── Earnings balance card ────────────────────────────── */}
           <Card
             padded={false}
             className="relative overflow-hidden bg-secondary text-cream border-secondary/40"
@@ -216,7 +230,7 @@ export function CreatorPayoutsPage() {
               </div>
               <div className="shrink-0">
                 <button
-                  onClick={() => canRequest && setSheetOpen(true)}
+                  onClick={() => canRequest && setPayoutSheetOpen(true)}
                   disabled={!canRequest}
                   className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-2xl bg-cream text-secondary font-heading font-semibold text-sm shadow-card transition-all active:scale-[0.98] hover:bg-cream/95 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                 >
@@ -227,7 +241,16 @@ export function CreatorPayoutsPage() {
             </div>
           </Card>
 
-          {/* ── Eligibility card ───────────────────────────────── */}
+          {/* ── Bank account card ────────────────────────────────── */}
+          <BankAccountCard
+            bankCode={currentUser.bank_code}
+            accountNumber={currentUser.bank_account_number}
+            resolvedName={resolvedAccountName}
+            onAdd={() => setBankSheetOpen(true)}
+            onEdit={() => setBankSheetOpen(true)}
+          />
+
+          {/* ── Eligibility status ───────────────────────────────── */}
           <EligibilityCard
             earningsBalance={earningsBalance}
             meetsThreshold={meetsThreshold}
@@ -237,10 +260,11 @@ export function CreatorPayoutsPage() {
             frequencyCapped={frequencyCapped}
             nextEligibleDate={nextEligibleDate}
             canRequest={canRequest}
-            onRequest={() => setSheetOpen(true)}
+            onRequest={() => setPayoutSheetOpen(true)}
+            onAddBank={() => setBankSheetOpen(true)}
           />
 
-          {/* ── History ────────────────────────────────────────── */}
+          {/* ── History ──────────────────────────────────────────── */}
           <div>
             <div className="mb-3">
               <h2 className="font-heading font-semibold text-lg text-text">
@@ -279,15 +303,30 @@ export function CreatorPayoutsPage() {
         </div>
       </PageContainer>
 
-      {/* ── Request sheet ──────────────────────────────────────────────── */}
-      {sheetOpen &&
+      {/* ── Bank account setup sheet ──────────────────────────────── */}
+      {bankSheetOpen &&
         createPortal(
-          <RequestSheet
+          <BankAccountSetupSheet
+            currentBankCode={currentUser.bank_code}
+            currentAccountNumber={currentUser.bank_account_number}
+            ownerName={currentUser.full_name}
+            onSave={handleBankSaved}
+            onClose={() => setBankSheetOpen(false)}
+          />,
+          document.body,
+        )}
+
+      {/* ── Payout request sheet ─────────────────────────────────── */}
+      {payoutSheetOpen &&
+        createPortal(
+          <PayoutRequestSheet
             amount={earningsBalance}
-            hasBankDetails={hasBankDetails}
+            bankCode={currentUser.bank_code ?? ""}
+            accountNumber={currentUser.bank_account_number ?? ""}
+            resolvedName={resolvedAccountName}
             submitting={submitting}
-            onConfirm={handleConfirmRequest}
-            onClose={() => !submitting && setSheetOpen(false)}
+            onConfirm={handleConfirmPayout}
+            onClose={() => !submitting && setPayoutSheetOpen(false)}
           />,
           document.body,
         )}
@@ -295,7 +334,109 @@ export function CreatorPayoutsPage() {
   );
 }
 
-// ─── EligibilityCard ─────────────────────────────────────────────────────────
+// ─── BankAccountCard ──────────────────────────────────────────────────────────
+
+function BankAccountCard({
+  bankCode,
+  accountNumber,
+  resolvedName,
+  onAdd,
+  onEdit,
+}: {
+  bankCode?: string;
+  accountNumber?: string;
+  resolvedName?: string;
+  onAdd: () => void;
+  onEdit: () => void;
+}) {
+  const hasBankDetails = !!bankCode && !!accountNumber;
+
+  if (!hasBankDetails) {
+    return (
+      <Card
+        padded
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+      >
+        <div className="flex items-start gap-3.5 min-w-0">
+          <div className="h-10 w-10 rounded-2xl bg-muted/10 text-muted flex items-center justify-center shrink-0">
+            <Building2 className="w-5 h-5" strokeWidth={2} />
+          </div>
+          <div className="min-w-0">
+            <p className="font-heading font-semibold text-[15px] text-text leading-tight">
+              No bank account on file
+            </p>
+            <p className="mt-1 text-sm text-text-soft leading-relaxed">
+              Add your bank account to receive payouts. Your earnings are held
+              safely until you do.
+            </p>
+          </div>
+        </div>
+        <Button
+          variant="primary"
+          size="md"
+          onClick={onAdd}
+          className="shrink-0 self-start sm:self-center"
+        >
+          <Building2 className="w-4 h-4" />
+          Add bank account
+        </Button>
+      </Card>
+    );
+  }
+
+  const bankName = getBankName(bankCode);
+  const masked = maskAccountNumber(accountNumber);
+  // Bank initial for the avatar
+  const bankInitial = bankName.charAt(0).toUpperCase();
+
+  return (
+    <Card padded>
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2">
+          <Building2 className="w-4 h-4 text-secondary" strokeWidth={2} />
+          <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted">
+            Bank account
+          </p>
+        </div>
+        <button
+          onClick={onEdit}
+          className="h-8 w-8 rounded-xl flex items-center justify-center text-muted hover:text-primary hover:bg-primary/8 transition-colors shrink-0"
+          aria-label="Edit bank account"
+        >
+          <Edit2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      <div className="flex items-center gap-3.5">
+        {/* Bank initial avatar */}
+        <div className="h-12 w-12 rounded-2xl bg-secondary/12 text-secondary flex items-center justify-center shrink-0 font-heading font-bold text-lg shadow-card ring-1 ring-border/40">
+          {bankInitial}
+        </div>
+        <div className="min-w-0">
+          <p className="font-heading font-semibold text-[15px] text-text leading-tight">
+            {bankName}
+          </p>
+          <p className="text-[13px] text-text-soft mt-0.5 font-mono tracking-wider">
+            {masked}
+          </p>
+          {resolvedName && (
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <Shield
+                className="w-3 h-3 text-success shrink-0"
+                strokeWidth={2.5}
+              />
+              <p className="text-[12px] text-success font-heading font-semibold">
+                {resolvedName}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ─── EligibilityCard ──────────────────────────────────────────────────────────
 
 function EligibilityCard({
   earningsBalance,
@@ -307,6 +448,7 @@ function EligibilityCard({
   nextEligibleDate,
   canRequest,
   onRequest,
+  onAddBank,
 }: {
   earningsBalance: number;
   meetsThreshold: boolean;
@@ -317,35 +459,33 @@ function EligibilityCard({
   nextEligibleDate: Date | null;
   canRequest: boolean;
   onRequest: () => void;
+  onAddBank: () => void;
 }) {
-  // No bank details — blocking guard
   if (!hasBankDetails) {
     return (
       <Card padded className="flex items-start gap-3.5">
         <div className="h-10 w-10 rounded-2xl bg-warning/12 text-warning flex items-center justify-center shrink-0">
-          <Building2 className="w-5 h-5" strokeWidth={2} />
+          <AlertTriangle className="w-5 h-5" strokeWidth={2} />
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-heading font-semibold text-[15px] text-text leading-tight">
-            Bank details required
+            Add a bank account to continue
           </p>
           <p className="mt-1 text-sm text-text-soft leading-relaxed">
-            You need to add your bank account before you can request a payout.
-            Your earnings are safe — add your details and come back here.
+            Payout requests are blocked until you verify a bank account above.
           </p>
-          <Link to="/settings" className="inline-block mt-3">
-            <Button variant="primary" size="sm">
-              <Building2 className="w-4 h-4" />
-              Add bank details in Settings
-              <ExternalLink className="w-3.5 h-3.5" />
-            </Button>
-          </Link>
+          <button
+            onClick={onAddBank}
+            className="mt-3 inline-flex items-center gap-2 h-9 px-4 rounded-2xl bg-warning text-cream text-sm font-heading font-semibold hover:bg-warning/90 transition-colors active:scale-[0.98]"
+          >
+            <Building2 className="w-3.5 h-3.5" strokeWidth={2.2} />
+            Add bank account
+          </button>
         </div>
       </Card>
     );
   }
 
-  // Has a pending/approved request in flight
   if (hasPendingRequest) {
     return (
       <Card padded className="flex items-start gap-3.5">
@@ -358,14 +498,13 @@ function EligibilityCard({
           </p>
           <p className="mt-1 text-sm text-text-soft leading-relaxed">
             You have a payout request being reviewed. You can submit another
-            once this one is processed.
+            once it's processed.
           </p>
         </div>
       </Card>
     );
   }
 
-  // Frequency capped
   if (frequencyCapped && nextEligibleDate) {
     return (
       <Card padded className="flex items-start gap-3.5">
@@ -377,15 +516,14 @@ function EligibilityCard({
             Next request available {formatDate(nextEligibleDate.toISOString())}
           </p>
           <p className="mt-1 text-sm text-text-soft leading-relaxed">
-            Payouts are capped to once every 7 days. Keep earning — your balance
-            will be ready when the window reopens.
+            Payouts are capped to once every 7 days. Your balance will be ready
+            when the window reopens.
           </p>
         </div>
       </Card>
     );
   }
 
-  // Below threshold
   if (!meetsThreshold) {
     return (
       <Card padded className="space-y-3">
@@ -410,7 +548,6 @@ function EligibilityCard({
             </p>
           </div>
         </div>
-        {/* Progress bar */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-[11px] font-heading font-semibold text-muted">
             <span>{formatNaira(earningsBalance)}</span>
@@ -430,7 +567,6 @@ function EligibilityCard({
     );
   }
 
-  // All clear — eligible
   return (
     <Card padded className="flex items-start gap-3.5">
       <div className="h-10 w-10 rounded-2xl bg-success/12 text-success flex items-center justify-center shrink-0">
@@ -445,7 +581,7 @@ function EligibilityCard({
           <span className="font-semibold text-text">
             {formatNaira(earningsBalance)}
           </span>{" "}
-          meets the minimum threshold and no request is pending.
+          meets the minimum and no request is pending.
         </p>
         <button
           onClick={onRequest}
@@ -466,74 +602,77 @@ function PayoutRow({ request }: { request: PayoutRequest }) {
   const StatusIcon = cfg.icon;
 
   return (
-    <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-      <div className="flex items-start gap-3.5 min-w-0">
-        <div
-          className={`h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 shadow-card ring-1 ring-border/40 ${
-            request.status === "paid"
-              ? "bg-success/10 text-success"
-              : request.status === "pending" || request.status === "approved"
-                ? "bg-primary/10 text-primary"
-                : "bg-danger-bg text-danger"
-          }`}
-        >
-          <StatusIcon className="w-5 h-5" strokeWidth={2} />
-        </div>
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-heading font-bold text-[15px] text-text leading-tight">
-              {formatNaira(request.amount)}
-            </p>
-            <Badge variant={cfg.variant} size="sm" dot>
-              {cfg.label}
-            </Badge>
-          </div>
-          <p className="mt-0.5 text-[12px] text-text-soft">
-            Requested {formatDate(request.requested_at)}
-            {request.processed_at &&
-              ` · Processed ${formatDate(request.processed_at)}`}
+    <div className="px-5 py-4 flex items-start gap-3.5 min-w-0">
+      <div
+        className={`h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 shadow-card ring-1 ring-border/40 ${
+          request.status === "paid"
+            ? "bg-success/10 text-success"
+            : request.status === "pending" || request.status === "approved"
+              ? "bg-primary/10 text-primary"
+              : "bg-danger-bg text-danger"
+        }`}
+      >
+        <StatusIcon className="w-5 h-5" strokeWidth={2} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-heading font-bold text-[15px] text-text leading-tight">
+            {formatNaira(request.amount)}
           </p>
-          {/* Failed / rejected notes */}
-          {(request.status === "failed" || request.status === "rejected") &&
-            request.notes && (
-              <div className="mt-2 flex items-start gap-2 px-3 py-2 rounded-xl bg-danger-bg/40 border border-danger/20">
-                <AlertTriangle
-                  className="w-3.5 h-3.5 text-danger shrink-0 mt-0.5"
-                  strokeWidth={2}
-                />
-                <p className="text-[12px] text-danger leading-relaxed flex-1">
-                  {request.notes}
-                  {request.status === "failed" && (
-                    <>
-                      {" "}
-                      <Link
-                        to="/settings"
-                        className="underline font-semibold hover:opacity-80"
-                      >
-                        Fix in Settings
-                      </Link>
-                    </>
-                  )}
-                </p>
-              </div>
-            )}
+          <Badge variant={cfg.variant} size="sm" dot>
+            {cfg.label}
+          </Badge>
         </div>
+        <p className="mt-0.5 text-[12px] text-text-soft">
+          Requested {formatDate(request.requested_at)}
+          {request.processed_at &&
+            ` · Processed ${formatDate(request.processed_at)}`}
+        </p>
+        {(request.status === "failed" || request.status === "rejected") &&
+          request.notes && (
+            <div className="mt-2 flex items-start gap-2 px-3 py-2 rounded-xl bg-danger-bg/40 border border-danger/20">
+              <AlertTriangle
+                className="w-3.5 h-3.5 text-danger shrink-0 mt-0.5"
+                strokeWidth={2}
+              />
+              <p className="text-[12px] text-danger leading-relaxed flex-1">
+                {request.notes}
+                {request.status === "failed" && (
+                  <>
+                    {" "}
+                    <button
+                      className="underline font-semibold hover:opacity-80"
+                      onClick={() => {
+                        /* handled via bank edit button on main page */
+                      }}
+                    >
+                      Update your bank account above.
+                    </button>
+                  </>
+                )}
+              </p>
+            </div>
+          )}
       </div>
     </div>
   );
 }
 
-// ─── RequestSheet ─────────────────────────────────────────────────────────────
+// ─── PayoutRequestSheet ───────────────────────────────────────────────────────
 
-function RequestSheet({
+function PayoutRequestSheet({
   amount,
-  hasBankDetails,
+  bankCode,
+  accountNumber,
+  resolvedName,
   submitting,
   onConfirm,
   onClose,
 }: {
   amount: number;
-  hasBankDetails: boolean;
+  bankCode: string;
+  accountNumber: string;
+  resolvedName?: string;
   submitting: boolean;
   onConfirm: () => void;
   onClose: () => void;
@@ -552,20 +691,14 @@ function RequestSheet({
 
   return (
     <div className="fixed inset-0 z-50">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-text/40 backdrop-blur-sm"
         onClick={submitting ? undefined : onClose}
       />
-
-      {/* Sheet */}
       <div className="absolute left-0 right-0 bottom-0 lg:left-1/2 lg:-translate-x-1/2 lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2 lg:max-w-md lg:w-[92%] lg:rounded-3xl rounded-t-3xl bg-cream shadow-elevated safe-bottom">
-        {/* Drag pill */}
         <div className="lg:hidden pt-2 pb-1 flex justify-center">
           <div className="h-1 w-10 rounded-full bg-border" />
         </div>
-
-        {/* Header */}
         <div className="px-5 sm:px-6 lg:px-7 pt-3 lg:pt-5 pb-3 flex items-center justify-between">
           <p className="font-heading font-bold text-lg text-text">
             Request payout
@@ -579,10 +712,8 @@ function RequestSheet({
             </button>
           )}
         </div>
-
-        {/* Body */}
         <div className="px-5 sm:px-6 lg:px-7 pb-6 lg:pb-7 space-y-4">
-          {/* Amount display */}
+          {/* Amount */}
           <div className="rounded-2xl bg-surface/50 border border-border/50 p-4 flex items-center gap-3.5">
             <div className="h-10 w-10 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
               <Banknote className="w-5 h-5" strokeWidth={2} />
@@ -597,45 +728,50 @@ function RequestSheet({
             </div>
           </div>
 
-          {/* Info note */}
+          {/* Destination account */}
+          <div className="rounded-2xl bg-surface/50 border border-border/50 p-4 space-y-1.5">
+            <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted">
+              Transfer to
+            </p>
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-xl bg-secondary/12 text-secondary flex items-center justify-center shrink-0 font-heading font-bold text-sm">
+                {getBankName(bankCode).charAt(0)}
+              </div>
+              <div>
+                <p className="font-heading font-semibold text-[14px] text-text leading-tight">
+                  {getBankName(bankCode)}
+                </p>
+                <p className="text-[12px] text-text-soft font-mono tracking-wider">
+                  {maskAccountNumber(accountNumber)}
+                </p>
+              </div>
+            </div>
+            {resolvedName && (
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <Shield
+                  className="w-3 h-3 text-success shrink-0"
+                  strokeWidth={2.5}
+                />
+                <p className="text-[12px] text-success font-heading font-semibold">
+                  {resolvedName}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Info */}
           <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-2xl bg-primary/8 border border-primary/15">
             <Info
               className="w-4 h-4 text-primary shrink-0 mt-0.5"
               strokeWidth={2}
             />
             <p className="text-[12px] text-text leading-relaxed">
-              Your full available earnings balance will be transferred to your
-              registered bank account. Processing typically takes{" "}
+              Your full available earnings balance will be transferred.
+              Processing typically takes{" "}
               <span className="font-semibold">1–2 business days</span>.
             </p>
           </div>
 
-          {/* Bank details missing warning */}
-          {!hasBankDetails && (
-            <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-2xl bg-warning-bg border border-warning/25">
-              <AlertTriangle
-                className="w-4 h-4 text-warning shrink-0 mt-0.5"
-                strokeWidth={2}
-              />
-              <div>
-                <p className="text-[12px] font-heading font-semibold text-warning leading-tight">
-                  Bank details missing
-                </p>
-                <p className="text-[12px] text-warning/80 mt-0.5 leading-relaxed">
-                  You need to save your bank details before a transfer can be
-                  made.{" "}
-                  <Link
-                    to="/settings"
-                    className="font-semibold underline hover:opacity-80"
-                  >
-                    Go to Settings
-                  </Link>
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Buttons */}
           <div className="flex items-center gap-2.5 pt-1">
             <button
               onClick={onClose}
@@ -646,7 +782,7 @@ function RequestSheet({
             </button>
             <button
               onClick={onConfirm}
-              disabled={submitting || !hasBankDetails}
+              disabled={submitting}
               className="flex-1 h-11 rounded-2xl bg-secondary text-cream text-sm font-heading font-semibold flex items-center justify-center gap-2 hover:bg-secondary/90 transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? (
@@ -662,6 +798,394 @@ function RequestSheet({
               )}
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── BankAccountSetupSheet ────────────────────────────────────────────────────
+
+type SetupStep = "entry" | "verifying" | "confirm";
+
+function BankAccountSetupSheet({
+  currentBankCode,
+  currentAccountNumber,
+  ownerName,
+  onSave,
+  onClose,
+}: {
+  currentBankCode?: string;
+  currentAccountNumber?: string;
+  ownerName: string;
+  onSave: (
+    bankCode: string,
+    accountNumber: string,
+    resolvedName: string,
+  ) => void;
+  onClose: () => void;
+}) {
+  const isEdit = !!currentBankCode && !!currentAccountNumber;
+
+  const [step, setStep] = useState<SetupStep>("entry");
+  const [bankSearch, setBankSearch] = useState("");
+  const [bankDropOpen, setBankDropOpen] = useState(false);
+  const [selectedBankCode, setSelectedBankCode] = useState(
+    currentBankCode ?? "",
+  );
+  const [accountNumber, setAccountNumber] = useState(
+    currentAccountNumber ?? "",
+  );
+  const [verifyError, setVerifyError] = useState("");
+  const [resolvedName, setResolvedName] = useState("");
+  const bankDropRef = useRef<HTMLDivElement>(null);
+
+  // Close on Escape
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (step !== "verifying") onClose();
+      }
+    };
+    document.addEventListener("keydown", h);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", h);
+      document.body.style.overflow = "";
+    };
+  }, [onClose, step]);
+
+  // Close bank dropdown on outside click
+  useEffect(() => {
+    if (!bankDropOpen) return;
+    const h = (e: MouseEvent) => {
+      if (
+        bankDropRef.current &&
+        !bankDropRef.current.contains(e.target as Node)
+      )
+        setBankDropOpen(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [bankDropOpen]);
+
+  const filteredBanks = useMemo(
+    () =>
+      bankSearch.trim()
+        ? NIGERIAN_BANKS.filter((b) =>
+            b.name.toLowerCase().includes(bankSearch.toLowerCase()),
+          )
+        : NIGERIAN_BANKS,
+    [bankSearch],
+  );
+
+  const accountValid = /^\d{10}$/.test(accountNumber);
+  const canVerify = selectedBankCode !== "" && accountValid;
+
+  const selectedBank = NIGERIAN_BANKS.find((b) => b.code === selectedBankCode);
+
+  async function handleVerify() {
+    if (!canVerify) return;
+    setVerifyError("");
+    setStep("verifying");
+    const result = await mockVerifyAccount(
+      accountNumber,
+      selectedBankCode,
+      ownerName,
+    );
+    if (result.success) {
+      setResolvedName(result.accountName);
+      setStep("confirm");
+    } else {
+      setVerifyError(
+        "Couldn't verify this account — check the number and try again.",
+      );
+      setStep("entry");
+    }
+  }
+
+  function handleConfirmSave() {
+    onSave(selectedBankCode, accountNumber, resolvedName);
+  }
+
+  const inputBase =
+    "w-full h-11 px-4 rounded-xl bg-cream border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-sm font-heading text-text placeholder:text-muted transition-all";
+
+  const title =
+    step === "entry"
+      ? isEdit
+        ? "Update bank account"
+        : "Add bank account"
+      : step === "verifying"
+        ? "Verifying…"
+        : "Confirm account";
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <div
+        className="absolute inset-0 bg-text/40 backdrop-blur-sm"
+        onClick={step === "verifying" ? undefined : onClose}
+      />
+      <div className="absolute left-0 right-0 bottom-0 lg:left-1/2 lg:-translate-x-1/2 lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2 lg:max-w-[480px] lg:w-[92%] lg:rounded-3xl rounded-t-3xl bg-cream shadow-elevated safe-bottom flex flex-col max-h-[90dvh]">
+        {/* Drag pill */}
+        <div className="lg:hidden pt-2 pb-1 flex justify-center shrink-0">
+          <div className="h-1 w-10 rounded-full bg-border" />
+        </div>
+
+        {/* Header */}
+        <div className="px-5 sm:px-6 lg:px-7 pt-3 lg:pt-5 pb-3 flex items-center justify-between shrink-0">
+          <div>
+            <p className="font-heading font-bold text-lg text-text">{title}</p>
+            {/* Step indicators */}
+            <div className="flex items-center gap-1.5 mt-1">
+              {(["entry", "verifying", "confirm"] as SetupStep[]).map(
+                (s, i) => (
+                  <span
+                    key={s}
+                    className={`h-1.5 rounded-full transition-all ${
+                      step === s
+                        ? "w-5 bg-primary"
+                        : i < ["entry", "verifying", "confirm"].indexOf(step)
+                          ? "w-1.5 bg-primary/40"
+                          : "w-1.5 bg-border"
+                    }`}
+                  />
+                ),
+              )}
+            </div>
+          </div>
+          {step !== "verifying" && (
+            <button
+              onClick={onClose}
+              className="h-8 w-8 rounded-xl flex items-center justify-center text-muted hover:text-text hover:bg-surface transition-colors"
+            >
+              <X className="w-[17px] h-[17px]" />
+            </button>
+          )}
+        </div>
+
+        {/* Body */}
+        <div className="px-5 sm:px-6 lg:px-7 pb-6 lg:pb-7 overflow-y-auto flex-1">
+          {/* ── Step 1: Entry ──────────────────────────────────── */}
+          {step === "entry" && (
+            <div className="space-y-4">
+              <p className="text-sm text-text-soft leading-relaxed">
+                Enter your bank details below. We'll verify the account before
+                saving.
+              </p>
+
+              {/* Verify error */}
+              {verifyError && (
+                <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-2xl bg-danger-bg/40 border border-danger/25">
+                  <AlertCircle
+                    className="w-4 h-4 text-danger shrink-0 mt-0.5"
+                    strokeWidth={2}
+                  />
+                  <p className="text-[12px] text-danger leading-relaxed">
+                    {verifyError}
+                  </p>
+                </div>
+              )}
+
+              {/* Bank selector (searchable) */}
+              <div>
+                <label className="block mb-1.5 text-xs sm:text-[13px] font-heading font-semibold text-text-soft tracking-tight">
+                  Bank
+                </label>
+                <div className="relative" ref={bankDropRef}>
+                  <button
+                    type="button"
+                    onClick={() => setBankDropOpen((v) => !v)}
+                    className={`${inputBase} text-left flex items-center justify-between pr-10 ${selectedBank ? "text-text" : "text-muted"}`}
+                  >
+                    <span>
+                      {selectedBank ? selectedBank.name : "Select your bank…"}
+                    </span>
+                    <ChevronDown
+                      className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none transition-transform ${bankDropOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {bankDropOpen && (
+                    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 bg-cream border border-border/60 rounded-2xl shadow-elevated overflow-hidden">
+                      {/* Search */}
+                      <div className="px-3 pt-3 pb-2 border-b border-border/40">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
+                          <input
+                            type="text"
+                            placeholder="Search banks…"
+                            value={bankSearch}
+                            onChange={(e) => setBankSearch(e.target.value)}
+                            autoFocus
+                            className="w-full h-9 pl-8 pr-3 rounded-xl bg-surface/60 border border-border/50 text-sm font-heading text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          />
+                        </div>
+                      </div>
+                      <ul className="max-h-44 overflow-y-auto">
+                        {filteredBanks.length === 0 ? (
+                          <li className="px-4 py-3 text-sm text-muted text-center">
+                            No banks found
+                          </li>
+                        ) : (
+                          filteredBanks.map((b) => (
+                            <li key={b.code}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedBankCode(b.code);
+                                  setBankDropOpen(false);
+                                  setBankSearch("");
+                                  setVerifyError("");
+                                }}
+                                className={`w-full text-left px-4 py-2.5 text-sm font-heading font-medium transition-colors hover:bg-surface/60 ${selectedBankCode === b.code ? "bg-primary/10 text-primary" : "text-text"}`}
+                              >
+                                {b.name}
+                              </button>
+                            </li>
+                          ))
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Account number */}
+              <div>
+                <label className="block mb-1.5 text-xs sm:text-[13px] font-heading font-semibold text-text-soft tracking-tight">
+                  Account number (NUBAN)
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="10-digit account number"
+                  value={accountNumber}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    setAccountNumber(v);
+                    setVerifyError("");
+                  }}
+                  className={`${inputBase} font-mono tracking-widest ${accountNumber.length > 0 && !accountValid ? "border-danger/60 focus:ring-danger/30" : ""}`}
+                />
+                {accountNumber.length > 0 && !accountValid && (
+                  <p className="mt-1.5 text-xs text-danger font-heading font-medium">
+                    Account number must be exactly 10 digits.
+                  </p>
+                )}
+                <p className="mt-1.5 text-xs text-muted">
+                  Standard 10-digit NUBAN format used by all Nigerian banks.
+                </p>
+              </div>
+
+              <button
+                onClick={handleVerify}
+                disabled={!canVerify}
+                className="w-full h-11 rounded-2xl bg-primary text-cream text-sm font-heading font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed mt-2"
+              >
+                <Shield className="w-4 h-4" strokeWidth={2.2} />
+                Verify account
+              </button>
+            </div>
+          )}
+
+          {/* ── Step 2: Verifying ──────────────────────────────── */}
+          {step === "verifying" && (
+            <div className="py-10 flex flex-col items-center text-center">
+              <div className="relative h-16 w-16 mb-5 flex items-center justify-center">
+                <div className="absolute inset-0 rounded-3xl bg-primary/10 animate-pulse" />
+                <div className="relative h-14 w-14 rounded-2xl bg-primary/15 text-primary flex items-center justify-center">
+                  <Loader2 className="w-7 h-7 animate-spin" strokeWidth={2.2} />
+                </div>
+              </div>
+              <h3 className="font-heading font-bold text-lg text-text leading-tight">
+                Verifying account details
+              </h3>
+              <p className="mt-1.5 text-sm text-text-soft leading-relaxed max-w-xs">
+                Checking{" "}
+                <span className="font-semibold text-text font-mono tracking-widest">
+                  {maskAccountNumber(accountNumber)}
+                </span>{" "}
+                at{" "}
+                <span className="font-semibold text-text">
+                  {selectedBank?.name ?? "your bank"}
+                </span>
+                …
+              </p>
+              <div className="mt-5 h-1.5 w-48 rounded-full bg-surface overflow-hidden">
+                <div className="h-full w-2/3 rounded-full bg-gradient-to-r from-primary/60 via-primary to-secondary/50 animate-pulse" />
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 3: Confirm ────────────────────────────────── */}
+          {step === "confirm" && (
+            <div className="space-y-5">
+              {/* Trust moment — resolved name large and prominent */}
+              <div className="flex flex-col items-center text-center py-4">
+                <div className="h-16 w-16 rounded-3xl bg-success/10 text-success flex items-center justify-center mb-4 shadow-card ring-1 ring-success/20">
+                  <Shield className="w-8 h-8" strokeWidth={2} />
+                </div>
+                <p className="text-[12px] font-heading font-semibold uppercase tracking-wider text-muted mb-1">
+                  Account verified
+                </p>
+                <h2 className="font-heading font-bold text-2xl text-text leading-tight">
+                  {resolvedName}
+                </h2>
+                <p className="mt-2 text-sm text-text-soft leading-relaxed max-w-xs">
+                  Confirm this is you. Payouts will be sent to this account.
+                  Make sure the name matches yours.
+                </p>
+              </div>
+
+              {/* Account summary */}
+              <div className="rounded-2xl bg-surface/50 border border-border/50 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] text-muted font-heading font-medium">
+                    Bank
+                  </span>
+                  <span className="text-[13px] font-heading font-semibold text-text">
+                    {selectedBank?.name}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] text-muted font-heading font-medium">
+                    Account
+                  </span>
+                  <span className="text-[13px] font-mono font-semibold text-text tracking-wider">
+                    {maskAccountNumber(accountNumber)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] text-muted font-heading font-medium">
+                    Name
+                  </span>
+                  <span className="text-[13px] font-heading font-semibold text-text">
+                    {resolvedName}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2.5">
+                <button
+                  onClick={handleConfirmSave}
+                  className="w-full h-11 rounded-2xl bg-success text-cream text-sm font-heading font-semibold flex items-center justify-center gap-2 hover:bg-success/90 transition-colors active:scale-[0.98]"
+                >
+                  <CheckCircle2 className="w-4 h-4" strokeWidth={2.2} />
+                  Confirm &amp; save
+                </button>
+                <button
+                  onClick={() => {
+                    setStep("entry");
+                    setVerifyError("");
+                  }}
+                  className="w-full h-10 rounded-2xl text-sm font-heading font-medium text-text-soft hover:text-text transition-colors"
+                >
+                  Change details
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
