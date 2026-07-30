@@ -31,7 +31,7 @@ import { Avatar } from "../components/Avatar";
 function Hero() {
   return (
     <section className="relative w-full overflow-hidden">
-      <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14 lg:pt-20 pb-16 sm:pb-20 lg:pb-28">
+      <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14 pb-16 sm:pb-20 lg:pb-28">
         <div className="grid lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           <Reveal className="lg:col-span-6 xl:col-span-6">
             <div>
