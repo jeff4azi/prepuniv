@@ -19,7 +19,7 @@ export const profiles: Profile[] = [
     bank_account_number: "0123456789",
     bank_code: "044",
     avatar_url: undefined,
-    bio: "Linguist and seasoned exam tutor with over 8 years preparing JAMB and WAEC candidates across Nigeria. Holds a PhD in Linguistics from the University of Lagos and specialises in Use of English, comprehension, and oral forms. Passionate about making exam prep accessible, practical, and actually enjoyable.",
+    bio: "Linguist and university lecturer with over 8 years teaching Use of English and communication skills across Nigerian universities. Holds a PhD in Linguistics from the University of Lagos and specialises in comprehension, lexis, and academic writing. Passionate about making course prep accessible, practical, and actually enjoyable.",
     joined_at: "2026-01-15T00:00:00Z",
   },
   {
@@ -31,7 +31,7 @@ export const profiles: Profile[] = [
     bank_account_number: "0234567890",
     bank_code: "058",
     avatar_url: undefined,
-    bio: "Professor of Applied Mathematics at Ahmadu Bello University with 15 years of experience writing exam questions for JAMB, WAEC, and post-UTME screening tests. His quizzes are built around the exact computation and problem-solving patterns that high-scoring students master. Covers Mathematics, Physics, Statistics, and Calculus.",
+    bio: "Professor of Applied Mathematics at Ahmadu Bello University with 15 years of experience writing course assessment questions for undergraduate programmes. His quizzes are built around the exact computation and problem-solving patterns that high-scoring students master. Covers MTH 101, MTH 201, STA 121, and PHY 101.",
     joined_at: "2026-01-20T00:00:00Z",
   },
   {
@@ -43,7 +43,7 @@ export const profiles: Profile[] = [
     bank_account_number: "0345678901",
     bank_code: "033",
     avatar_url: undefined,
-    bio: "Recent graduate and private tutor with 3 years teaching SS3 students across English, History, and Statistics. Believes that short, focused quizzes beat marathon study sessions — every question he writes is designed to build genuine understanding, not just memorisation.",
+    bio: "Recent graduate and private tutor with 3 years teaching undergraduate students across English, History, and Statistics. Believes that short, focused quizzes beat marathon study sessions — every question he writes is designed to build genuine understanding, not just memorisation.",
     joined_at: "2026-02-01T00:00:00Z",
   },
   {
@@ -61,18 +61,18 @@ export const profiles: Profile[] = [
 
 export const purchasedQuizIdsByUser: Record<string, string[]> = {
   user_001: [
-    "quiz_001", // English Language — Full Mock 2024
-    "quiz_003", // Physics — Mechanics Masterclass
-    "quiz_005", // Microeconomics — Supply & Demand
-    "quiz_007", // West African History
-    "quiz_008", // Cell Biology — Structure & Function
-    "quiz_009", // Calculus Fundamentals
-    "quiz_012", // English Comprehension & Summary
-    "quiz_013", // Descriptive Statistics
-    "quiz_015", // Genetics & Evolution
-    "quiz_017", // Algebra & Number Theory
+    "quiz_004", // GST 121 — Comprehension & Summary Skills
+    "quiz_006", // MTH 201 — Calculus: Limits & Derivatives
+    "quiz_008", // ECO 101 — Microeconomics: Supply & Demand
+    "quiz_012", // STA 121 — Probability & Data Interpretation
+    "quiz_014", // BIO 101 — Cell Structure & Function
+    "quiz_016", // BIO 211 — Genetics & Mendelian Inheritance
+    "quiz_017", // HIS 101 — Pre-Colonial Kingdoms to Independence
+    "quiz_019", // PHY 101 — Mechanics: Forces, Motion & Energy
+    "quiz_022", // CHM 101 — Periodic Table & Chemical Bonding
+    "quiz_025", // MTH 101 — Algebra, Number Theory & Trigonometry
   ],
-  creator_001: ["quiz_006", "quiz_002", "quiz_004"],
+  creator_001: ["quiz_004", "quiz_008", "quiz_012"],
   admin_001: [
     "quiz_001",
     "quiz_002",

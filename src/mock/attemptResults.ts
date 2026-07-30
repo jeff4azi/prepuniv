@@ -6,12 +6,12 @@ import type { AttemptResultRecord } from "./types";
  * one of the QuizAttempts in quizAttempts.ts.
  */
 export const attemptResults: AttemptResultRecord[] = [
-  // ── attempt_001 : user_001, quiz_001 (English), score 72%, timed ──────────
+  // ── attempt_001 : user_001, quiz_004 (GST 121), score 72%, timed ──────────
   {
     attempt_id: "attempt_001",
     user_id: "user_001",
-    quiz_id: "quiz_001",
-    quiz_title: "JAMB Use of English — Full Mock 2024",
+    quiz_id: "quiz_004",
+    quiz_title: "GST 121 — Comprehension & Summary Skills",
     is_timed: true,
     score: 72,
     total: 8,
@@ -69,12 +69,12 @@ export const attemptResults: AttemptResultRecord[] = [
     ],
   },
 
-  // ── attempt_002 : user_001, quiz_001 (English), score 81%, timed ──────────
+  // ── attempt_002 : user_001, quiz_004 (GST 121), score 81%, timed ──────────
   {
     attempt_id: "attempt_002",
     user_id: "user_001",
-    quiz_id: "quiz_001",
-    quiz_title: "JAMB Use of English — Full Mock 2024",
+    quiz_id: "quiz_004",
+    quiz_title: "GST 121 — Comprehension & Summary Skills",
     is_timed: true,
     score: 88,
     total: 8,
@@ -132,12 +132,12 @@ export const attemptResults: AttemptResultRecord[] = [
     ],
   },
 
-  // ── attempt_003 : user_001, quiz_003 (Physics), score 65%, timed ──────────
+  // ── attempt_003 : user_001, quiz_019 (PHY 101), score 65%, timed ──────────
   {
     attempt_id: "attempt_003",
     user_id: "user_001",
-    quiz_id: "quiz_003",
-    quiz_title: "JAMB Physics — Mechanics Masterclass",
+    quiz_id: "quiz_019",
+    quiz_title: "PHY 101 — Mechanics: Forces, Motion & Energy",
     is_timed: true,
     score: 63,
     total: 8,
@@ -195,12 +195,12 @@ export const attemptResults: AttemptResultRecord[] = [
     ],
   },
 
-  // ── attempt_004 : user_001, quiz_005 (Microeconomics), score 88%, timed ───
+  // ── attempt_004 : user_001, quiz_008 (ECO 101), score 88%, timed ───
   {
     attempt_id: "attempt_004",
     user_id: "user_001",
-    quiz_id: "quiz_005",
-    quiz_title: "Microeconomics — Supply & Demand Essentials",
+    quiz_id: "quiz_008",
+    quiz_title: "ECO 101 — Microeconomics: Supply & Demand",
     is_timed: true,
     score: 88,
     total: 8,
@@ -255,12 +255,12 @@ export const attemptResults: AttemptResultRecord[] = [
     ],
   },
 
-  // ── attempt_005 : user_001, quiz_002 (Maths), score 54%, timed ────────────
+  // ── attempt_005 : user_001, quiz_025 (MTH 101), score 54%, timed ────────────
   {
     attempt_id: "attempt_005",
     user_id: "user_001",
-    quiz_id: "quiz_002",
-    quiz_title: "JAMB Mathematics — Problem Solving Pack",
+    quiz_id: "quiz_025",
+    quiz_title: "MTH 101 — Algebra, Number Theory & Trigonometry",
     is_timed: true,
     score: 50,
     total: 8,
@@ -293,12 +293,12 @@ export const attemptResults: AttemptResultRecord[] = [
     ],
   },
 
-  // ── attempt_101 : creator_001, quiz_001, score 96%, untimed ───────────────
+  // ── attempt_101 : creator_001, quiz_004, score 96%, untimed ───────────────
   {
     attempt_id: "attempt_101",
     user_id: "creator_001",
-    quiz_id: "quiz_001",
-    quiz_title: "JAMB Use of English — Full Mock 2024",
+    quiz_id: "quiz_004",
+    quiz_title: "GST 121 — Comprehension & Summary Skills",
     is_timed: false,
     score: 88,
     total: 8,
@@ -356,12 +356,12 @@ export const attemptResults: AttemptResultRecord[] = [
     ],
   },
 
-  // ── attempt_201 : admin_001, quiz_001, score 88%, timed ───────────────────
+  // ── attempt_201 : admin_001, quiz_004, score 88%, timed ───────────────────
   {
     attempt_id: "attempt_201",
     user_id: "admin_001",
-    quiz_id: "quiz_001",
-    quiz_title: "JAMB Use of English — Full Mock 2024",
+    quiz_id: "quiz_004",
+    quiz_title: "GST 121 — Comprehension & Summary Skills",
     is_timed: true,
     score: 88,
     total: 8,
@@ -650,8 +650,8 @@ extraAttemptIds.forEach((id, i) => {
   attemptResults.push({
     attempt_id: id,
     user_id: extraUserIds[i],
-    quiz_id: "quiz_001",
-    quiz_title: "JAMB Use of English — Full Mock 2024",
+    quiz_id: "quiz_004",
+    quiz_title: "GST 121 — Comprehension & Summary Skills",
     is_timed: i % 2 === 0,
     score: extraScores[i],
     total: 8,

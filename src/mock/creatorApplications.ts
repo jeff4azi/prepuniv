@@ -12,11 +12,11 @@ export const creatorApplications: CreatorApplication[] = [
     id: "app_creator_001",
     user_id: "creator_001",
     status: "approved",
-    courses: "Use of English, Literature-in-English",
+    courses: "GST 121 Use of English, GST 211 Logic and Scientific Reasoning",
     background:
-      "I hold a PhD in Linguistics from the University of Lagos and have been tutoring JAMB/WAEC candidates for over 8 years.",
+      "I hold a PhD in Linguistics from the University of Lagos and have been teaching Use of English and academic writing at university level for over 8 years.",
     quiz_plans:
-      "Full mock exam sets aligned to recent JAMB patterns, plus targeted lexis & structure drills.",
+      "Comprehensive question banks aligned to the GST 121 syllabus, plus targeted lexis and structure drills for end-of-semester exams.",
     links: "https://researchgate.net/profile/amaka-okafor",
     notes: "Excellent background. Approved.",
     submitted_at: "2026-01-10T08:00:00Z",
@@ -25,11 +25,11 @@ export const creatorApplications: CreatorApplication[] = [
     id: "app_creator_002",
     user_id: "creator_002",
     status: "approved",
-    courses: "Mathematics, Physics, Statistics",
+    courses: "MTH 101, MTH 201, STA 121, PHY 101",
     background:
-      "Professor of Applied Mathematics at Ahmadu Bello University with 15 years of exam-question writing experience.",
+      "Professor of Applied Mathematics at Ahmadu Bello University with 15 years of experience writing undergraduate course assessments.",
     quiz_plans:
-      "Computation-heavy question banks for JAMB, WAEC, and post-UTME screening tests.",
+      "Computation-heavy question banks for MTH 201 and STA 121, plus conceptual MCQ sets for PHY 101 and MTH 101.",
     links: "",
     notes: "Strong STEM background. Approved.",
     submitted_at: "2026-01-12T10:30:00Z",
@@ -38,10 +38,11 @@ export const creatorApplications: CreatorApplication[] = [
     id: "app_creator_003",
     user_id: "creator_003",
     status: "approved",
-    courses: "English, History, Statistics",
+    courses: "GST 121, HIS 101, HIS 201, STA 121",
     background:
-      "Recent graduate and private tutor with 3 years teaching SS3 students.",
-    quiz_plans: "Bite-sized topic quizzes and summary skills exercises.",
+      "Recent graduate and private tutor with 3 years teaching university undergraduates in English, History, and Statistics.",
+    quiz_plans:
+      "Bite-sized topic quizzes and summary skills exercises aligned to course outlines.",
     links: "https://twitter.com/chidi_eze_edu",
     notes: "Good practical teaching background. Approved.",
     submitted_at: "2026-01-14T09:00:00Z",

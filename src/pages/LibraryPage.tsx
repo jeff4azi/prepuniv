@@ -72,10 +72,8 @@ function fakeAttemptId() {
   return "atmp_" + Math.random().toString(36).slice(2, 10);
 }
 
-function shortCourseName(name: string) {
-  if (name.startsWith("JAMB UTME - ")) return name.slice("JAMB UTME - ".length);
-  if (name.startsWith("WAEC - ")) return name.slice("WAEC - ".length);
-  return name;
+function shortCourseName(code: string) {
+  return code || "Quiz";
 }
 
 // ─── Score pill (reuses the same colour logic as QuizCard / HistoryPage) ──────
@@ -142,7 +140,7 @@ function LibraryCard({ quiz, course, creator, stats }: LibraryCardProps) {
           <div className="min-w-0 flex-1 space-y-2">
             <Badge variant="secondary" size="sm">
               <Target className="w-3 h-3" />
-              {course ? shortCourseName(course.name) : "Quiz"}
+              {course ? shortCourseName(course.code) : "Quiz"}
             </Badge>
             <h3 className="font-heading font-semibold text-text text-[15px] leading-snug line-clamp-2">
               {quiz.title}
@@ -469,6 +467,9 @@ export function LibraryPage() {
       const q = searchQuery.toLowerCase();
       list = list.filter((quiz) => {
         if (quiz.title.toLowerCase().includes(q)) return true;
+        const course = coursesById.get(quiz.course_id);
+        if (course?.code.toLowerCase().includes(q)) return true;
+        if (course?.title.toLowerCase().includes(q)) return true;
         const creator = profilesById.get(quiz.creator_id);
         return creator?.full_name.toLowerCase().includes(q) ?? false;
       });
@@ -586,7 +587,7 @@ export function LibraryPage() {
                       setCourseFilter((prev) => (prev === c.id ? "all" : c.id))
                     }
                   >
-                    {c.name}
+                    {c.code}
                   </FilterChip>
                 ))}
               </div>

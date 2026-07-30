@@ -308,7 +308,7 @@ export function CreatorQuizzesPage() {
                       : "bg-cream border-border/50 text-text-soft hover:border-secondary/30 hover:text-text"
                   }`}
                 >
-                  {c.name}
+                  {c.code}
                 </button>
               ))}
 
@@ -388,7 +388,7 @@ export function CreatorQuizzesPage() {
                   <QuizMobileCard
                     key={quiz.id}
                     quiz={quiz}
-                    course={coursesById.get(quiz.course_id)?.name}
+                    course={coursesById.get(quiz.course_id)?.code}
                     onTogglePublish={handleTogglePublish}
                   />
                 ))}
@@ -430,7 +430,7 @@ function QuizTable({
   quizzes: MutableQuiz[];
   coursesById: Map<
     string,
-    { id: string; name: string; is_computational: boolean }
+    { id: string; code: string; is_computational: boolean }
   >;
   onTogglePublish: (q: MutableQuiz) => void;
 }) {
@@ -455,7 +455,7 @@ function QuizTable({
           <QuizTableRow
             key={quiz.id}
             quiz={quiz}
-            courseName={coursesById.get(quiz.course_id)?.name}
+            courseCode={coursesById.get(quiz.course_id)?.code}
             onTogglePublish={onTogglePublish}
           />
         ))}
@@ -466,11 +466,11 @@ function QuizTable({
 
 function QuizTableRow({
   quiz,
-  courseName,
+  courseCode,
   onTogglePublish,
 }: {
   quiz: MutableQuiz;
-  courseName?: string;
+  courseCode?: string;
   onTogglePublish: (q: MutableQuiz) => void;
 }) {
   const [overflowOpen, setOverflowOpen] = useState(false);
@@ -504,9 +504,9 @@ function QuizTableRow({
             <p className="font-heading font-semibold text-[14px] text-text leading-snug line-clamp-2">
               {quiz.title}
             </p>
-            {courseName && (
+            {courseCode && (
               <p className="mt-0.5 text-[12px] text-muted font-medium">
-                {courseName} · {quiz.question_count}q
+                {courseCode} · {quiz.question_count}q
               </p>
             )}
           </div>

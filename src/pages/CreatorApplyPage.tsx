@@ -429,8 +429,8 @@ function ApplicationForm({
             <FormInput
               id="apply-courses"
               label="Which course(s) are you strong in?"
-              placeholder="e.g. JAMB Use of English, WAEC Mathematics, Physics"
-              hint="Separate multiple subjects with commas."
+              placeholder="e.g. CSC 122 Introduction to Programming, MTH 201 Mathematical Methods"
+              hint="Separate multiple courses with commas. Use course codes if you know them."
               value={values.courses}
               onChange={(v) => set("courses", v)}
               error={errors.courses}
@@ -452,7 +452,7 @@ function ApplicationForm({
             <FormTextarea
               id="apply-plans"
               label="What kind of quizzes do you plan to create?"
-              placeholder="e.g. Full JAMB mock exams, topic-focused drills, WAEC past question-style sets…"
+              placeholder="e.g. Full-semester question banks for CSC 122, topic-focused drills for MTH 201, past-question-style sets for GST 121…"
               value={values.quiz_plans}
               onChange={(v) => set("quiz_plans", v)}
               error={errors.quiz_plans}

@@ -1,35 +1,35 @@
-import { Link } from 'react-router-dom';
-import { LandingTopNav } from '../components/LandingTopNav';
-import { Button } from '../components/Button';
-import { Card } from '../components/Card';
-import { ArrowLeft, Sparkles, ShieldCheck } from 'lucide-react';
+import { Link } from "react-router-dom";
+import { LandingTopNav } from "../components/LandingTopNav";
+import { Button } from "../components/Button";
+import { Card } from "../components/Card";
+import { ArrowLeft, Sparkles, ShieldCheck } from "lucide-react";
 
 interface AuthPlaceholderProps {
-  mode: 'login' | 'signup' | 'apply';
+  mode: "login" | "signup" | "apply";
 }
 
 export function AuthPlaceholderPage({ mode }: AuthPlaceholderProps) {
   const meta = {
     login: {
-      eyebrow: 'Welcome back',
-      title: 'Log in to PrepUniv',
-      sub: 'Pick up right where you left off.',
-      tag: 'Auth stub',
-      variant: 'primary' as const,
+      eyebrow: "Welcome back",
+      title: "Log in to PrepUniv",
+      sub: "Pick up right where you left off.",
+      tag: "Auth stub",
+      variant: "primary" as const,
     },
     signup: {
-      eyebrow: 'Create your account',
-      title: 'Sign up for PrepUniv',
-      sub: 'Start practicing smarter in under 60 seconds.',
-      tag: 'Auth stub',
-      variant: 'success' as const,
+      eyebrow: "Create your account",
+      title: "Sign up for PrepUniv",
+      sub: "Start practicing smarter in under 60 seconds.",
+      tag: "Auth stub",
+      variant: "success" as const,
     },
     apply: {
-      eyebrow: 'Creator onboarding',
-      title: 'Apply to become a creator',
-      sub: 'Monetize your study content with a 65% revenue share.',
-      tag: 'Application stub',
-      variant: 'secondary' as const,
+      eyebrow: "Creator onboarding",
+      title: "Apply to become a creator",
+      sub: "Monetize your study content with a 65% revenue share.",
+      tag: "Application stub",
+      variant: "secondary" as const,
     },
   }[mode];
 
@@ -59,14 +59,16 @@ export function AuthPlaceholderPage({ mode }: AuthPlaceholderProps) {
           <Card padded className="space-y-4">
             <div className="flex items-center gap-3 p-4 rounded-2xl bg-surface/40 border border-border/50">
               <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                {mode === 'apply' ? (
+                {mode === "apply" ? (
                   <Sparkles className="w-5 h-5" strokeWidth={2.2} />
                 ) : (
                   <ShieldCheck className="w-5 h-5" strokeWidth={2.2} />
                 )}
               </div>
               <div>
-                <p className="text-sm font-heading font-semibold text-text">{meta.tag}</p>
+                <p className="text-sm font-heading font-semibold text-text">
+                  {meta.tag}
+                </p>
                 <p className="text-xs text-muted">
                   Full auth flow will be implemented in the next prompt.
                 </p>
@@ -74,7 +76,7 @@ export function AuthPlaceholderPage({ mode }: AuthPlaceholderProps) {
             </div>
 
             <div className="space-y-3">
-              {mode !== 'apply' && (
+              {mode !== "apply" && (
                 <>
                   <div>
                     <label className="block text-xs font-heading font-medium text-text-soft mb-1.5">
@@ -97,7 +99,7 @@ export function AuthPlaceholderPage({ mode }: AuthPlaceholderProps) {
                       className="w-full h-12 px-4 rounded-2xl bg-cream border border-border text-text placeholder:text-muted/70 disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                   </div>
-                  {mode === 'signup' && (
+                  {mode === "signup" && (
                     <div>
                       <label className="block text-xs font-heading font-medium text-text-soft mb-1.5">
                         Full name
@@ -112,13 +114,16 @@ export function AuthPlaceholderPage({ mode }: AuthPlaceholderProps) {
                 </>
               )}
 
-              {mode === 'apply' && (
+              {mode === "apply" && (
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-heading font-medium text-text-soft mb-1.5">
                       Full name
                     </label>
-                    <input disabled className="w-full h-12 px-4 rounded-2xl bg-cream border border-border disabled:opacity-70" />
+                    <input
+                      disabled
+                      className="w-full h-12 px-4 rounded-2xl bg-cream border border-border disabled:opacity-70"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-heading font-medium text-text-soft mb-1.5">
@@ -128,7 +133,7 @@ export function AuthPlaceholderPage({ mode }: AuthPlaceholderProps) {
                       disabled
                       rows={3}
                       className="w-full px-4 py-3 rounded-2xl bg-cream border border-border text-sm disabled:opacity-70 resize-none"
-                      placeholder="e.g. JAMB Use of English, WAEC Literature-in-English"
+                      placeholder="e.g. CSC 122 Introduction to Programming, MTH 201 Mathematical Methods"
                     />
                   </div>
                 </div>
@@ -136,32 +141,41 @@ export function AuthPlaceholderPage({ mode }: AuthPlaceholderProps) {
             </div>
 
             <Button fullWidth disabled>
-              {mode === 'login' && 'Log in'}
-              {mode === 'signup' && 'Create account'}
-              {mode === 'apply' && 'Submit application'}
+              {mode === "login" && "Log in"}
+              {mode === "signup" && "Create account"}
+              {mode === "apply" && "Submit application"}
             </Button>
 
             <div className="text-center text-sm text-muted pt-2">
-              {mode === 'login' && (
+              {mode === "login" && (
                 <p>
-                  Don't have an account?{' '}
-                  <Link to="/signup" className="font-semibold text-primary hover:underline">
+                  Don't have an account?{" "}
+                  <Link
+                    to="/signup"
+                    className="font-semibold text-primary hover:underline"
+                  >
                     Sign up
                   </Link>
                 </p>
               )}
-              {mode === 'signup' && (
+              {mode === "signup" && (
                 <p>
-                  Already on PrepUniv?{' '}
-                  <Link to="/login" className="font-semibold text-primary hover:underline">
+                  Already on PrepUniv?{" "}
+                  <Link
+                    to="/login"
+                    className="font-semibold text-primary hover:underline"
+                  >
                     Log in
                   </Link>
                 </p>
               )}
-              {mode === 'apply' && (
+              {mode === "apply" && (
                 <p>
-                  Need help? Email{' '}
-                  <a href="#" className="font-semibold text-primary hover:underline">
+                  Need help? Email{" "}
+                  <a
+                    href="#"
+                    className="font-semibold text-primary hover:underline"
+                  >
                     creators@prepuniv.com
                   </a>
                 </p>

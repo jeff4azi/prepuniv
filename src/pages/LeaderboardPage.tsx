@@ -199,7 +199,7 @@ export function LeaderboardPage() {
               size="sm"
               className="shrink-0 hidden sm:inline-flex"
             >
-              {course.name}
+              {course.code}
             </Badge>
           )}
         </div>

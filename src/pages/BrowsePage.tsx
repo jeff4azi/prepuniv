@@ -7,6 +7,7 @@ import {
   Library,
   Compass,
   ChevronDown,
+  GraduationCap,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -23,12 +24,21 @@ import {
 
 type SortKey = "newest" | "popular" | "price-asc" | "price-desc";
 type LibraryFilter = "all" | "library";
+type LevelFilter = "all" | "100" | "200" | "300" | "400";
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "newest", label: "Newest" },
   { value: "popular", label: "Most Popular" },
   { value: "price-asc", label: "Price: Low to High" },
   { value: "price-desc", label: "Price: High to Low" },
+];
+
+const LEVEL_OPTIONS: { value: LevelFilter; label: string }[] = [
+  { value: "all", label: "All Levels" },
+  { value: "100", label: "100L" },
+  { value: "200", label: "200L" },
+  { value: "300", label: "300L" },
+  { value: "400", label: "400L" },
 ];
 
 const LOADING_MS = 500;
@@ -41,7 +51,8 @@ export function BrowsePage() {
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [courseFilter, setCourseFilter] = useState<string>("all");
+  const [deptFilter, setDeptFilter] = useState<string>("all");
+  const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("newest");
   const [libraryFilter, setLibraryFilter] = useState<LibraryFilter>("all");
 
@@ -51,7 +62,10 @@ export function BrowsePage() {
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => setSearchQuery(searchInput.trim()), SEARCH_DEBOUNCE_MS);
+    const t = setTimeout(
+      () => setSearchQuery(searchInput.trim()),
+      SEARCH_DEBOUNCE_MS,
+    );
     return () => clearTimeout(t);
   }, [searchInput]);
 
@@ -69,6 +83,29 @@ export function BrowsePage() {
     [],
   );
 
+  /** Unique departments derived from the courses in use */
+  const departments = useMemo(() => {
+    const usedCourseIds = new Set(publishedQuizzes.map((q) => q.course_id));
+    const depts = new Set<string>();
+    allCourses.forEach((c) => {
+      if (usedCourseIds.has(c.id)) depts.add(c.department);
+    });
+    return Array.from(depts).sort();
+  }, [publishedQuizzes]);
+
+  /** Popular course codes: top codes by quiz count */
+  const popularCourseCodes = useMemo(() => {
+    const counts: Record<string, number> = {};
+    publishedQuizzes.forEach((q) => {
+      const course = coursesById.get(q.course_id);
+      if (course) counts[course.code] = (counts[course.code] ?? 0) + 1;
+    });
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([code]) => code);
+  }, [publishedQuizzes, coursesById]);
+
   const filteredQuizzes = useMemo(() => {
     let list = publishedQuizzes;
 
@@ -76,17 +113,33 @@ export function BrowsePage() {
       list = list.filter((q) => hasPurchasedQuiz(q.id));
     }
 
-    if (courseFilter !== "all") {
-      list = list.filter((q) => q.course_id === courseFilter);
+    if (deptFilter !== "all") {
+      list = list.filter((q) => {
+        const course = coursesById.get(q.course_id);
+        return course?.department === deptFilter;
+      });
+    }
+
+    if (levelFilter !== "all") {
+      const lvl = parseInt(levelFilter, 10) as 100 | 200 | 300 | 400;
+      list = list.filter((q) => {
+        const course = coursesById.get(q.course_id);
+        return course?.level === lvl;
+      });
     }
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       list = list.filter((quiz) => {
+        const course = coursesById.get(quiz.course_id);
+        const codeMatch = course?.code.toLowerCase().includes(q) ?? false;
         const titleMatch = quiz.title.toLowerCase().includes(q);
+        const courseTitleMatch =
+          course?.title.toLowerCase().includes(q) ?? false;
         const creator = profilesById.get(quiz.creator_id);
-        const creatorMatch = creator?.full_name.toLowerCase().includes(q) ?? false;
-        return titleMatch || creatorMatch;
+        const creatorMatch =
+          creator?.full_name.toLowerCase().includes(q) ?? false;
+        return codeMatch || titleMatch || courseTitleMatch || creatorMatch;
       });
     }
 
@@ -114,23 +167,27 @@ export function BrowsePage() {
   }, [
     publishedQuizzes,
     libraryFilter,
-    courseFilter,
+    deptFilter,
+    levelFilter,
     searchQuery,
     sortKey,
     hasPurchasedQuiz,
+    coursesById,
     profilesById,
   ]);
 
   const hasActiveFilters =
     searchQuery !== "" ||
-    courseFilter !== "all" ||
+    deptFilter !== "all" ||
+    levelFilter !== "all" ||
     libraryFilter !== "all" ||
     sortKey !== "newest";
 
   function clearFilters() {
     setSearchInput("");
     setSearchQuery("");
-    setCourseFilter("all");
+    setDeptFilter("all");
+    setLevelFilter("all");
     setLibraryFilter("all");
     setSortKey("newest");
   }
@@ -139,6 +196,12 @@ export function BrowsePage() {
     const target = e.target as HTMLElement;
     if (target.closest("a, button")) return;
     navigate(`/quiz/${quizId}`);
+  }
+
+  /** Quick-jump to a specific course code via the search bar */
+  function jumpToCode(code: string) {
+    setSearchInput(code);
+    setSearchQuery(code);
   }
 
   return (
@@ -165,7 +228,7 @@ export function BrowsePage() {
               type="search"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search by title or creator…"
+              placeholder="Search by course code, title, or creator…"
               aria-label="Search quizzes"
               className="w-full h-11 pl-10 pr-10 rounded-2xl border border-border/60 bg-cream text-sm text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 transition-shadow"
             />
@@ -185,27 +248,67 @@ export function BrowsePage() {
         {/* Sticky filter bar */}
         <div className="sticky top-0 z-20 -mx-4 px-4 py-3 bg-background/95 backdrop-blur-md border-b border-border/25 lg:static lg:mx-0 lg:px-0 lg:py-0 lg:bg-transparent lg:backdrop-blur-none lg:border-0">
           <div className="space-y-3">
-            {/* Course chips */}
+            {/* Popular course code pills */}
+            {popularCourseCodes.length > 0 && !searchQuery && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted shrink-0">
+                  Popular:
+                </span>
+                {popularCourseCodes.map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => jumpToCode(code)}
+                    className="h-7 px-2.5 rounded-lg text-[11px] font-heading font-bold border border-border/50 bg-surface/40 text-text-soft hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-all duration-150"
+                  >
+                    {code}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Department chips */}
             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-0.5 -mx-1 px-1">
               <FilterChip
-                active={courseFilter === "all"}
-                onClick={() => setCourseFilter("all")}
+                active={deptFilter === "all"}
+                onClick={() => setDeptFilter("all")}
               >
                 All Courses
               </FilterChip>
-              {allCourses.map((course) => (
+              {departments.map((dept) => (
                 <FilterChip
-                  key={course.id}
-                  active={courseFilter === course.id}
-                  onClick={() => setCourseFilter(course.id)}
+                  key={dept}
+                  active={deptFilter === dept}
+                  onClick={() => setDeptFilter(dept)}
                 >
-                  {course.name}
+                  {dept}
                 </FilterChip>
               ))}
             </div>
 
-            {/* Sort + library toggle */}
+            {/* Level filter + Sort + library toggle */}
             <div className="flex flex-wrap items-center gap-2.5">
+              {/* Level dropdown */}
+              <div className="relative">
+                <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
+                <select
+                  value={levelFilter}
+                  onChange={(e) =>
+                    setLevelFilter(e.target.value as LevelFilter)
+                  }
+                  aria-label="Filter by level"
+                  className="h-9 pl-8 pr-8 rounded-xl border border-border/60 bg-cream text-xs font-heading font-medium text-text appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40"
+                >
+                  {LEVEL_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
+              </div>
+
+              {/* Sort */}
               <div className="relative">
                 <SlidersHorizontal className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
                 <select
@@ -223,6 +326,7 @@ export function BrowsePage() {
                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
               </div>
 
+              {/* Library toggle */}
               <div className="inline-flex rounded-xl border border-border/60 bg-cream p-0.5">
                 <LibraryToggle
                   active={libraryFilter === "all"}
@@ -333,7 +437,9 @@ function LibraryToggle({
       onClick={onClick}
       className={
         "inline-flex items-center gap-1.5 h-8 px-3 rounded-[10px] text-xs font-heading font-semibold transition-all duration-150 " +
-        (active ? "bg-primary text-cream shadow-soft" : "text-text-soft hover:text-text hover:bg-surface/40")
+        (active
+          ? "bg-primary text-cream shadow-soft"
+          : "text-text-soft hover:text-text hover:bg-surface/40")
       }
     >
       {children}
@@ -357,7 +463,10 @@ function QuizCardSkeleton() {
       <div className="px-5 pt-5 pb-4 space-y-4 animate-pulse">
         <div className="flex justify-between gap-3">
           <div className="flex-1 space-y-2.5">
-            <div className="h-5 w-20 rounded-lg bg-surface" />
+            <div className="flex items-center gap-2">
+              <div className="h-5 w-16 rounded-lg bg-surface" />
+              <div className="h-3 w-24 rounded-lg bg-surface" />
+            </div>
             <div className="h-4 w-full rounded-lg bg-surface" />
             <div className="h-4 w-3/4 rounded-lg bg-surface" />
           </div>
@@ -391,7 +500,8 @@ function BrowseEmptyState({ onClear }: { onClear: () => void }) {
           No quizzes match your search
         </h3>
         <p className="mt-2 text-sm text-text-soft max-w-md leading-relaxed">
-          Try adjusting your filters or search terms to find what you&apos;re looking for.
+          Try adjusting your filters or search terms to find what you&apos;re
+          looking for.
         </p>
         <Button variant="primary" size="md" onClick={onClear} className="mt-6">
           <X className="w-4 h-4" />

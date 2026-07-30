@@ -443,7 +443,7 @@ export function AttemptResultPage() {
                 <div className="space-y-1.5 pt-1">
                   {course && (
                     <Badge variant="secondary" size="sm">
-                      {course.name}
+                      {course.code}
                     </Badge>
                   )}
                   <p className="font-heading font-semibold text-sm text-text leading-snug">

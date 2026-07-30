@@ -249,9 +249,14 @@ export function QuizDetailPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1 space-y-2">
                   {course && (
-                    <Badge variant="secondary" size="sm">
-                      {course.name}
-                    </Badge>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Badge variant="secondary" size="sm">
+                        {course.code}
+                      </Badge>
+                      <span className="text-xs text-muted font-heading">
+                        {course.department}
+                      </span>
+                    </div>
                   )}
                   <h1 className="font-heading font-bold text-xl sm:text-2xl text-text leading-tight tracking-tight">
                     {quiz.title}
@@ -463,7 +468,7 @@ export function QuizDetailPage() {
                     Platform sets a time limit based on question count
                     {course?.is_computational && (
                       <span className="block text-warning font-medium mt-0.5">
-                        Per-question timing for this subject
+                        Per-question timing for this course
                       </span>
                     )}
                   </p>
@@ -527,7 +532,7 @@ export function QuizDetailPage() {
                 </span>{" "}
                 covering{" "}
                 <span className="font-semibold text-text ml-1">
-                  {course?.name ?? "this subject"}
+                  {course ? `${course.code} — ${course.title}` : "this course"}
                 </span>
               </div>
             </div>

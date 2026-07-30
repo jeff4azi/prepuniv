@@ -221,7 +221,7 @@ export function CreatorReportsPage() {
                 courseName={
                   coursesById.get(
                     quizzesById.get(report.quiz_id)?.course_id ?? "",
-                  )?.name
+                  )?.code
                 }
               />
             ))}

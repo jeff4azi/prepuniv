@@ -49,6 +49,10 @@ import {
   type Question,
   type QuestionType,
 } from "../mock";
+import {
+  COURSE_PREFIX_DEPARTMENT,
+  suggestLevelFromCode,
+} from "../mock/courses";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -66,7 +70,10 @@ type EditorMode = "none" | "add" | "edit";
 
 interface QuizDetails {
   title: string;
-  course_id: string;
+  course_code: string; // e.g. "CSC 122"
+  course_title: string; // e.g. "Introduction to Programming" (optional)
+  department: string; // e.g. "Computer Science"
+  level: string; // "100" | "200" | "300" | "400" | ""
   price_naira: string; // raw input, validated on save
   description: string;
 }
@@ -110,12 +117,20 @@ export function QuizBuilderPage() {
   );
 
   // ── Quiz details state ──
-  const [details, setDetails] = useState<QuizDetails>(() => ({
-    title: existingQuiz?.title ?? "",
-    course_id: existingQuiz?.course_id ?? "",
-    price_naira: existingQuiz ? String(koboToNaira(existingQuiz.price)) : "",
-    description: existingQuiz?.description ?? "",
-  }));
+  const [details, setDetails] = useState<QuizDetails>(() => {
+    const existingCourse = existingQuiz
+      ? allCourses.find((c) => c.id === existingQuiz.course_id)
+      : undefined;
+    return {
+      title: existingQuiz?.title ?? "",
+      course_code: existingCourse?.code ?? "",
+      course_title: existingCourse?.title ?? "",
+      department: existingCourse?.department ?? "",
+      level: existingCourse ? String(existingCourse.level) : "",
+      price_naira: existingQuiz ? String(koboToNaira(existingQuiz.price)) : "",
+      description: existingQuiz?.description ?? "",
+    };
+  });
   const [detailErrors, setDetailErrors] = useState<Partial<QuizDetails>>({});
 
   // ── Questions state ──
@@ -167,7 +182,7 @@ export function QuizBuilderPage() {
 
   const formValid =
     details.title.trim() !== "" &&
-    details.course_id !== "" &&
+    details.course_code.trim() !== "" &&
     priceValid &&
     draftQuestions.length >= 1;
 
@@ -309,10 +324,33 @@ export function QuizBuilderPage() {
         : "quiz_" + Math.random().toString(36).slice(2, 9);
     const now = new Date().toISOString();
 
+    // Resolve or create a matching course_id for this code
+    const codeNorm = details.course_code.trim().toUpperCase();
+    const levelNum = (parseInt(details.level, 10) || 100) as
+      | 100
+      | 200
+      | 300
+      | 400;
+    let matchedCourse = allCourses.find(
+      (c) => c.code.toUpperCase() === codeNorm,
+    );
+    if (!matchedCourse) {
+      // Create a transient course entry for this new code
+      matchedCourse = {
+        id: "course_" + Math.random().toString(36).slice(2, 9),
+        code: details.course_code.trim(),
+        title: details.course_title.trim() || details.course_code.trim(),
+        department: details.department.trim() || "General Studies",
+        level: levelNum,
+        is_computational: false,
+      };
+      allCourses.push(matchedCourse);
+    }
+
     const savedQuiz: Quiz = {
       id: quizId,
       creator_id: currentUser.id,
-      course_id: details.course_id,
+      course_id: matchedCourse.id,
       title: details.title.trim(),
       description: details.description.trim(),
       price: nairaToKobo(priceNaira),
@@ -354,7 +392,9 @@ export function QuizBuilderPage() {
     setDraftQuestions((prev) => [...prev, ...questions]);
   }
 
-  const selectedCourse = allCourses.find((c) => c.id === details.course_id);
+  const courseHint = details.course_code
+    ? `${details.course_code}${details.course_title ? ` — ${details.course_title}` : ""}`
+    : undefined;
 
   return (
     <>
@@ -412,7 +452,7 @@ export function QuizBuilderPage() {
                 <input
                   id="qb-title"
                   type="text"
-                  placeholder="e.g. JAMB Mathematics — Problem Solving Pack"
+                  placeholder="e.g. CSC 122 — Loops & Arrays Practice"
                   value={details.title}
                   onChange={(e) =>
                     setDetails((d) => ({ ...d, title: e.target.value }))
@@ -421,32 +461,105 @@ export function QuizBuilderPage() {
                 />
               </FieldWrapper>
 
-              {/* Course + Price row */}
+              {/* Course Code + Course Title row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FieldWrapper
-                  id="qb-course"
-                  label="Course"
+                  id="qb-code"
+                  label="Course Code"
                   error={
-                    saveAttempted && !details.course_id
-                      ? "Select a course."
+                    saveAttempted && !details.course_code.trim()
+                      ? "Course code is required."
                       : undefined
                   }
                 >
+                  <input
+                    id="qb-code"
+                    type="text"
+                    placeholder="e.g. CSC 122"
+                    value={details.course_code}
+                    onChange={(e) => {
+                      const code = e.target.value;
+                      // Auto-suggest department from code prefix
+                      const prefix = code.trim().split(/\s+/)[0]?.toUpperCase();
+                      const suggestedDept =
+                        COURSE_PREFIX_DEPARTMENT[prefix] ?? "";
+                      // Auto-suggest level from code number
+                      const suggestedLevel = suggestLevelFromCode(code);
+                      setDetails((d) => ({
+                        ...d,
+                        course_code: code,
+                        department:
+                          d.department === "" || suggestedDept
+                            ? suggestedDept
+                            : d.department,
+                        level:
+                          d.level === "" && suggestedLevel
+                            ? String(suggestedLevel)
+                            : d.level,
+                      }));
+                    }}
+                    className="w-full h-11 px-4 rounded-xl bg-cream border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-sm font-heading text-text placeholder:text-muted transition-all uppercase"
+                  />
+                </FieldWrapper>
+
+                <FieldWrapper
+                  id="qb-course-title"
+                  label="Course Title (optional)"
+                >
+                  <input
+                    id="qb-course-title"
+                    type="text"
+                    placeholder="e.g. Introduction to Programming"
+                    value={details.course_title}
+                    onChange={(e) =>
+                      setDetails((d) => ({
+                        ...d,
+                        course_title: e.target.value,
+                      }))
+                    }
+                    className="w-full h-11 px-4 rounded-xl bg-cream border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-sm font-heading text-text placeholder:text-muted transition-all"
+                  />
+                </FieldWrapper>
+              </div>
+
+              {/* Department + Level + Price row */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <FieldWrapper
+                  id="qb-dept"
+                  label="Department"
+                  hint="Auto-filled from code prefix — edit if needed."
+                >
+                  <input
+                    id="qb-dept"
+                    type="text"
+                    placeholder="e.g. Computer Science"
+                    value={details.department}
+                    onChange={(e) =>
+                      setDetails((d) => ({ ...d, department: e.target.value }))
+                    }
+                    className="w-full h-11 px-4 rounded-xl bg-cream border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-sm font-heading text-text placeholder:text-muted transition-all"
+                  />
+                </FieldWrapper>
+
+                <FieldWrapper
+                  id="qb-level"
+                  label="Level"
+                  hint="Auto-suggested from code — override if needed."
+                >
                   <div className="relative">
                     <select
-                      id="qb-course"
-                      value={details.course_id}
+                      id="qb-level"
+                      value={details.level}
                       onChange={(e) =>
-                        setDetails((d) => ({ ...d, course_id: e.target.value }))
+                        setDetails((d) => ({ ...d, level: e.target.value }))
                       }
                       className="w-full h-11 px-4 pr-10 rounded-xl bg-cream border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-sm font-heading text-text appearance-none cursor-pointer transition-all"
                     >
-                      <option value="">Select a course…</option>
-                      {allCourses.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
+                      <option value="">Select level…</option>
+                      <option value="100">100L</option>
+                      <option value="200">200L</option>
+                      <option value="300">300L</option>
+                      <option value="400">400L</option>
                     </select>
                     <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                   </div>
@@ -524,8 +637,8 @@ export function QuizBuilderPage() {
                   </span>{" "}
                   Time limits are calculated automatically based on question
                   count and course type when a learner starts the quiz —
-                  computational subjects (Maths, Physics, etc.) get per-question
-                  timing; others get overall limits.
+                  computational courses (e.g. Maths, Physics, Statistics) get
+                  per-question timing; others get an overall time limit.
                 </p>
               </div>
             </div>
@@ -683,8 +796,8 @@ export function QuizBuilderPage() {
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
                 {!details.title.trim()
                   ? "Title is required."
-                  : !details.course_id
-                    ? "Select a course."
+                  : !details.course_code.trim()
+                    ? "Course code is required."
                     : !priceValid
                       ? `Price must be ₦${PRICE_MIN}–₦${PRICE_MAX}.`
                       : "Add at least one question."}
@@ -721,7 +834,7 @@ export function QuizBuilderPage() {
       {/* ── AI Import modal ───────────────────────────────────────────────── */}
       {aiModalOpen && (
         <AIImportModal
-          courseHint={selectedCourse?.name}
+          courseHint={courseHint}
           onClose={() => setAiModalOpen(false)}
           onAppend={appendAIQuestions}
         />
@@ -1041,7 +1154,7 @@ function QuestionEditor({
 
 const AI_PROMPT_TEMPLATE = (
   course: string,
-) => `You are helping generate quiz questions for a PrepUniv quiz on the subject: ${course}.
+) => `You are helping generate quiz questions for a PrepUniv quiz on the university course: ${course}.
 
 Based on the notes or document I provide, generate between 5 and 15 questions as a JSON array.
 
@@ -1066,20 +1179,21 @@ Rules:
 - correct_answer for MCQ must EXACTLY match one of the strings in options.
 - correct_answer for fill_blank is a pipe-separated list of acceptable answers (e.g. "newton|Newton|N").
 - Include a mix of MCQ and fill_blank questions.
+- Questions should be relevant to the course code and topic — e.g. for CSC 122, focus on programming concepts.
 - Do not include any explanation, markdown, or wrapper text — return ONLY the raw JSON array.
 
 Example valid response:
 [
   {
     "type": "mcq",
-    "question_text": "What is 2 + 2?",
-    "options": ["2", "3", "4", "5"],
-    "correct_answer": "4"
+    "question_text": "What is the output of: print(2 ** 3)?",
+    "options": ["6", "8", "9", "12"],
+    "correct_answer": "8"
   },
   {
     "type": "fill_blank",
-    "question_text": "The capital of Nigeria is _____.",
-    "correct_answer": "Abuja"
+    "question_text": "In Python, a function is defined using the _____ keyword.",
+    "correct_answer": "def"
   }
 ]
 
@@ -1219,7 +1333,7 @@ function AIImportModal({
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [parsed, setParsed] = useState(false);
 
-  const promptText = AI_PROMPT_TEMPLATE(courseHint ?? "the selected subject");
+  const promptText = AI_PROMPT_TEMPLATE(courseHint ?? "the selected course");
 
   // Close on Escape
   useEffect(() => {

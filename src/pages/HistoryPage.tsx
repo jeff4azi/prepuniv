@@ -115,7 +115,7 @@ function AttemptRow({ attempt, quizTitle, course }: AttemptRowProps) {
         <div className="flex flex-wrap items-center gap-2">
           {course && (
             <Badge variant="secondary" size="sm">
-              {course.name}
+              {course.code}
             </Badge>
           )}
           {attempt.is_timed ? (
@@ -351,7 +351,7 @@ export function HistoryPage() {
                 {attemptedCourses.map((c) => (
                   <Chip
                     key={c.id}
-                    label={c.name}
+                    label={c.code}
                     active={courseFilter === c.id}
                     onClick={() =>
                       setCourseFilter((prev) => (prev === c.id ? "all" : c.id))

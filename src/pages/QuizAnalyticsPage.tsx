@@ -237,7 +237,7 @@ export function QuizAnalyticsPage() {
                 </Badge>
                 {course && (
                   <Badge variant="muted" size="sm">
-                    {course.name}
+                    {course.code}
                   </Badge>
                 )}
                 <Badge

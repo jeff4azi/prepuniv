@@ -48,10 +48,9 @@ export function formatDate(iso: string) {
   });
 }
 
-export function shortCourseName(name: string) {
-  if (name.startsWith("JAMB UTME - ")) return name.slice("JAMB UTME - ".length);
-  if (name.startsWith("WAEC - ")) return name.slice("WAEC - ".length);
-  return name;
+/** Returns a short display label for a course — the code if available, otherwise a fallback. */
+export function shortCourseName(code: string, fallback?: string) {
+  return code || fallback || "Quiz";
 }
 
 const VARIANT_BG: Record<QuizCardVariant, string> = {
@@ -194,10 +193,17 @@ export function QuizCard({
       <div className="relative px-5 pt-5 pb-4 flex flex-col gap-4 flex-1">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <Badge variant="secondary" size="sm" className="mb-2">
-              <Target className="w-3 h-3" />
-              {course ? shortCourseName(course.name) : "Quiz"}
-            </Badge>
+            <div className="flex items-center gap-1.5 flex-wrap mb-2">
+              <Badge variant="secondary" size="sm">
+                <Target className="w-3 h-3" />
+                {course ? course.code : "Quiz"}
+              </Badge>
+              {course && (
+                <span className="text-[10px] font-heading font-medium text-muted">
+                  {course.department}
+                </span>
+              )}
+            </div>
             <h3 className="font-heading font-semibold text-text text-[15px] leading-snug line-clamp-2">
               {quiz.title}
             </h3>

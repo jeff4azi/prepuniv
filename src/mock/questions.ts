@@ -1,7 +1,7 @@
 import type { Question } from "./types";
 
 export const questions: Question[] = [
-  // ── quiz_001: JAMB Use of English ──────────────────────────────────────────
+  // ── quiz_001: CSC 122 — Loops, Arrays & Functions Bootcamp ───────────────
   {
     id: "q001_01",
     quiz_id: "quiz_001",
@@ -78,7 +78,7 @@ export const questions: Question[] = [
     correct_answer: "The book was read by John.",
   },
 
-  // ── quiz_002: JAMB Mathematics ────────────────────────────────────────────
+  // ── quiz_002: CSC 122 — Algorithms & Problem Solving Pack ────────────────
   {
     id: "q002_01",
     quiz_id: "quiz_002",
@@ -143,7 +143,7 @@ export const questions: Question[] = [
     correct_answer: "11",
   },
 
-  // ── quiz_003: JAMB Physics — Mechanics ───────────────────────────────────
+  // ── quiz_003: CSC 122 — Quick-Fire Syntax Drills ─────────────────────────
   {
     id: "q003_01",
     quiz_id: "quiz_003",
@@ -222,7 +222,7 @@ export const questions: Question[] = [
     correct_answer: "Equal to the horizontal component",
   },
 
-  // ── quiz_004: JAMB Chemistry — Organic ───────────────────────────────────
+  // ── quiz_004: GST 121 — Comprehension & Summary Skills ───────────────────
   {
     id: "q004_01",
     quiz_id: "quiz_004",
@@ -290,7 +290,7 @@ export const questions: Question[] = [
     correct_answer: "-COOH",
   },
 
-  // ── quiz_005: Microeconomics ──────────────────────────────────────────────
+  // ── quiz_005: GST 121 — Lexis, Structure & Grammar Bootcamp ─────────────
   {
     id: "q005_01",
     quiz_id: "quiz_005",
@@ -379,7 +379,7 @@ export const questions: Question[] = [
     correct_answer: "Price takers",
   },
 
-  // ── quiz_006: Introductory Statistics ────────────────────────────────────
+  // ── quiz_006: MTH 201 — Calculus: Limits & Derivatives ──────────────────
   {
     id: "q006_01",
     quiz_id: "quiz_006",
@@ -452,7 +452,7 @@ export const questions: Question[] = [
     correct_answer: "P(B)",
   },
 
-  // ── quiz_007: West African History ───────────────────────────────────────
+  // ── quiz_007: MTH 201 — Integration & Series ─────────────────────────────
   {
     id: "q007_01",
     quiz_id: "quiz_007",
@@ -529,7 +529,7 @@ export const questions: Question[] = [
     correct_answer: "1975",
   },
 
-  // ── quiz_008: Cell Biology ────────────────────────────────────────────────
+  // ── quiz_008: ECO 101 — Microeconomics: Supply & Demand ──────────────────
   {
     id: "q008_01",
     quiz_id: "quiz_008",
@@ -608,7 +608,7 @@ export const questions: Question[] = [
     correct_answer: "sap",
   },
 
-  // ── quiz_009: Calculus ────────────────────────────────────────────────────
+  // ── quiz_009: ECO 101 — Macroeconomics: GDP, Inflation & Fiscal Policy ───
   {
     id: "q009_01",
     quiz_id: "quiz_009",
@@ -677,7 +677,7 @@ export const questions: Question[] = [
     correct_answer: "g'(x)",
   },
 
-  // ── quiz_010: Electricity & Magnetism ────────────────────────────────────
+  // ── quiz_010: EDU 221 — Learning Theories & Motivation ───────────────────
   {
     id: "q010_01",
     quiz_id: "quiz_010",
@@ -752,7 +752,7 @@ export const questions: Question[] = [
     correct_answer: "rectifier",
   },
 
-  // ── quiz_011: Macroeconomics ──────────────────────────────────────────────
+  // ── quiz_011: ECO 301 — Development Economics ────────────────────────────
   {
     id: "q011_01",
     quiz_id: "quiz_011",
@@ -844,7 +844,7 @@ export const questions: Question[] = [
     correct_answer: "unemployment",
   },
 
-  // ── quiz_012: English Comprehension ──────────────────────────────────────
+  // ── quiz_012: STA 121 — Probability & Data Interpretation ────────────────
   {
     id: "q012_01",
     quiz_id: "quiz_012",
@@ -924,7 +924,7 @@ export const questions: Question[] = [
     correct_answer: "onomatopoeia",
   },
 
-  // ── quiz_013: Descriptive Statistics ─────────────────────────────────────
+  // ── quiz_013: STA 121 — Descriptive Stats: Mean, Median & Mode ──────────
   {
     id: "q013_01",
     quiz_id: "quiz_013",
@@ -1000,7 +1000,7 @@ export const questions: Question[] = [
     correct_answer: "box|box-and-whisker",
   },
 
-  // ── quiz_014: Nigerian History ────────────────────────────────────────────
+  // ── quiz_014: BIO 101 — Cell Structure & Function ────────────────────────
   {
     id: "q014_01",
     quiz_id: "quiz_014",
@@ -1081,7 +1081,7 @@ export const questions: Question[] = [
   },
 
   // ── quiz_015–024: remaining quizzes ──────────────────────────────────────
-  // quiz_015: Genetics & Evolution
+  // quiz_015: BIO 101 — Ecology & Biodiversity
   {
     id: "q015_01",
     quiz_id: "quiz_015",
@@ -1159,7 +1159,7 @@ export const questions: Question[] = [
     correct_answer: "meiosis",
   },
 
-  // quiz_016: Inorganic Chemistry
+  // quiz_016: BIO 211 — Genetics & Mendelian Inheritance
   {
     id: "q016_01",
     quiz_id: "quiz_016",
@@ -1241,7 +1241,7 @@ export const questions: Question[] = [
     correct_answer: "reduction",
   },
 
-  // quiz_017: Algebra & Number Theory
+  // quiz_017: HIS 101 — Pre-Colonial Kingdoms to Independence
   {
     id: "q017_01",
     quiz_id: "quiz_017",
@@ -1304,7 +1304,7 @@ export const questions: Question[] = [
     correct_answer: "4",
   },
 
-  // quiz_018: Waves & Optics
+  // quiz_018: HIS 201 — Civil War, Democracy & Nation-Building
   {
     id: "q018_01",
     quiz_id: "quiz_018",
@@ -1381,7 +1381,7 @@ export const questions: Question[] = [
     correct_answer: "wavelength",
   },
 
-  // quiz_019: Development Economics
+  // quiz_019: PHY 101 — Mechanics: Forces, Motion & Energy
   {
     id: "q019_01",
     quiz_id: "quiz_019",
@@ -1458,7 +1458,7 @@ export const questions: Question[] = [
     correct_answer: "foreign|overseas|international",
   },
 
-  // quiz_020: Inferential Statistics
+  // quiz_020: PHY 101 — Waves, Optics & Modern Physics
   {
     id: "q020_01",
     quiz_id: "quiz_020",
@@ -1552,7 +1552,7 @@ export const questions: Question[] = [
     correct_answer: "independence|association",
   },
 
-  // quiz_021: Lexis & Structure
+  // quiz_021: PHY 201 — Circuits, Fields & Electromagnetic Induction
   {
     id: "q021_01",
     quiz_id: "quiz_021",
@@ -1636,7 +1636,7 @@ export const questions: Question[] = [
     correct_answer: "adverb",
   },
 
-  // quiz_022: World History
+  // quiz_022: CHM 101 — Periodic Table & Chemical Bonding
   {
     id: "q022_01",
     quiz_id: "quiz_022",
@@ -1712,7 +1712,7 @@ export const questions: Question[] = [
     correct_answer: "nationalism",
   },
 
-  // quiz_023: Ecology & Environment
+  // quiz_023: CHM 211 — Organic Chemistry: Reactions & Nomenclature
   {
     id: "q023_01",
     quiz_id: "quiz_023",
@@ -1794,7 +1794,7 @@ export const questions: Question[] = [
     correct_answer: "decomposition",
   },
 
-  // quiz_024: Physical Chemistry — Thermodynamics
+  // quiz_024: CHM 211 — Thermodynamics & Equilibrium
   {
     id: "q024_01",
     quiz_id: "quiz_024",

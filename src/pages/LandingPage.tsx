@@ -17,15 +17,15 @@ import {
   ListChecks,
   BookMarked,
   Share2,
-} from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { LandingTopNav } from '../components/LandingTopNav';
-import { Button } from '../components/Button';
-import { Card } from '../components/Card';
-import { Badge } from '../components/Badge';
-import { quizzes, courses, profiles } from '../mock';
-import { Reveal } from '../hooks/useReveal';
-import { Avatar } from '../components/Avatar';
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import { LandingTopNav } from "../components/LandingTopNav";
+import { Button } from "../components/Button";
+import { Card } from "../components/Card";
+import { Badge } from "../components/Badge";
+import { quizzes, courses, profiles } from "../mock";
+import { Reveal } from "../hooks/useReveal";
+import { Avatar } from "../components/Avatar";
 
 // ---------- HERO ----------
 function Hero() {
@@ -37,7 +37,7 @@ function Hero() {
             <div>
               <Badge variant="primary" className="mb-5" size="md">
                 <Sparkles className="w-3 h-3" />
-                JAMB · WAEC · Post-UTME · more
+                Course quizzes · Verified creators · Instant results
               </Badge>
               <h1 className="font-heading font-bold tracking-tight text-text leading-[1.05] text-4xl sm:text-5xl lg:text-[56px]">
                 Practice like the real exam.
@@ -45,16 +45,19 @@ function Hero() {
                 <span className="text-primary">Pay small, learn fast.</span>
               </h1>
               <p className="mt-5 sm:mt-6 text-base sm:text-lg text-text-soft max-w-xl leading-relaxed">
-                PrepUniv is Nigeria's marketplace for course-specific CBT practice
-                quizzes made by real teachers and top students. Pay a tiny
-                per-quiz fee (₦50 – ₦500), see your score instantly, and
+                PrepUniv is Nigeria's marketplace for course-specific CBT
+                practice quizzes made by real lecturers and top students. Pay a
+                tiny per-quiz fee (₦50 – ₦500), see your score instantly, and
                 retake forever.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3 sm:gap-4">
                 <Link to="/signup">
-                  <Button size="lg" rightIcon={<ArrowRight className="w-[18px] h-[18px]" />}>
-                  Get Started
-                </Button>
+                  <Button
+                    size="lg"
+                    rightIcon={<ArrowRight className="w-[18px] h-[18px]" />}
+                  >
+                    Get Started
+                  </Button>
                 </Link>
                 <Link to="/browse">
                   <Button size="lg" variant="outline">
@@ -73,7 +76,7 @@ function Hero() {
                   </div>
                   <div>
                     <div className="flex items-center gap-1 text-warning text-[13px]">
-                      {'★★★★★'}
+                      {"★★★★★"}
                     </div>
                     <p className="text-xs text-muted">Loved by 12k+ learners</p>
                   </div>
@@ -116,7 +119,7 @@ function HeroMock() {
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold font-heading tracking-wider uppercase text-muted mb-0.5">
-                  JAMB Use of English · 2024
+                  GST 121 · Use of English · 2026
                 </p>
                 <p className="font-heading font-semibold text-sm text-text truncate">
                   Full Mock — 100 questions
@@ -145,34 +148,59 @@ function HeroMock() {
               Choose the option that best completes the sentence:
               <br />
               <span className="text-text-soft font-normal">
-                &ldquo;The committee _____ reached_____ final report last Friday.&rdquo;
+                &ldquo;The committee _____ reached_____ final report last
+                Friday.&rdquo;
               </span>
             </h4>
 
             <ol className="space-y-2.5">
               {[
-                { k: 'A', t: 'have submitted their', correct: false, selected: false },
-                { k: 'B', t: 'has submitted its', correct: true, selected: true },
-                { k: 'C', t: 'have submitted its', correct: false, selected: false },
-                { k: 'D', t: 'has submitted their', correct: false, selected: false },
+                {
+                  k: "A",
+                  t: "have submitted their",
+                  correct: false,
+                  selected: false,
+                },
+                {
+                  k: "B",
+                  t: "has submitted its",
+                  correct: true,
+                  selected: true,
+                },
+                {
+                  k: "C",
+                  t: "have submitted its",
+                  correct: false,
+                  selected: false,
+                },
+                {
+                  k: "D",
+                  t: "has submitted their",
+                  correct: false,
+                  selected: false,
+                },
               ].map(function mapOpt(opt) {
                 const selected = !!opt.selected;
-                const rowBase = 'group flex items-start gap-3 rounded-2xl border px-4 py-3 transition-all cursor-pointer';
+                const rowBase =
+                  "group flex items-start gap-3 rounded-2xl border px-4 py-3 transition-all cursor-pointer";
                 const rowTone = selected
-                  ? 'bg-primary/10 border-primary/30 shadow-soft'
-                  : 'bg-cream border-border/60 hover:border-border hover:bg-surface/40';
-                const rowClass = rowBase + ' ' + rowTone;
-                const letterBase = 'mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-lg font-heading font-bold text-[13px] shrink-0';
-                const letterTone = selected ? 'bg-primary text-cream' : 'bg-surface text-secondary';
-                const letterClass = letterBase + ' ' + letterTone;
+                  ? "bg-primary/10 border-primary/30 shadow-soft"
+                  : "bg-cream border-border/60 hover:border-border hover:bg-surface/40";
+                const rowClass = rowBase + " " + rowTone;
+                const letterBase =
+                  "mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-lg font-heading font-bold text-[13px] shrink-0";
+                const letterTone = selected
+                  ? "bg-primary text-cream"
+                  : "bg-surface text-secondary";
+                const letterClass = letterBase + " " + letterTone;
                 return (
-                <div key={opt.k} className={rowClass}>
-                  <span className={letterClass}>{opt.k}</span>
-                  <span className="pt-0.5 text-sm text-text">{opt.t}</span>
-                  {selected && (
-                    <Check className="w-4 h-4 text-primary shrink-0 mt-1 ml-auto" />
-                  )}
-                </div>
+                  <div key={opt.k} className={rowClass}>
+                    <span className={letterClass}>{opt.k}</span>
+                    <span className="pt-0.5 text-sm text-text">{opt.t}</span>
+                    {selected && (
+                      <Check className="w-4 h-4 text-primary shrink-0 mt-1 ml-auto" />
+                    )}
+                  </div>
                 );
               })}
             </ol>
@@ -181,7 +209,10 @@ function HeroMock() {
               <div className="flex items-center gap-2">
                 <Avatar name="Dr. Amaka Okafor" size="xs" />
                 <span className="text-xs text-muted">
-                  by <span className="font-semibold text-text-soft">Dr. Amaka O.</span>
+                  by{" "}
+                  <span className="font-semibold text-text-soft">
+                    Dr. Amaka O.
+                  </span>
                 </span>
               </div>
               <Button size="sm" className="h-9 px-3">
@@ -224,21 +255,21 @@ function HeroMock() {
 const STEPS = [
   {
     icon: Search,
-    title: 'Find a quiz',
-    desc: 'Browse by exam body and subject, or open a shared link from a friend or creator. Filter by price, difficulty, or creator.',
-    tone: 'primary' as const,
+    title: "Find a quiz",
+    desc: "Browse by department and course code, or open a shared link from a friend or creator. Filter by price, level, or creator.",
+    tone: "primary" as const,
   },
   {
     icon: WalletIcon,
-    title: 'Pay a small fee',
-    desc: 'Top up your wallet once, then spend as little as ₦50 per quiz. No subscriptions, no auto-renewals — ever.',
-    tone: 'secondary' as const,
+    title: "Pay a small fee",
+    desc: "Top up your wallet once, then spend as little as ₦50 per quiz. No subscriptions, no auto-renewals — ever.",
+    tone: "secondary" as const,
   },
   {
     icon: Infinity,
-    title: 'Practice anytime',
-    desc: 'Once you pay for a quiz, it stays unlocked in your library forever. Retake it as many times as you want until you nail it.',
-    tone: 'success' as const,
+    title: "Practice anytime",
+    desc: "Once you pay for a quiz, it stays unlocked in your library forever. Retake it as many times as you want until you nail it.",
+    tone: "success" as const,
     highlight: true,
   },
 ];
@@ -252,11 +283,12 @@ function HowItWorks() {
             How it works
           </Badge>
           <h2 className="font-heading font-bold tracking-tight text-text text-3xl sm:text-4xl lg:text-5xl">
-            Three small steps. <span className="text-primary">Zero surprises.</span>
+            Three small steps.{" "}
+            <span className="text-primary">Zero surprises.</span>
           </h2>
           <p className="mt-4 text-base sm:text-lg text-text-soft">
-            Skip the heavy subscriptions and expired access codes. On PrepUniv, every
-            quiz you buy is yours — forever.
+            Skip the heavy subscriptions and expired access codes. On PrepUniv,
+            every quiz you buy is yours — forever.
           </p>
         </Reveal>
 
@@ -264,27 +296,40 @@ function HowItWorks() {
           {STEPS.map(function mapStep(s, i) {
             const Icon = s.icon;
             const toneClass =
-              s.tone === 'primary'
-                ? 'bg-primary/10 text-primary border-primary/20'
-                : s.tone === 'secondary'
-                  ? 'bg-secondary/10 text-secondary border-secondary/20'
-                  : 'bg-success-bg text-success border-success/20';
+              s.tone === "primary"
+                ? "bg-primary/10 text-primary border-primary/20"
+                : s.tone === "secondary"
+                  ? "bg-secondary/10 text-secondary border-secondary/20"
+                  : "bg-success-bg text-success border-success/20";
             const numBg =
-              s.tone === 'primary'
-                ? 'bg-primary text-cream'
-                : s.tone === 'secondary'
-                  ? 'bg-secondary text-cream'
-                  : 'bg-success text-cream';
-            const highlightClass = s.highlight ? 'ring-1 ring-primary/20 shadow-elevated' : '';
-            const cardClass = 'relative h-full p-7 sm:p-8 ' + highlightClass;
+              s.tone === "primary"
+                ? "bg-primary text-cream"
+                : s.tone === "secondary"
+                  ? "bg-secondary text-cream"
+                  : "bg-success text-cream";
+            const highlightClass = s.highlight
+              ? "ring-1 ring-primary/20 shadow-elevated"
+              : "";
+            const cardClass = "relative h-full p-7 sm:p-8 " + highlightClass;
             return (
               <Reveal key={s.title} delay={i * 120}>
                 <Card hover padded={false} className={cardClass}>
                   <div className="flex items-start justify-between mb-6">
-                    <div className={'h-14 w-14 rounded-2xl border ' + toneClass + ' flex items-center justify-center shadow-soft'}>
-                    <Icon className="w-7 h-7" strokeWidth={2} />
-                  </div>
-                  <span className={'inline-flex h-9 w-9 items-center justify-center rounded-xl font-heading font-bold text-sm shadow-soft ' + numBg}>
+                    <div
+                      className={
+                        "h-14 w-14 rounded-2xl border " +
+                        toneClass +
+                        " flex items-center justify-center shadow-soft"
+                      }
+                    >
+                      <Icon className="w-7 h-7" strokeWidth={2} />
+                    </div>
+                    <span
+                      className={
+                        "inline-flex h-9 w-9 items-center justify-center rounded-xl font-heading font-bold text-sm shadow-soft " +
+                        numBg
+                      }
+                    >
                       0{i + 1}
                     </span>
                   </div>
@@ -329,7 +374,8 @@ function FeaturedQuizzes() {
               Featured quizzes
             </h2>
             <p className="mt-3 text-base sm:text-lg text-text-soft max-w-xl">
-              Handpicked quizzes from verified PrepUniv's top creators across the most-taken topics.
+              Handpicked quizzes from verified PrepUniv's top creators across
+              the most-taken topics.
             </p>
           </Reveal>
           <Reveal delay={100}>
@@ -389,7 +435,7 @@ function QuizCard({
         <div className="p-5 sm:p-6 flex-1 flex flex-col">
           <div className="flex items-start justify-between gap-3 mb-4">
             <Badge variant="secondary" size="sm">
-              {course?.name.split(' - ')[0] ?? 'Quiz'}
+              {course?.code ?? "Quiz"}
             </Badge>
             <Badge variant="primary" size="sm">
               <BadgePoundSterling className="w-3 h-3 -ml-0.5" />
@@ -404,7 +450,10 @@ function QuizCard({
           <ul className="mt-auto pt-5 space-y-2.5 text-sm text-text-soft">
             <li className="flex items-center gap-2.5">
               <FileText className="w-4 h-4 text-muted" />
-              <span className="font-medium text-text">{quiz.question_count}</span> questions
+              <span className="font-medium text-text">
+                {quiz.question_count}
+              </span>{" "}
+              questions
             </li>
             <li className="flex items-center gap-2.5">
               <Users className="w-4 h-4 text-muted" />
@@ -412,7 +461,7 @@ function QuizCard({
                 <>
                   <Avatar name={creator.full_name} size="xs" />
                   <span className="font-medium text-text truncate">
-                    {creator.full_name.split(' ').slice(0, 2).join(' ')}
+                    {creator.full_name.split(" ").slice(0, 2).join(" ")}
                   </span>
                 </>
               ) : (
@@ -454,20 +503,20 @@ function ForCreators() {
               For creators
             </Badge>
             <h2 className="font-heading font-bold tracking-tight text-text text-3xl sm:text-4xl lg:text-5xl leading-[1.1]">
-              Turn your notes &amp; past questions into{' '}
+              Turn your notes &amp; past questions into{" "}
               <span className="text-secondary">passive income.</span>
             </h2>
             <p className="mt-5 text-base sm:text-lg text-text-soft leading-relaxed max-w-lg">
-              Whether you're a lecturer, a teacher, or a top student who's already
-              cracked the exam, PrepUniv gives you the tools to publish your quiz in
-              minutes — and get paid every time someone buys it.
+              Whether you're a lecturer, a teacher, or a top student who's
+              already cracked the exam, PrepUniv gives you the tools to publish
+              your quiz in minutes — and get paid every time someone buys it.
             </p>
             <ul className="mt-7 space-y-3.5">
               {[
-                '65% revenue share on every quiz sale',
-                'Simple, 2-step application. Most get approved in 48 hours',
-                'Built-in analytics: see attempts, scores, and top-performing questions',
-                'Monthly payouts direct to your Nigerian bank account',
+                "65% revenue share on every quiz sale",
+                "Simple, 2-step application. Most get approved in 48 hours",
+                "Built-in analytics: see attempts, scores, and top-performing questions",
+                "Monthly payouts direct to your Nigerian bank account",
               ].map((t) => (
                 <li key={t} className="flex items-start gap-3">
                   <span className="mt-0.5 h-6 w-6 rounded-lg bg-secondary/15 text-secondary shrink-0 flex items-center justify-center">
@@ -479,7 +528,11 @@ function ForCreators() {
             </ul>
             <div className="mt-8 flex flex-wrap gap-3 sm:gap-4">
               <Link to="/apply-creator">
-                <Button size="lg" variant="secondary" rightIcon={<ArrowRight className="w-[18px] h-[18px]" />}>
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  rightIcon={<ArrowRight className="w-[18px] h-[18px]" />}
+                >
                   Apply to become a creator
                 </Button>
               </Link>
@@ -496,44 +549,48 @@ function ForCreators() {
               {[
                 {
                   icon: ListChecks,
-                  k: '2,400+',
-                  t: 'Quizzes published',
-                  s: 'Across JAMB, WAEC, Post-UTME',
-                  v: 'primary' as const,
+                  k: "2,400+",
+                  t: "Quizzes published",
+                  s: "Across all departments and course levels",
+                  v: "primary" as const,
                 },
                 {
                   icon: Users,
-                  k: '750+',
-                  t: 'Verified creators',
-                  s: 'Teachers, lecturers, top students',
-                  v: 'secondary' as const,
+                  k: "750+",
+                  t: "Verified creators",
+                  s: "Teachers, lecturers, top students",
+                  v: "secondary" as const,
                 },
                 {
                   icon: BadgePoundSterling,
-                  k: '₦48M+',
-                  t: 'Paid to creators',
-                  s: 'Monthly payouts since launch',
-                  v: 'success' as const,
+                  k: "₦48M+",
+                  t: "Paid to creators",
+                  s: "Monthly payouts since launch",
+                  v: "success" as const,
                 },
                 {
                   icon: Award,
-                  k: '4.9/5',
-                  t: 'Creator satisfaction',
-                  s: 'Based on 400+ reviews',
-                  v: 'warning' as const,
+                  k: "4.9/5",
+                  t: "Creator satisfaction",
+                  s: "Based on 400+ reviews",
+                  v: "warning" as const,
                 },
               ].map(function mapMetric(m, i) {
                 const Icon = m.icon;
                 const variant =
-                  m.v === 'primary'
-                    ? 'bg-primary/10 text-primary border-primary/20'
-                    : m.v === 'secondary'
-                      ? 'bg-secondary/10 text-secondary border-secondary/20'
-                      : m.v === 'success'
-                        ? 'bg-success-bg text-success border-success/20'
-                        : 'bg-warning-bg text-warning border-warning/20';
-                const cardClass = 'p-6 h-full ' + (i % 2 ? 'sm:translate-y-6' : '');
-                const iconWrapClass = 'h-11 w-11 rounded-xl border ' + variant + ' flex items-center justify-center mb-5';
+                  m.v === "primary"
+                    ? "bg-primary/10 text-primary border-primary/20"
+                    : m.v === "secondary"
+                      ? "bg-secondary/10 text-secondary border-secondary/20"
+                      : m.v === "success"
+                        ? "bg-success-bg text-success border-success/20"
+                        : "bg-warning-bg text-warning border-warning/20";
+                const cardClass =
+                  "p-6 h-full " + (i % 2 ? "sm:translate-y-6" : "");
+                const iconWrapClass =
+                  "h-11 w-11 rounded-xl border " +
+                  variant +
+                  " flex items-center justify-center mb-5";
                 return (
                   <Card key={m.t} padded={false} className={cardClass}>
                     <div className={iconWrapClass}>
@@ -561,27 +618,27 @@ function ForCreators() {
 const TRUST = [
   {
     icon: ShieldCheck,
-    title: 'Verified creators',
-    desc: 'Every creator is reviewed by our team before quizzes go live.',
-    tint: 'primary' as const,
+    title: "Verified creators",
+    desc: "Every creator is reviewed by our team before quizzes go live.",
+    tint: "primary" as const,
   },
   {
     icon: Zap,
-    title: 'Instant results & review',
-    desc: 'See your score immediately with full answer review the moment you finish.',
-    tint: 'secondary' as const,
+    title: "Instant results & review",
+    desc: "See your score immediately with full answer review the moment you finish.",
+    tint: "secondary" as const,
   },
   {
     icon: BadgePoundSterling,
-    title: 'Small, fair pricing',
-    desc: '₦50 – ₦500 per quiz. No subscriptions. No hidden fees.',
-    tint: 'success' as const,
+    title: "Small, fair pricing",
+    desc: "₦50 – ₦500 per quiz. No subscriptions. No hidden fees.",
+    tint: "success" as const,
   },
   {
     icon: Lock,
-    title: 'Secure payments',
-    desc: 'Payments and payouts handled by Flutterwave — trusted across Africa.',
-    tint: 'warning' as const,
+    title: "Secure payments",
+    desc: "Payments and payouts handled by Flutterwave — trusted across Africa.",
+    tint: "warning" as const,
   },
 ];
 
@@ -597,8 +654,8 @@ function Trust() {
             A platform you can <span className="text-primary">trust.</span>
           </h2>
           <p className="mt-4 text-base sm:text-lg text-text-soft">
-            Built in Nigeria, for Nigerian students and teachers — with the little
-            details that actually matter.
+            Built in Nigeria, for Nigerian students and teachers — with the
+            little details that actually matter.
           </p>
         </Reveal>
 
@@ -606,14 +663,17 @@ function Trust() {
           {TRUST.map(function mapTrust(t, i) {
             const Icon = t.icon;
             const tint =
-              t.tint === 'primary'
-                ? 'bg-primary/10 text-primary border-primary/20'
-                : t.tint === 'secondary'
-                  ? 'bg-secondary/10 text-secondary border-secondary/20'
-                  : t.tint === 'success'
-                    ? 'bg-success-bg text-success border-success/20'
-                    : 'bg-warning-bg text-warning border-warning/20';
-            const iconWrapClass = 'h-12 w-12 rounded-2xl border ' + tint + ' flex items-center justify-center mb-5 shadow-soft';
+              t.tint === "primary"
+                ? "bg-primary/10 text-primary border-primary/20"
+                : t.tint === "secondary"
+                  ? "bg-secondary/10 text-secondary border-secondary/20"
+                  : t.tint === "success"
+                    ? "bg-success-bg text-success border-success/20"
+                    : "bg-warning-bg text-warning border-warning/20";
+            const iconWrapClass =
+              "h-12 w-12 rounded-2xl border " +
+              tint +
+              " flex items-center justify-center mb-5 shadow-soft";
             return (
               <Reveal key={t.title} delay={i * 90}>
                 <Card padded={false} className="p-6 h-full">
@@ -623,7 +683,9 @@ function Trust() {
                   <h3 className="font-heading font-bold text-lg text-text tracking-tight mb-2">
                     {t.title}
                   </h3>
-                  <p className="text-sm leading-relaxed text-text-soft">{t.desc}</p>
+                  <p className="text-sm leading-relaxed text-text-soft">
+                    {t.desc}
+                  </p>
                 </Card>
               </Reveal>
             );
@@ -645,7 +707,11 @@ function FinalCTA() {
             <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-cream/10 blur-3xl" />
             <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-secondary/30 blur-3xl" />
             <div className="relative px-6 sm:px-10 lg:px-14 py-14 sm:py-18 lg:py-20 text-center">
-              <Badge variant="success" size="md" className="mb-6 !bg-cream/15 !text-cream !border-cream/30">
+              <Badge
+                variant="success"
+                size="md"
+                className="mb-6 !bg-cream/15 !text-cream !border-cream/30"
+              >
                 <Sparkles className="w-3 h-3" />
                 Start in 60 seconds
               </Badge>
@@ -653,18 +719,25 @@ function FinalCTA() {
                 Your next top score is one quiz away.
               </h2>
               <p className="mt-5 text-base sm:text-lg text-cream/80 max-w-xl mx-auto leading-relaxed">
-                Join 12,000+ Nigerian students using PrepUniv to walk into their exam
-                halls calm, prepared, and confident.
+                Join 12,000+ Nigerian students using PrepUniv to walk into their
+                course exams calm, prepared, and confident.
               </p>
               <div className="mt-9 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
                 <Link to="/signup">
-                  <Button size="lg" className="!bg-cream !text-primary hover:!bg-cream/90 !shadow-elevated">
+                  <Button
+                    size="lg"
+                    className="!bg-cream !text-primary hover:!bg-cream/90 !shadow-elevated"
+                  >
                     Create free account
                     <ArrowRight className="w-[18px] h-[18px]" />
                   </Button>
                 </Link>
                 <Link to="/browse">
-                  <Button size="lg" variant="ghost" className="!text-cream !border !border-cream/30 hover:!bg-cream/10">
+                  <Button
+                    size="lg"
+                    variant="ghost"
+                    className="!text-cream !border !border-cream/30 hover:!bg-cream/10"
+                  >
                     <BookOpen className="w-[18px] h-[18px]" />
                     Browse quizzes
                   </Button>
@@ -682,27 +755,27 @@ function FinalCTA() {
 function Footer() {
   const cols = [
     {
-      title: 'Product',
+      title: "Product",
       links: [
-        { t: 'Browse quizzes', to: '/browse' },
-        { t: 'Become a creator', to: '/apply-creator' },
-        { t: 'Pricing', to: '/browse' },
+        { t: "Browse quizzes", to: "/browse" },
+        { t: "Become a creator", to: "/apply-creator" },
+        { t: "Pricing", to: "/browse" },
       ],
     },
     {
-      title: 'Company',
+      title: "Company",
       links: [
-        { t: 'About', to: '#' },
-        { t: 'Contact', to: '#' },
-        { t: 'Press & blog', to: '#' },
+        { t: "About", to: "#" },
+        { t: "Contact", to: "#" },
+        { t: "Press & blog", to: "#" },
       ],
     },
     {
-      title: 'Legal',
+      title: "Legal",
       links: [
-        { t: 'Terms of service', to: '#' },
-        { t: 'Privacy policy', to: '#' },
-        { t: 'Creator agreement', to: '#' },
+        { t: "Terms of service", to: "#" },
+        { t: "Privacy policy", to: "#" },
+        { t: "Creator agreement", to: "#" },
       ],
     },
   ];
@@ -714,7 +787,7 @@ function Footer() {
           <div className="lg:col-span-5">
             <Link to="/" className="inline-flex items-center gap-2.5 mb-4">
               <img
-                src={new URL('../assets/prepUniv.png', import.meta.url).href}
+                src={new URL("../assets/prepUniv.png", import.meta.url).href}
                 alt="PrepUniv"
                 className="h-9 w-9 rounded-xl object-contain"
               />
@@ -723,21 +796,42 @@ function Footer() {
               </span>
             </Link>
             <p className="text-sm sm:text-[15px] text-text-soft max-w-sm leading-relaxed">
-              Practice quizzes made by Nigeria's best teachers and students. Pay small,
-              keep forever. The smarter way to prep for JAMB, WAEC, Post-UTME,
-              and every exam that matters.
+              Practice quizzes made by Nigeria's best lecturers and students.
+              Pay small, keep forever. The smarter way to ace your course exams.
             </p>
             <div className="mt-6 flex items-center gap-3">
-              <a href="#" className="h-10 w-10 rounded-xl bg-cream border border-border/60 text-secondary flex items-center justify-center hover:bg-surface transition-colors" aria-label="Share">
+              <a
+                href="#"
+                className="h-10 w-10 rounded-xl bg-cream border border-border/60 text-secondary flex items-center justify-center hover:bg-surface transition-colors"
+                aria-label="Share"
+              >
                 <Share2 className="w-[18px] h-[18px]" />
               </a>
-              <a href="#" className="h-10 w-10 rounded-xl bg-cream border border-border/60 text-secondary flex items-center justify-center hover:bg-surface transition-colors" aria-label="X / Twitter">
-                <svg viewBox="0 0 24 24" fill="currentColor" className="w-[17px] h-[17px]">
+              <a
+                href="#"
+                className="h-10 w-10 rounded-xl bg-cream border border-border/60 text-secondary flex items-center justify-center hover:bg-surface transition-colors"
+                aria-label="X / Twitter"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="w-[17px] h-[17px]"
+                >
                   <path d="M18.244 2H21.5l-7.51 8.58L22.75 22h-6.96l-4.55-5.96L5.77 22H2.51l8.04-9.18L1.5 2h7.16l4.1 5.43 5.48-5.43Zm-1.153 18h1.965L7.02 3.92H4.92l12.17 16.08Z" />
                 </svg>
               </a>
-              <a href="#" className="h-10 w-10 rounded-xl bg-cream border border-border/60 text-secondary flex items-center justify-center hover:bg-surface transition-colors" aria-label="Instagram">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-[18px] h-[18px]">
+              <a
+                href="#"
+                className="h-10 w-10 rounded-xl bg-cream border border-border/60 text-secondary flex items-center justify-center hover:bg-surface transition-colors"
+                aria-label="Instagram"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="w-[18px] h-[18px]"
+                >
                   <rect x="3" y="3" width="18" height="18" rx="5" />
                   <circle cx="12" cy="12" r="4" />
                   <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
@@ -755,17 +849,23 @@ function Footer() {
                 <ul className="space-y-3">
                   {col.links.map((l) => (
                     <li key={l.t}>
-                      {l.to === '#' ? (
-                      <a href="#" className="text-sm text-text-soft hover:text-primary transition-colors inline-flex items-center gap-1 group">
-                        {l.t}
-                        <ArrowRight className="w-3 h-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                      </a>
-                    ) : (
-                      <Link to={l.to} className="text-sm text-text-soft hover:text-primary transition-colors inline-flex items-center gap-1 group">
-                        {l.t}
-                        <ArrowRight className="w-3 h-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                      </Link>
-                    )}
+                      {l.to === "#" ? (
+                        <a
+                          href="#"
+                          className="text-sm text-text-soft hover:text-primary transition-colors inline-flex items-center gap-1 group"
+                        >
+                          {l.t}
+                          <ArrowRight className="w-3 h-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                        </a>
+                      ) : (
+                        <Link
+                          to={l.to}
+                          className="text-sm text-text-soft hover:text-primary transition-colors inline-flex items-center gap-1 group"
+                        >
+                          {l.t}
+                          <ArrowRight className="w-3 h-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                        </Link>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -776,8 +876,8 @@ function Footer() {
 
         <div className="pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <p className="text-xs text-muted">
-            © {new Date().getFullYear()} PrepUniv Technologies. All rights reserved.
-            Made with care in Nigeria.
+            © {new Date().getFullYear()} PrepUniv Technologies. All rights
+            reserved. Made with care in Nigeria.
           </p>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted">
             <span className="inline-flex items-center gap-1.5">

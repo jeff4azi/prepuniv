@@ -15,7 +15,15 @@ export interface Profile {
 
 export interface Course {
   id: string;
-  name: string;
+  /** Course code, e.g. "CSC 122" */
+  code: string;
+  /** Full course title, e.g. "Introduction to Programming" */
+  title: string;
+  /** Department name, e.g. "Computer Science" */
+  department: string;
+  /** Academic level: 100 | 200 | 300 | 400 */
+  level: 100 | 200 | 300 | 400;
+  /** Whether the course requires per-question timing (computational) */
   is_computational: boolean;
 }
 
