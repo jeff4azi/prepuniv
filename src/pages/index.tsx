@@ -30,6 +30,7 @@ import { LibraryPage as RealLibraryPage } from "./LibraryPage";
 import { CreatorDashboardPage as RealCreatorDashboardPage } from "./CreatorDashboardPage";
 import { CreatorQuizzesPage as RealCreatorQuizzesPage } from "./CreatorQuizzesPage";
 import { QuizBuilderPage as RealQuizBuilderPage } from "./QuizBuilderPage";
+import { QuizAnalyticsPage as RealQuizAnalyticsPage } from "./QuizAnalyticsPage";
 
 // suppress "unused" linter warnings for icons still used by placeholder pages
 void (ClockIcon, SettingsIcon, WalletIcon);
@@ -185,6 +186,10 @@ export function CreatorQuizzesNewPage() {
 
 export function CreatorQuizEditPage() {
   return <RealQuizBuilderPage />;
+}
+
+export function CreatorQuizAnalyticsPage() {
+  return <RealQuizAnalyticsPage />;
 }
 
 export function CreatorPayoutsPage() {

@@ -419,3 +419,249 @@ export const attemptResults: AttemptResultRecord[] = [
     ],
   },
 ];
+
+// ── quiz_001 additional attempt results (for analytics per-question data) ────
+// q001_03 (Garrulous) and q001_06 (Ephemeral) are the hard questions —
+// most learners get them wrong, so they'll surface as "Needs review".
+const q1AnswerSets: Array<[string, string, boolean][]> = [
+  // attempt_q1_a — score 38 (3/8)
+  [
+    ["q001_01", "was", true],
+    ["q001_02", "Simile", false],
+    ["q001_03", "Silent", false],
+    ["q001_04", "descriptions", true],
+    ["q001_05", "He ate the food.", false],
+    ["q001_06", "Lasting", false],
+    ["q001_07", "curricula", true],
+    ["q001_08", "The cat chased the mouse.", false],
+  ],
+  // attempt_q1_b — score 55 (4/8 → mapped from 55%)
+  [
+    ["q001_01", "was", true],
+    ["q001_02", "Metaphor", true],
+    ["q001_03", "Silent", false],
+    ["q001_04", "description", true],
+    ["q001_05", "They were going to the market.", true],
+    ["q001_06", "Lasting", false],
+    ["q001_07", "curricula", true],
+    ["q001_08", "She wrote the letter.", false],
+  ],
+  // attempt_q1_c — score 75 (6/8)
+  [
+    ["q001_01", "was", true],
+    ["q001_02", "Metaphor", true],
+    ["q001_03", "Talkative", true],
+    ["q001_04", "description", true],
+    ["q001_05", "They were going to the market.", true],
+    ["q001_06", "Short-lived", true],
+    ["q001_07", "curriculums", true],
+    ["q001_08", "He ate the food.", false],
+  ],
+  // attempt_q1_d — score 88 (7/8)
+  [
+    ["q001_01", "was", true],
+    ["q001_02", "Metaphor", true],
+    ["q001_03", "Talkative", true],
+    ["q001_04", "description", true],
+    ["q001_05", "They were going to the market.", true],
+    ["q001_06", "Short-lived", true],
+    ["q001_07", "curricula", true],
+    ["q001_08", "He ate the food.", false],
+  ],
+  // attempt_q1_e — score 25 (2/8)
+  [
+    ["q001_01", "were", false],
+    ["q001_02", "Simile", false],
+    ["q001_03", "Silent", false],
+    ["q001_04", "description", true],
+    ["q001_05", "He don't know the answer.", false],
+    ["q001_06", "Lasting", false],
+    ["q001_07", "curricula", true],
+    ["q001_08", "She wrote the letter.", false],
+  ],
+  // attempt_q1_f — score 63 (5/8)
+  [
+    ["q001_01", "was", true],
+    ["q001_02", "Metaphor", true],
+    ["q001_03", "Silent", false],
+    ["q001_04", "descriptions", true],
+    ["q001_05", "They were going to the market.", true],
+    ["q001_06", "Short-lived", true],
+    ["q001_07", "curricula", true],
+    ["q001_08", "She wrote the letter.", false],
+  ],
+  // attempt_q1_g — score 50 (4/8)
+  [
+    ["q001_01", "was", true],
+    ["q001_02", "Simile", false],
+    ["q001_03", "Silent", false],
+    ["q001_04", "description", true],
+    ["q001_05", "They were going to the market.", true],
+    ["q001_06", "Lasting", false],
+    ["q001_07", "curricula", true],
+    ["q001_08", "He ate the food.", false],
+  ],
+  // attempt_q1_h — score 100 (8/8)
+  [
+    ["q001_01", "was", true],
+    ["q001_02", "Metaphor", true],
+    ["q001_03", "Talkative", true],
+    ["q001_04", "description", true],
+    ["q001_05", "They were going to the market.", true],
+    ["q001_06", "Short-lived", true],
+    ["q001_07", "curricula", true],
+    ["q001_08", "The book was read by John.", true],
+  ],
+  // attempt_q1_i — score 75 (6/8)
+  [
+    ["q001_01", "was", true],
+    ["q001_02", "Metaphor", true],
+    ["q001_03", "Talkative", true],
+    ["q001_04", "description", true],
+    ["q001_05", "They were going to the market.", true],
+    ["q001_06", "Lasting", false],
+    ["q001_07", "curricula", true],
+    ["q001_08", "She wrote the letter.", false],
+  ],
+  // attempt_q1_j — score 63 (5/8)
+  [
+    ["q001_01", "was", true],
+    ["q001_02", "Metaphor", true],
+    ["q001_03", "Silent", false],
+    ["q001_04", "description", true],
+    ["q001_05", "They were going to the market.", true],
+    ["q001_06", "Short-lived", true],
+    ["q001_07", "curricula", true],
+    ["q001_08", "She wrote the letter.", false],
+  ],
+  // attempt_q1_k — score 88 (7/8)
+  [
+    ["q001_01", "was", true],
+    ["q001_02", "Metaphor", true],
+    ["q001_03", "Talkative", true],
+    ["q001_04", "description", true],
+    ["q001_05", "They were going to the market.", true],
+    ["q001_06", "Short-lived", true],
+    ["q001_07", "curriculums", true],
+    ["q001_08", "She wrote the letter.", false],
+  ],
+  // attempt_q1_l — score 38 (3/8)
+  [
+    ["q001_01", "were", false],
+    ["q001_02", "Simile", false],
+    ["q001_03", "Silent", false],
+    ["q001_04", "descriptions", true],
+    ["q001_05", "They were going to the market.", true],
+    ["q001_06", "Lasting", false],
+    ["q001_07", "curricula", true],
+    ["q001_08", "He ate the food.", false],
+  ],
+  // attempt_q1_m — score 50 (4/8)
+  [
+    ["q001_01", "was", true],
+    ["q001_02", "Simile", false],
+    ["q001_03", "Silent", false],
+    ["q001_04", "description", true],
+    ["q001_05", "They were going to the market.", true],
+    ["q001_06", "Lasting", false],
+    ["q001_07", "curricula", true],
+    ["q001_08", "She wrote the letter.", false],
+  ],
+  // attempt_q1_n — score 75 (6/8)
+  [
+    ["q001_01", "was", true],
+    ["q001_02", "Metaphor", true],
+    ["q001_03", "Talkative", true],
+    ["q001_04", "description", true],
+    ["q001_05", "They were going to the market.", true],
+    ["q001_06", "Short-lived", true],
+    ["q001_07", "curriculums", true],
+    ["q001_08", "He ate the food.", false],
+  ],
+  // attempt_q1_o — score 88 (7/8)
+  [
+    ["q001_01", "was", true],
+    ["q001_02", "Metaphor", true],
+    ["q001_03", "Talkative", true],
+    ["q001_04", "description", true],
+    ["q001_05", "They were going to the market.", true],
+    ["q001_06", "Short-lived", true],
+    ["q001_07", "curricula", true],
+    ["q001_08", "He ate the food.", false],
+  ],
+];
+
+const extraAttemptIds = [
+  "attempt_q1_a",
+  "attempt_q1_b",
+  "attempt_q1_c",
+  "attempt_q1_d",
+  "attempt_q1_e",
+  "attempt_q1_f",
+  "attempt_q1_g",
+  "attempt_q1_h",
+  "attempt_q1_i",
+  "attempt_q1_j",
+  "attempt_q1_k",
+  "attempt_q1_l",
+  "attempt_q1_m",
+  "attempt_q1_n",
+  "attempt_q1_o",
+];
+const extraUserIds = [
+  "user_002",
+  "user_003",
+  "user_004",
+  "user_005",
+  "user_006",
+  "user_007",
+  "user_008",
+  "user_009",
+  "user_010",
+  "user_002",
+  "user_011",
+  "user_012",
+  "user_013",
+  "user_014",
+  "user_015",
+];
+const extraDates = [
+  "2026-07-01",
+  "2026-07-02",
+  "2026-07-04",
+  "2026-07-06",
+  "2026-07-07",
+  "2026-07-09",
+  "2026-07-11",
+  "2026-07-13",
+  "2026-07-17",
+  "2026-07-19",
+  "2026-07-21",
+  "2026-07-22",
+  "2026-07-24",
+  "2026-07-26",
+  "2026-07-28",
+];
+const extraScores = [
+  38, 55, 75, 88, 25, 63, 50, 100, 75, 63, 88, 38, 50, 75, 88,
+];
+
+extraAttemptIds.forEach((id, i) => {
+  attemptResults.push({
+    attempt_id: id,
+    user_id: extraUserIds[i],
+    quiz_id: "quiz_001",
+    quiz_title: "JAMB Use of English — Full Mock 2024",
+    is_timed: i % 2 === 0,
+    score: extraScores[i],
+    total: 8,
+    started_at: `${extraDates[i]}T09:00:00Z`,
+    completed_at: `${extraDates[i]}T10:30:00Z`,
+    answers: q1AnswerSets[i].map(([question_id, given, is_correct]) => ({
+      question_id,
+      given,
+      correct: "—",
+      is_correct,
+    })),
+  });
+});
