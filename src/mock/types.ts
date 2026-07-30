@@ -135,3 +135,41 @@ export interface CreatorApplication {
   notes?: string;
   submitted_at: string;
 }
+
+// ─── Payout requests ──────────────────────────────────────────────────────────
+
+export type PayoutRequestStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "paid"
+  | "failed";
+
+export interface PayoutRequest {
+  id: string;
+  creator_id: string;
+  amount: number; // kobo — always the full balance at time of request
+  status: PayoutRequestStatus;
+  requested_at: string; // ISO
+  processed_at?: string; // ISO — set when status moves to paid/rejected/failed
+  notes?: string; // rejection reason, failure info, etc.
+  bank_account_number: string;
+  bank_code: string;
+}
+
+// ─── Creator reports (reports made against a creator's quizzes) ───────────────
+
+export type CreatorReportStatus = "open" | "resolved" | "dismissed";
+
+export interface CreatorReport {
+  id: string;
+  reporter_id: string; // the user who filed the report
+  quiz_id: string;
+  quiz_title: string;
+  reason: ReportReason;
+  other_text?: string;
+  details?: string;
+  status: CreatorReportStatus;
+  created_at: string;
+  resolved_at?: string;
+}

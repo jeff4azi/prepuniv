@@ -31,6 +31,8 @@ import { CreatorDashboardPage as RealCreatorDashboardPage } from "./CreatorDashb
 import { CreatorQuizzesPage as RealCreatorQuizzesPage } from "./CreatorQuizzesPage";
 import { QuizBuilderPage as RealQuizBuilderPage } from "./QuizBuilderPage";
 import { QuizAnalyticsPage as RealQuizAnalyticsPage } from "./QuizAnalyticsPage";
+import { CreatorPayoutsPage as RealCreatorPayoutsPage } from "./CreatorPayoutsPage";
+import { CreatorReportsPage as RealCreatorReportsPage } from "./CreatorReportsPage";
 
 // suppress "unused" linter warnings for icons still used by placeholder pages
 void (ClockIcon, SettingsIcon, WalletIcon);
@@ -193,27 +195,11 @@ export function CreatorQuizAnalyticsPage() {
 }
 
 export function CreatorPayoutsPage() {
-  return (
-    <PlaceholderPage
-      title="Creator Payouts"
-      subtitle="Withdraw earnings and view payout history"
-      icon={CreditCard}
-      tag="Creator section"
-      tagVariant="secondary"
-    />
-  );
+  return <RealCreatorPayoutsPage />;
 }
 
 export function CreatorReportsPage() {
-  return (
-    <PlaceholderPage
-      title="Creator Reports"
-      subtitle="Detailed analytics & insights"
-      icon={BarChart3}
-      tag="Creator section"
-      tagVariant="secondary"
-    />
-  );
+  return <RealCreatorReportsPage />;
 }
 
 // Admin pages

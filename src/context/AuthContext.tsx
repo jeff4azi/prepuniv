@@ -1,4 +1,12 @@
-import { createContext, useContext, useState, useMemo, useCallback, useEffect, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  type ReactNode,
+} from "react";
 import {
   profiles,
   purchasedQuizIdsByUser,
@@ -6,13 +14,13 @@ import {
   type Profile,
   type UserRole,
   type WalletTransaction,
-} from '../mock';
+} from "../mock";
 
 interface SessionUser extends Profile {}
 
 function computeWalletBalance(userId: string, extraTxns: WalletTransaction[]) {
   const fromTxns = [...baseWalletTransactions, ...extraTxns]
-    .filter((t) => t.user_id === userId && t.status === 'success')
+    .filter((t) => t.user_id === userId && t.status === "success")
     .reduce((sum, t) => sum + t.amount, 0);
   return fromTxns;
 }
@@ -39,26 +47,34 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const ROLE_TO_PROFILE_ID: Record<UserRole, string> = {
-  user: 'user_001',
-  creator: 'creator_001',
-  admin: 'admin_001',
+  user: "user_001",
+  creator: "creator_001",
+  admin: "admin_001",
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [currentRole, setCurrentRoleState] = useState<UserRole>('user');
+  const [currentRole, setCurrentRoleState] = useState<UserRole>("user");
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [extraProfiles, setExtraProfiles] = useState<Profile[]>([]);
-  const [extraTransactions, setExtraTransactions] = useState<WalletTransaction[]>([]);
+  const [extraTransactions, setExtraTransactions] = useState<
+    WalletTransaction[]
+  >([]);
   const [sessionPurchasedIds, setSessionPurchasedIds] = useState<string[]>([]);
 
-  const allProfiles = useMemo(() => [...extraProfiles, ...profiles], [extraProfiles]);
+  const allProfiles = useMemo(
+    () => [...extraProfiles, ...profiles],
+    [extraProfiles],
+  );
 
   const currentUser = useMemo(() => {
     if (sessionUserId) {
       const match = allProfiles.find((p) => p.id === sessionUserId);
       if (match) return match;
     }
-    return allProfiles.find((p) => p.id === ROLE_TO_PROFILE_ID[currentRole]) ?? profiles[0];
+    return (
+      allProfiles.find((p) => p.id === ROLE_TO_PROFILE_ID[currentRole]) ??
+      profiles[0]
+    );
   }, [sessionUserId, currentRole, allProfiles]);
 
   useEffect(() => {
@@ -92,13 +108,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (balance < price) return false;
 
       const txn: WalletTransaction = {
-        id: 'txn_new_' + Math.random().toString(36).slice(2, 9),
+        id: "txn_new_" + Math.random().toString(36).slice(2, 9),
         user_id: currentUser.id,
         amount: -price,
-        type: 'purchase',
-        reference: 'QUIZ-PAY-' + quizId.replace('quiz_', '').toUpperCase(),
+        type: "purchase",
+        reference: "QUIZ-PAY-" + quizId.replace("quiz_", "").toUpperCase(),
         related_quiz_id: quizId,
-        status: 'success',
+        status: "success",
         created_at: new Date().toISOString(),
       };
       setExtraTransactions((prev) => [txn, ...prev]);
@@ -127,12 +143,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = useCallback((data: { full_name: string; email: string }) => {
-    const id = 'user_new_' + Math.random().toString(36).slice(2, 9);
+    const id = "user_new_" + Math.random().toString(36).slice(2, 9);
     const newProfile: Profile = {
       id,
       full_name: data.full_name,
       email: data.email,
-      role: 'user',
+      role: "user",
       is_approved_creator: false,
     };
     setExtraProfiles((prev) => [...prev, newProfile]);
@@ -169,7 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return ctx;
 }
