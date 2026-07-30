@@ -29,6 +29,7 @@ import { SettingsPage as RealSettingsPage } from "./SettingsPage";
 import { LibraryPage as RealLibraryPage } from "./LibraryPage";
 import { CreatorDashboardPage as RealCreatorDashboardPage } from "./CreatorDashboardPage";
 import { CreatorQuizzesPage as RealCreatorQuizzesPage } from "./CreatorQuizzesPage";
+import { QuizBuilderPage as RealQuizBuilderPage } from "./QuizBuilderPage";
 
 // suppress "unused" linter warnings for icons still used by placeholder pages
 void (ClockIcon, SettingsIcon, WalletIcon);
@@ -179,15 +180,11 @@ export function CreatorQuizzesPage() {
 }
 
 export function CreatorQuizzesNewPage() {
-  return (
-    <PlaceholderPage
-      title="Create New Quiz"
-      subtitle="Build a new quiz to publish on PrepUniv"
-      icon={Plus}
-      tag="Creator section"
-      tagVariant="secondary"
-    />
-  );
+  return <RealQuizBuilderPage />;
+}
+
+export function CreatorQuizEditPage() {
+  return <RealQuizBuilderPage />;
 }
 
 export function CreatorPayoutsPage() {

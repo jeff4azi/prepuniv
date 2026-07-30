@@ -1875,3 +1875,27 @@ export const questions: Question[] = [
     correct_answer: "route|path|pathway",
   },
 ];
+
+// ─── Mock mutation helpers ────────────────────────────────────────────────────
+
+/** Replace all questions for a given quiz_id (used on edit save). */
+export function replaceQuestionsForQuiz(
+  quizId: string,
+  newQs: Question[],
+): void {
+  // Remove existing
+  const toRemove = new Set(
+    questions.filter((q) => q.quiz_id === quizId).map((q) => q.id),
+  );
+  toRemove.forEach((id) => {
+    const idx = questions.findIndex((q) => q.id === id);
+    if (idx !== -1) questions.splice(idx, 1);
+  });
+  // Append new
+  questions.push(...newQs);
+}
+
+/** Append questions for a new quiz. */
+export function appendQuestionsForQuiz(newQs: Question[]): void {
+  questions.push(...newQs);
+}

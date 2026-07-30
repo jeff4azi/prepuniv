@@ -4,8 +4,12 @@ export {
   walletBalancesByUser,
 } from "./profiles";
 export { courses } from "./courses";
-export { quizzes } from "./quizzes";
-export { questions } from "./questions";
+export { quizzes, addQuiz, updateQuiz } from "./quizzes";
+export {
+  questions,
+  replaceQuestionsForQuiz,
+  appendQuestionsForQuiz,
+} from "./questions";
 export { walletTransactions } from "./walletTransactions";
 export { quizAttempts } from "./quizAttempts";
 export { attemptResults } from "./attemptResults";

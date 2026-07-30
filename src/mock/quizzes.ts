@@ -352,3 +352,14 @@ export const quizzes: Quiz[] = quizSeeds.map((q) => ({
     QUIZ_DESCRIPTIONS[q.id] ??
     `A ${q.question_count}-question practice quiz designed to help you prepare with confidence.`,
 }));
+
+// ─── Mock mutation helpers ────────────────────────────────────────────────────
+
+export function addQuiz(quiz: Quiz): void {
+  quizzes.push(quiz);
+}
+
+export function updateQuiz(updated: Quiz): void {
+  const idx = quizzes.findIndex((q) => q.id === updated.id);
+  if (idx !== -1) quizzes[idx] = updated;
+}
