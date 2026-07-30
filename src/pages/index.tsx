@@ -243,8 +243,8 @@ export function AdminReportsPage() {
   return (
     <PlaceholderPage
       title="Admin Reports"
-      subtitle="Full platform analytics & reports"
-      icon={BarChart3}
+      subtitle="Content moderation & issue reports from the full platform"
+      icon={FileText}
       tag="Admin section"
       tagVariant="warning"
     />

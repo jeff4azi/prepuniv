@@ -214,7 +214,7 @@ function MobileMenuBody({ onClose }: { onClose: () => void }) {
             />
             <NavItem
               to="/creator/reports"
-              icon={BarChart3}
+              icon={FileText}
               label="Reports"
               onClose={onClose}
             />
@@ -262,7 +262,7 @@ function MobileMenuBody({ onClose }: { onClose: () => void }) {
             />
             <NavItem
               to="/admin/reports"
-              icon={BarChart3}
+              icon={FileText}
               label="Reports"
               onClose={onClose}
             />

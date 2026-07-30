@@ -66,7 +66,7 @@ const CREATOR_NAV: NavItem[] = [
   {
     to: "/creator/reports",
     label: "Reports",
-    icon: BarChart3,
+    icon: FileText,
     roles: ["creator", "admin"],
   },
 ];
@@ -90,7 +90,7 @@ const ADMIN_NAV: NavItem[] = [
     icon: CreditCard,
     roles: ["admin"],
   },
-  { to: "/admin/reports", label: "Reports", icon: BarChart3, roles: ["admin"] },
+  { to: "/admin/reports", label: "Reports", icon: FileText, roles: ["admin"] },
   { to: "/admin/users", label: "Users", icon: Users, roles: ["admin"] },
   { to: "/admin/courses", label: "Courses", icon: BookOpen, roles: ["admin"] },
   {
