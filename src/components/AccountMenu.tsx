@@ -63,17 +63,20 @@ function NavItem({
   label,
   iconClass = "",
   onClose,
+  end,
 }: {
   to: string;
   icon: React.ElementType;
   label: string;
   iconClass?: string;
   onClose: () => void;
+  end?: boolean;
 }) {
   return (
     <NavLink
       to={to}
       onClick={onClose}
+      end={end}
       className={({ isActive }) => (isActive ? activeCls : linkCls)}
     >
       <Icon className={`w-4.5 h-4.5 shrink-0 ${iconClass}`} strokeWidth={2.1} />
@@ -199,24 +202,28 @@ function MobileMenuBody({ onClose }: { onClose: () => void }) {
               label="Creator Dashboard"
               iconClass="text-secondary"
               onClose={onClose}
+              end
             />
             <NavItem
               to="/creator/quizzes"
               icon={FileText}
               label="My Quizzes"
               onClose={onClose}
+              end
             />
             <NavItem
               to="/creator/payouts"
               icon={CreditCard}
               label="Payouts"
               onClose={onClose}
+              end
             />
             <NavItem
               to="/creator/reports"
               icon={FileText}
               label="Reports"
               onClose={onClose}
+              end
             />
           </>
         )}
@@ -247,42 +254,49 @@ function MobileMenuBody({ onClose }: { onClose: () => void }) {
               label="Admin Dashboard"
               iconClass="text-warning"
               onClose={onClose}
+              end
             />
             <NavItem
               to="/admin/applications"
               icon={ListChecks}
               label="Applications"
               onClose={onClose}
+              end
             />
             <NavItem
               to="/admin/payouts"
               icon={CreditCard}
               label="Payouts"
               onClose={onClose}
+              end
             />
             <NavItem
               to="/admin/reports"
               icon={FileText}
               label="Reports"
               onClose={onClose}
+              end
             />
             <NavItem
               to="/admin/users"
               icon={Users}
               label="Users"
               onClose={onClose}
+              end
             />
             <NavItem
               to="/admin/courses"
               icon={BookOpen}
               label="Courses"
               onClose={onClose}
+              end
             />
             <NavItem
               to="/admin/quizzes"
               icon={ScrollText}
               label="Quizzes"
               onClose={onClose}
+              end
             />
           </>
         )}
