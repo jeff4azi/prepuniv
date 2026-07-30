@@ -19,8 +19,8 @@ export interface Course {
   code: string;
   /** Full course title, e.g. "Introduction to Programming" */
   title: string;
-  /** Department name, e.g. "Computer Science" */
-  department: string;
+  /** Subject Area name, e.g. "Computer Science" */
+  subject_area: string;
   /** Academic level: 100 | 200 | 300 | 400 */
   level: 100 | 200 | 300 | 400;
   /** Whether the course requires per-question timing (computational) */

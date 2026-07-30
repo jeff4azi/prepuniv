@@ -254,7 +254,7 @@ export function QuizDetailPage() {
                         {course.code}
                       </Badge>
                       <span className="text-xs text-muted font-heading">
-                        {course.department}
+                        {course.subject_area}
                       </span>
                     </div>
                   )}

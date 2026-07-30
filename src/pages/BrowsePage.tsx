@@ -83,14 +83,14 @@ export function BrowsePage() {
     [],
   );
 
-  /** Unique departments derived from the courses in use */
-  const departments = useMemo(() => {
+  /** Unique subject areas derived from the courses in use */
+  const subjectAreas = useMemo(() => {
     const usedCourseIds = new Set(publishedQuizzes.map((q) => q.course_id));
-    const depts = new Set<string>();
+    const areas = new Set<string>();
     allCourses.forEach((c) => {
-      if (usedCourseIds.has(c.id)) depts.add(c.department);
+      if (usedCourseIds.has(c.id)) areas.add(c.subject_area);
     });
-    return Array.from(depts).sort();
+    return Array.from(areas).sort();
   }, [publishedQuizzes]);
 
   /** Popular course codes: top codes by quiz count */
@@ -116,7 +116,7 @@ export function BrowsePage() {
     if (deptFilter !== "all") {
       list = list.filter((q) => {
         const course = coursesById.get(q.course_id);
-        return course?.department === deptFilter;
+        return course?.subject_area === deptFilter;
       });
     }
 
@@ -267,7 +267,7 @@ export function BrowsePage() {
               </div>
             )}
 
-            {/* Department chips */}
+            {/* Subject Area chips */}
             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-0.5 -mx-1 px-1">
               <FilterChip
                 active={deptFilter === "all"}
@@ -275,13 +275,13 @@ export function BrowsePage() {
               >
                 All Courses
               </FilterChip>
-              {departments.map((dept) => (
+              {subjectAreas.map((area) => (
                 <FilterChip
-                  key={dept}
-                  active={deptFilter === dept}
-                  onClick={() => setDeptFilter(dept)}
+                  key={area}
+                  active={deptFilter === area}
+                  onClick={() => setDeptFilter(area)}
                 >
-                  {dept}
+                  {area}
                 </FilterChip>
               ))}
             </div>

@@ -256,7 +256,7 @@ const STEPS = [
   {
     icon: Search,
     title: "Find a quiz",
-    desc: "Browse by department and course code, or open a shared link from a friend or creator. Filter by price, level, or creator.",
+    desc: "Browse by subject area and course code, or open a shared link from a friend or creator. Filter by price, level, or creator.",
     tone: "primary" as const,
   },
   {
@@ -551,7 +551,7 @@ function ForCreators() {
                   icon: ListChecks,
                   k: "2,400+",
                   t: "Quizzes published",
-                  s: "Across all departments and course levels",
+                  s: "Across all subject areas and course levels",
                   v: "primary" as const,
                 },
                 {

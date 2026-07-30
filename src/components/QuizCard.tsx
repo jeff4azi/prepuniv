@@ -200,7 +200,7 @@ export function QuizCard({
               </Badge>
               {course && (
                 <span className="text-[10px] font-heading font-medium text-muted">
-                  {course.department}
+                  {course.subject_area}
                 </span>
               )}
             </div>

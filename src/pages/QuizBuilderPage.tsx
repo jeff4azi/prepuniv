@@ -50,7 +50,7 @@ import {
   type QuestionType,
 } from "../mock";
 import {
-  COURSE_PREFIX_DEPARTMENT,
+  COURSE_PREFIX_SUBJECT_AREA,
   suggestLevelFromCode,
 } from "../mock/courses";
 
@@ -72,7 +72,7 @@ interface QuizDetails {
   title: string;
   course_code: string; // e.g. "CSC 122"
   course_title: string; // e.g. "Introduction to Programming" (optional)
-  department: string; // e.g. "Computer Science"
+  subject_area: string; // e.g. "Computer Science"
   level: string; // "100" | "200" | "300" | "400" | ""
   price_naira: string; // raw input, validated on save
   description: string;
@@ -125,7 +125,7 @@ export function QuizBuilderPage() {
       title: existingQuiz?.title ?? "",
       course_code: existingCourse?.code ?? "",
       course_title: existingCourse?.title ?? "",
-      department: existingCourse?.department ?? "",
+      subject_area: existingCourse?.subject_area ?? "",
       level: existingCourse ? String(existingCourse.level) : "",
       price_naira: existingQuiz ? String(koboToNaira(existingQuiz.price)) : "",
       description: existingQuiz?.description ?? "",
@@ -340,7 +340,7 @@ export function QuizBuilderPage() {
         id: "course_" + Math.random().toString(36).slice(2, 9),
         code: details.course_code.trim(),
         title: details.course_title.trim() || details.course_code.trim(),
-        department: details.department.trim() || "General Studies",
+        subject_area: details.subject_area.trim() || "General Studies",
         level: levelNum,
         is_computational: false,
       };
@@ -479,19 +479,19 @@ export function QuizBuilderPage() {
                     value={details.course_code}
                     onChange={(e) => {
                       const code = e.target.value;
-                      // Auto-suggest department from code prefix
+                      // Auto-suggest subject area from code prefix
                       const prefix = code.trim().split(/\s+/)[0]?.toUpperCase();
-                      const suggestedDept =
-                        COURSE_PREFIX_DEPARTMENT[prefix] ?? "";
+                      const suggestedArea =
+                        COURSE_PREFIX_SUBJECT_AREA[prefix] ?? "";
                       // Auto-suggest level from code number
                       const suggestedLevel = suggestLevelFromCode(code);
                       setDetails((d) => ({
                         ...d,
                         course_code: code,
-                        department:
-                          d.department === "" || suggestedDept
-                            ? suggestedDept
-                            : d.department,
+                        subject_area:
+                          d.subject_area === "" || suggestedArea
+                            ? suggestedArea
+                            : d.subject_area,
                         level:
                           d.level === "" && suggestedLevel
                             ? String(suggestedLevel)
@@ -522,20 +522,20 @@ export function QuizBuilderPage() {
                 </FieldWrapper>
               </div>
 
-              {/* Department + Level + Price row */}
+              {/* Subject Area + Level + Price row */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <FieldWrapper
-                  id="qb-dept"
-                  label="Department"
+                  id="qb-subject-area"
+                  label="Subject Area"
                   hint="Auto-filled from code prefix — edit if needed."
                 >
                   <input
-                    id="qb-dept"
+                    id="qb-subject-area"
                     type="text"
                     placeholder="e.g. Computer Science"
-                    value={details.department}
+                    value={details.subject_area}
                     onChange={(e) =>
-                      setDetails((d) => ({ ...d, department: e.target.value }))
+                      setDetails((d) => ({ ...d, subject_area: e.target.value }))
                     }
                     className="w-full h-11 px-4 rounded-xl bg-cream border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-sm font-heading text-text placeholder:text-muted transition-all"
                   />

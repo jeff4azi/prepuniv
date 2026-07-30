@@ -218,7 +218,7 @@ export function CreatorReportsPage() {
                 key={report.id}
                 report={report}
                 quiz={quizzesById.get(report.quiz_id)}
-                courseName={
+                courseCode={
                   coursesById.get(
                     quizzesById.get(report.quiz_id)?.course_id ?? "",
                   )?.code
@@ -237,11 +237,11 @@ export function CreatorReportsPage() {
 function ReportRow({
   report,
   quiz,
-  courseName,
+  courseCode,
 }: {
   report: CreatorReport;
   quiz: ReturnType<typeof allQuizzes.find>;
-  courseName?: string;
+  courseCode?: string;
 }) {
   const cfg = STATUS_CONFIG[report.status];
   const StatusIcon = cfg.icon;
@@ -268,9 +268,9 @@ function ReportRow({
             <p className="font-heading font-semibold text-[14px] text-text leading-snug line-clamp-1">
               {report.quiz_title}
             </p>
-            {courseName && (
+            {courseCode && (
               <Badge variant="muted" size="sm">
-                {courseName}
+                {courseCode}
               </Badge>
             )}
           </div>
