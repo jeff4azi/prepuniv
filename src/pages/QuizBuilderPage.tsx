@@ -665,7 +665,7 @@ export function QuizBuilderPage() {
                   className="h-9 px-3 rounded-xl text-[12px] font-heading font-semibold border border-secondary/30 bg-secondary/8 text-secondary hover:bg-secondary/12 transition-colors flex items-center gap-1.5"
                 >
                   <Bot className="w-3.5 h-3.5" />
-                  AI Import
+                  Format with AI
                 </button>
                 <button
                   onClick={openAddEditor}
@@ -717,8 +717,8 @@ export function QuizBuilderPage() {
                   No questions yet
                 </p>
                 <p className="text-sm text-text-soft max-w-xs leading-relaxed mb-4">
-                  Add questions manually or use AI Import to generate them from
-                  your notes.
+                  Add questions manually, or paste them into any AI tool with our
+                  reformatting prompt to import them in one click.
                 </p>
                 <button
                   onClick={openAddEditor}
@@ -831,7 +831,7 @@ export function QuizBuilderPage() {
         </div>
       </div>
 
-      {/* ── AI Import modal ───────────────────────────────────────────────── */}
+      {/* ── AI Question Reformat modal ────────────────────────────────────── */}
       {aiModalOpen && (
         <AIImportModal
           courseHint={courseHint}
@@ -1150,15 +1150,28 @@ function QuestionEditor({
   );
 }
 
-// ─── AI Import Modal ──────────────────────────────────────────────────────────
+// ─── AI Question Reformat Modal ──────────────────────────────────────────────
 
 const AI_PROMPT_TEMPLATE = (
   course: string,
-) => `You are helping generate quiz questions for a PrepUniv quiz on the university course: ${course}.
+) => `You are a data formatter / extractor for PrepUniv — a quiz marketplace.
+Target course: ${course}
 
-Based on the notes or document I provide, generate between 5 and 15 questions as a JSON array.
+I have already written the questions myself (below) — I do NOT need you to create or invent any new questions.
+Your ONLY job is to RE-FORMAT my existing question list into the strict JSON schema shown below.
 
-Each question must follow EXACTLY one of these two shapes:
+Rules for extraction / formatting:
+1. PRESERVE EVERY QUESTION I PROVIDED — do not skip, merge, paraphrase, rewrite, or invent questions. If I gave 12 questions, output exactly 12 objects.
+2. Extract verbatim question text, options (for MCQ), and correct answer. Minor typo fixes are allowed ONLY if obvious.
+3. For each question, decide the type:
+   - "mcq" → if it has multiple-choice / lettered options (A/B/C/D, a./b./c./d., numbered options, bullet options, etc.)
+   - "fill_blank" → if it's a short-answer, word blank, complete-the-sentence, one-word, short-phrase answer question
+4. correct_answer for MCQ must be the EXACT option text (NOT just the letter/number), and it must be a string that appears in the options array. If the original only marked a letter like "B)", copy the FULL text of option B into both correct_answer and the options list.
+5. correct_answer for fill_blank is ALWAYS pipe-separated to include every reasonable acceptable variant (lowercase / Capitalized / UPPERCASE / abbreviations / plural forms / common lenient misspellings). Even if only one answer seems intended, list case variants so students aren't penalized for capitalization. Format: "answer|Answer|ANSWER|abbr"
+6. Use _____ (5 underscores) inside fill_blank question_text to show where the answer goes (if the original didn't mark a blank, rephrase tactfully to insert _____ at the natural slot — but keep wording identical otherwise).
+7. Output ONLY a raw JSON array. No explanations. No headings. No text before or after the array. No code fences. No markdown.
+
+EXACT schema per object:
 
 MCQ question:
 {
@@ -1171,18 +1184,11 @@ MCQ question:
 Fill-in-the-blank question:
 {
   "type": "fill_blank",
-  "question_text": "The question text — the blank is implied by context.",
-  "correct_answer": "answer1|answer2|answer3"
+  "question_text": "The unit of force is the _____ (named after a famous physicist).",
+  "correct_answer": "newton|Newton|N|newtons|Newtons"
 }
 
-Rules:
-- correct_answer for MCQ must EXACTLY match one of the strings in options.
-- correct_answer for fill_blank is a pipe-separated list of acceptable answers (e.g. "newton|Newton|N").
-- Include a mix of MCQ and fill_blank questions.
-- Questions should be relevant to the course code and topic — e.g. for CSC 122, focus on programming concepts.
-- Do not include any explanation, markdown, or wrapper text — return ONLY the raw JSON array.
-
-Example valid response:
+Example valid output (so you see the TARGET format only — DO NOT include these in my output):
 [
   {
     "type": "mcq",
@@ -1193,12 +1199,19 @@ Example valid response:
   {
     "type": "fill_blank",
     "question_text": "In Python, a function is defined using the _____ keyword.",
-    "correct_answer": "def"
+    "correct_answer": "def|Def|DEF"
+  },
+  {
+    "type": "fill_blank",
+    "question_text": "The _____ data structure stores key-value pairs in Python.",
+    "correct_answer": "dictionary|dict|Dictionary|Dict|DICT"
   }
 ]
 
-Now generate questions based on the following notes:
-[PASTE YOUR NOTES / DOCUMENT HERE]`;
+— END OF INSTRUCTIONS —
+
+Here are MY questions to be re-formatted (NOT generated). Process every question below exactly as written:
+[PASTE YOUR DOCUMENT / QUESTION LIST HERE]`;
 
 type AIStep = "prompt" | "paste";
 
@@ -1225,7 +1238,7 @@ function parseAIJson(raw: string): ParseResult {
     return {
       ok: false,
       errors: [
-        "Invalid JSON — make sure you pasted the full response from the AI tool.",
+        "Invalid JSON — make sure you pasted the full JSON output returned by the AI (not just your raw questions).",
       ],
     };
   }
@@ -1390,10 +1403,10 @@ function AIImportModal({
             </div>
             <div>
               <h2 className="font-heading font-bold text-base text-text leading-tight">
-                AI Question Import
+                AI Question Reformat
               </h2>
               <p className="text-[11px] text-muted mt-0.5">
-                Generate questions from your notes using any AI tool
+                Turn your written question list into PrepUniv JSON format
               </p>
             </div>
           </div>
@@ -1411,13 +1424,13 @@ function AIImportModal({
             onClick={() => setStep("prompt")}
             className={`h-8 px-3.5 rounded-xl text-[12px] font-heading font-semibold transition-all border ${step === "prompt" ? "bg-primary text-cream border-primary" : "bg-cream border-border/50 text-text-soft hover:text-text"}`}
           >
-            1 · Get AI prompt
+            1 · Copy prompt
           </button>
           <button
             onClick={() => setStep("paste")}
             className={`h-8 px-3.5 rounded-xl text-[12px] font-heading font-semibold transition-all border ${step === "paste" ? "bg-primary text-cream border-primary" : "bg-cream border-border/50 text-text-soft hover:text-text"}`}
           >
-            2 · Paste & import
+            2 · Paste JSON
           </button>
         </div>
 
@@ -1426,12 +1439,16 @@ function AIImportModal({
           {step === "prompt" ? (
             <>
               <p className="text-sm text-text-soft leading-relaxed">
-                Copy the prompt below, paste it into{" "}
+                Copy the reformatting prompt below, paste it into{" "}
                 <span className="font-semibold text-text">
                   ChatGPT, Claude, Gemini
                 </span>
-                , or any AI tool — along with your notes or study material. Then
-                come back and paste the JSON response in Step 2.
+                , or any AI tool — then also paste your{" "}
+                <span className="font-semibold text-text">
+                  existing question list
+                </span>{" "}
+                (typed notes, pasted textbook questions, etc.) at the very end.
+                The AI will return a JSON array — bring it back here into Step 2.
               </p>
 
               <div className="rounded-2xl bg-surface/60 border border-border/50 overflow-hidden">
@@ -1465,21 +1482,22 @@ function AIImportModal({
                 onClick={() => setStep("paste")}
                 className="w-full h-10 rounded-2xl bg-primary text-cream text-sm font-heading font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors"
               >
-                I've got the JSON — paste it now
+                AI returned JSON — paste it
                 <ChevronDown className="w-4 h-4 -rotate-90" />
               </button>
             </>
           ) : (
             <>
               <p className="text-sm text-text-soft leading-relaxed">
-                Paste the JSON array returned by the AI tool below, then click{" "}
+                The AI returned a JSON array containing your reformatted
+                questions. Paste it below, then click{" "}
                 <span className="font-semibold text-text">
                   Parse &amp; Preview
                 </span>{" "}
-                to validate it before importing.
+                to check everything before adding them to your quiz.
               </p>
 
-              <FieldWrapper id="ai-paste" label="Paste JSON response here">
+              <FieldWrapper id="ai-paste" label="Paste the AI's JSON output here">
                 <textarea
                   id="ai-paste"
                   rows={7}
@@ -1516,9 +1534,9 @@ function AIImportModal({
                         strokeWidth={2.2}
                       />
                       <p className="text-sm font-heading font-semibold text-success">
-                        {parseResult.questions.length} question
-                        {parseResult.questions.length !== 1 ? "s" : ""} ready to
-                        import
+                        {parseResult.questions.length} reformatted question
+                        {parseResult.questions.length !== 1 ? "s" : ""} ready
+                        to add
                       </p>
                     </div>
                     <ul className="divide-y divide-success/10 max-h-48 overflow-y-auto">
@@ -1586,7 +1604,7 @@ function AIImportModal({
               disabled={!parsed || !parseResult?.ok}
               className="h-10 px-5 rounded-2xl bg-primary text-cream text-sm font-heading font-semibold hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Add these questions
+              Add these to my quiz
             </button>
           )}
         </div>
