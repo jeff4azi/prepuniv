@@ -224,7 +224,12 @@ export function Sidebar() {
               {creatorNav.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <NavLink key={item.to} to={item.to} className={navLinkClass}>
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end
+                    className={navLinkClass}
+                  >
                     <Icon className="w-4.5 h-4.5 shrink-0" strokeWidth={2.1} />
                     <span>{item.label}</span>
                   </NavLink>
@@ -246,7 +251,12 @@ export function Sidebar() {
               {adminNav.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <NavLink key={item.to} to={item.to} className={navLinkClass}>
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end
+                    className={navLinkClass}
+                  >
                     <Icon className="w-4.5 h-4.5 shrink-0" strokeWidth={2.1} />
                     <span>{item.label}</span>
                   </NavLink>
