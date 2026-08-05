@@ -25,6 +25,7 @@ import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
+import { MathText } from "../components/MathText";
 import { useAuth } from "../context/AuthContext";
 import {
   quizzes as allQuizzes,
@@ -596,7 +597,7 @@ function QuestionPerfRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <p className="text-[13px] font-heading text-text leading-snug line-clamp-2 flex-1 min-w-0">
-            {question.text}
+            <MathText text={question.text} />
           </p>
           {question.needsReview && (
             <span className="inline-flex items-center gap-1 h-5 px-2 rounded-lg bg-warning/12 text-warning text-[10px] font-heading font-bold uppercase tracking-wide shrink-0">

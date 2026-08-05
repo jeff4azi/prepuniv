@@ -16,6 +16,7 @@ import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
+import { MathText } from "../components/MathText";
 import { ReportModal } from "../components/ReportModal";
 import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
@@ -237,7 +238,7 @@ function AnswerCard({
               )}
             </p>
             <p className="text-sm text-text leading-snug">
-              {item.question_text ?? `Question ${index + 1}`}
+              <MathText text={item.question_text ?? `Question ${index + 1}`} />
             </p>
           </div>
           {/* Chevron */}
@@ -267,7 +268,7 @@ function AnswerCard({
                     : "text-warning font-medium"
               }`}
             >
-              {givenEmpty ? "No answer given" : item.given}
+              {givenEmpty ? "No answer given" : <MathText text={item.given} />}
             </span>
           </div>
           {!item.is_correct && (
@@ -276,7 +277,7 @@ function AnswerCard({
                 Correct answer
               </span>
               <span className="text-success font-medium leading-snug">
-                {displayCorrect}
+                <MathText text={displayCorrect} />
               </span>
             </div>
           )}

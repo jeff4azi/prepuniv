@@ -10,6 +10,7 @@ import {
   Circle,
 } from "lucide-react";
 import { Button } from "../components/Button";
+import { MathText } from "../components/MathText";
 import { quizzes as allQuizzes, questions as allQuestions } from "../mock";
 import type { Question, AttemptResult } from "../mock";
 
@@ -194,7 +195,7 @@ function McqOption({
           selected ? "text-text font-medium" : "text-text-soft"
         }`}
       >
-        {label}
+        <MathText text={label} />
       </span>
     </button>
   );
@@ -516,7 +517,7 @@ export function AttemptPage() {
 
                 {/* Question text */}
                 <p className="font-sans text-[17px] lg:text-lg text-text leading-relaxed font-medium">
-                  {currentQ?.question_text}
+                  <MathText text={currentQ?.question_text ?? ""} />
                 </p>
 
                 {/* Answer area */}

@@ -451,6 +451,87 @@ export const questions: Question[] = [
     question_text: "Two events are independent if P(A and B) = P(A) × _____.",
     correct_answer: "P(B)",
   },
+  {
+    id: "q006_09",
+    quiz_id: "quiz_006",
+    type: "mcq",
+    question_text:
+      "The formula for calculating a $z$-score is $z = \\frac{x - \\mu}{\\sigma}$. What does $\\sigma$ represent?",
+    options: [
+      "Population mean",
+      "Standard deviation",
+      "Sample size",
+      "Variance",
+    ],
+    correct_answer: "Standard deviation",
+  },
+  {
+    id: "q006_10",
+    quiz_id: "quiz_006",
+    type: "mcq",
+    question_text:
+      "According to Bayes' Theorem, $P(A|B) = \\frac{P(B|A)P(A)}{P(B)}$. What does $P(A|B)$ represent?",
+    options: [
+      "Conditional probability of A given B",
+      "Joint probability of A and B",
+      "Probability of A or B",
+      "Marginal probability of B",
+    ],
+    correct_answer: "Conditional probability of A given B",
+  },
+  {
+    id: "q006_11",
+    quiz_id: "quiz_006",
+    type: "mcq",
+    question_text:
+      "For a Binomial random variable $X \\sim \\text{Binom}(n, p)$, the variance $\\text{Var}(X)$ is equal to:",
+    options: ["$np$", "$np(1-p)$", "$\\sqrt{np(1-p)}$", "$n^2 p$"],
+    correct_answer: "$np(1-p)$",
+  },
+  {
+    id: "q006_12",
+    quiz_id: "quiz_006",
+    type: "fill_blank",
+    question_text:
+      "If two events $A$ and $B$ are mutually exclusive, then $P(A \\cup B) = P(A) +$ _____.",
+    correct_answer: "P(B)",
+  },
+  {
+    id: "q006_13",
+    quiz_id: "quiz_006",
+    type: "mcq",
+    question_text:
+      "In a Poisson distribution with parameter $\\lambda$, the probability function is $P(X = k) = \\frac{\\lambda^k e^{-\\lambda}}{k!}$. What is the mean of this distribution?",
+    options: [
+      "$\\lambda$",
+      "$\\lambda^2$",
+      "$\\sqrt{\\lambda}$",
+      "$\\frac{1}{\\lambda}$",
+    ],
+    correct_answer: "$\\lambda$",
+  },
+  {
+    id: "q006_14",
+    quiz_id: "quiz_006",
+    type: "fill_blank",
+    question_text:
+      "For a continuous random variable $X$, the total area under the probability density function $f(x)$ across all real numbers satisfies $\\int_{-\\infty}^{\\infty} f(x)\\,dx = $ _____.",
+    correct_answer: "1",
+  },
+  {
+    id: "q006_15",
+    quiz_id: "quiz_006",
+    type: "mcq",
+    question_text:
+      "If $X$ and $Y$ are independent random variables, which of the following equations holds true for their expected values?",
+    options: [
+      "$E[XY] = E[X] E[Y]$",
+      "$E[XY] = E[X] + E[Y]$",
+      "$E[XY] = \\frac{E[X]}{E[Y]}$",
+      "$E[XY] = E[X]^2 E[Y]^2$",
+    ],
+    correct_answer: "$E[XY] = E[X] E[Y]$",
+  },
 
   // ── quiz_007: MTH 201 — Integration & Series ─────────────────────────────
   {
@@ -527,6 +608,82 @@ export const questions: Question[] = [
     question_text: "ECOWAS, the regional body for West Africa, was founded in:",
     options: ["1960", "1975", "1980", "1990"],
     correct_answer: "1975",
+  },
+  {
+    id: "q007_09",
+    quiz_id: "quiz_007",
+    type: "mcq",
+    question_text:
+      "The population growth rate of a historic West African trade city is modeled by $\\frac{dP}{dt} = kP$. If the initial population $P_0$ was $10,000$ in $1400$ CE, what is the expression for $P(t)$?",
+    options: [
+      "$P(t) = 10000 e^{kt}$",
+      "$P(t) = 10000 + kt$",
+      "$P(t) = k e^{10000t}$",
+      "$P(t) = 10000 k^t$",
+    ],
+    correct_answer: "$P(t) = 10000 e^{kt}$",
+  },
+  {
+    id: "q007_10",
+    quiz_id: "quiz_007",
+    type: "mcq",
+    question_text:
+      "In economic history, if the value of gold traded in Mali is expressed as $V(g) = 5g^2 + 12g$, what is the marginal value $\\frac{dV}{dg}$ when $g = 3$ units?",
+    options: ["$42$", "$27$", "$30$", "$48$"],
+    correct_answer: "$42$",
+  },
+  {
+    id: "q007_11",
+    quiz_id: "quiz_007",
+    type: "fill_blank",
+    question_text:
+      "If the territorial expansion rate of an ancient empire is given by $\\int_{0}^{T} (3t^2 + 2t)\\,dt$, the total area expansion after $T = 2$ units of time is _____.",
+    correct_answer: "12",
+  },
+  {
+    id: "q007_12",
+    quiz_id: "quiz_007",
+    type: "mcq",
+    question_text:
+      "The probability of finding an intact artifact in an archaeological grid is given by $P(A) = 0.4$. What is the probability $P(A')$ of finding a damaged or missing artifact?",
+    options: ["$0.6$", "$0.4$", "$0.8$", "$1.0$"],
+    correct_answer: "$0.6$",
+  },
+  {
+    id: "q007_13",
+    quiz_id: "quiz_007",
+    type: "mcq",
+    question_text:
+      "Radiocarbon dating of an ancient timber structure uses the exponential decay formula $N(t) = N_0 e^{-\\lambda t}$. If $\\lambda = 1.21 \\times 10^{-4}\\text{ year}^{-1}$, what expression gives the half-life $t_{1/2}$?",
+    options: [
+      "$t_{1/2} = \\frac{\\ln(2)}{\\lambda}$",
+      "$t_{1/2} = \\frac{\\lambda}{\\ln(2)}$",
+      "$t_{1/2} = \\ln(2) \\cdot \\lambda$",
+      "$t_{1/2} = e^{-\\lambda}$",
+    ],
+    correct_answer: "$t_{1/2} = \\frac{\\ln(2)}{\\lambda}$",
+  },
+  {
+    id: "q007_14",
+    quiz_id: "quiz_007",
+    type: "fill_blank",
+    question_text:
+      "If the proportion of trade routes under ECOWAS jurisdiction is represented by $p = 0.75$, then the variance of a Bernoulli trial representing route compliance $p(1 - p)$ is _____.",
+    correct_answer: "0.1875",
+  },
+  {
+    id: "q007_15",
+    quiz_id: "quiz_007",
+    type: "mcq",
+    question_text:
+      "To measure economic inequality across historic regions, the Gini coefficient calculation involves the area between the Lorenz curve $L(x)$ and the line of perfect equality $y = x$. Which integral represents this area?",
+    options: [
+      "$\\int_{0}^{1} (x - L(x))\\,dx$",
+      "$\\int_{0}^{1} (L(x) - x)\\,dx$",
+      "$\\int_{0}^{1} L(x)\\,dx$",
+      "$\\int_{0}^{1} x L(x)\\,dx$",
+    ],
+    correct_answer: "$\\int_{0}^{1} (x - L(x))\\,dx$",
   },
 
   // ── quiz_008: ECO 101 — Microeconomics: Supply & Demand ──────────────────
