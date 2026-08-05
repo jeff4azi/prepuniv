@@ -9,6 +9,7 @@ import {
   TimerOff,
   BookOpen,
   Flag,
+  Trophy,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
@@ -443,9 +444,18 @@ export function AttemptResultPage() {
                 {/* Quiz title + meta */}
                 <div className="space-y-1.5 pt-1">
                   {course && (
-                    <Badge variant="secondary" size="sm">
-                      {course.code}
-                    </Badge>
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                      <Badge variant="secondary" size="sm">
+                        {course.code}
+                      </Badge>
+                      <Link
+                        to={`/quiz/${result.quiz_id}/leaderboard`}
+                        className="inline-flex items-center gap-1 text-xs font-heading font-semibold text-primary hover:underline underline-offset-2 transition-colors"
+                      >
+                        <Trophy className="w-3.5 h-3.5" />
+                        View Leaderboard
+                      </Link>
+                    </div>
                   )}
                   <p className="font-heading font-semibold text-sm text-text leading-snug">
                     {result.quiz_title}
@@ -528,6 +538,12 @@ export function AttemptResultPage() {
               <BookOpen className="w-5 h-5" />
               Quiz Details
             </Button>
+            <Link to={`/quiz/${result.quiz_id}/leaderboard`} className="flex-1">
+              <Button variant="outline" size="lg" fullWidth>
+                <Trophy className="w-5 h-5" />
+                Leaderboard
+              </Button>
+            </Link>
           </div>
 
           {/* ── Answer review ── */}
