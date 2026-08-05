@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import {
   X,
@@ -10,11 +10,7 @@ import {
   Circle,
 } from "lucide-react";
 import { Button } from "../components/Button";
-import {
-  quizzes as allQuizzes,
-  courses as allCourses,
-  questions as allQuestions,
-} from "../mock";
+import { quizzes as allQuizzes, questions as allQuestions } from "../mock";
 import type { Question, AttemptResult } from "../mock";
 
 // ─── Route state shape (from QuizDetailPage) ─────────────────────────────────
@@ -47,13 +43,6 @@ function buildShuffledQuestions(quizId: string): ShuffledQuestion[] {
 }
 
 // ─── Timer helpers ────────────────────────────────────────────────────────────
-/** Overall: 60 sec/question */
-function overallSeconds(questionCount: number) {
-  return questionCount * 60;
-}
-/** Per-question: 90 sec for computational */
-const PER_Q_SECONDS = 90;
-
 function formatTime(secs: number): string {
   const m = Math.floor(secs / 60);
   const s = secs % 60;
@@ -286,19 +275,10 @@ export function AttemptPage() {
   const navigate = useNavigate();
   const state = (location.state ?? {}) as AttemptLocationState;
 
-  const quiz = useMemo(
-    () => allQuizzes.find((q) => q.id === state.quizId),
-    [state.quizId],
-  );
-  const course = useMemo(
-    () => allCourses.find((c) => c.id === quiz?.course_id),
-    [quiz],
-  );
+  const quiz = allQuizzes.find((q) => q.id === state.quizId);
 
-  const isTimed = state.isTimed ?? false;
-  const isComputational = course?.is_computational ?? false;
-  const isPerQuestion = isTimed && isComputational;
-  const isOverall = isTimed && !isComputational;
+  const isTimed = (state.isTimed ?? false) && !!quiz?.time_limit_seconds;
+  const isOverall = isTimed;
 
   // ── Session init — stable via ref (don't re-shuffle on re-render) ──────────
   const sessionRef = useRef<{
@@ -393,8 +373,8 @@ export function AttemptPage() {
   // Keep ref in sync so timer effects always have latest
   handleFinalSubmitRef.current = handleFinalSubmit;
 
-  // ── Overall timer ──────────────────────────────────────────────────────────
-  const overallTotal = useMemo(() => overallSeconds(total), [total]);
+  // ── Overall timer (uses creator-set time_limit_seconds) ───────────────────
+  const overallTotal = quiz?.time_limit_seconds ?? 0;
   const [overallSecs, setOverallSecs] = useState(overallTotal);
   const overallExpiredRef = useRef(false);
 
@@ -408,32 +388,6 @@ export function AttemptPage() {
     const t = setTimeout(() => setOverallSecs((s) => s - 1), 1000);
     return () => clearTimeout(t);
   }); // no dep array — runs as a heartbeat, guarded by the ref flag
-
-  // ── Per-question timer ─────────────────────────────────────────────────────
-  const [perQSecs, setPerQSecs] = useState(PER_Q_SECONDS);
-  const perQExpiredRef = useRef(false);
-
-  // Reset per-Q timer when question changes
-  useEffect(() => {
-    if (!isPerQuestion) return;
-    setPerQSecs(PER_Q_SECONDS);
-    perQExpiredRef.current = false;
-  }, [currentIdx, isPerQuestion]);
-
-  useEffect(() => {
-    if (!isPerQuestion || perQExpiredRef.current) return;
-    if (perQSecs <= 0) {
-      perQExpiredRef.current = true;
-      if (currentIdx < total - 1) {
-        navigateTo(currentIdx + 1);
-      } else {
-        handleFinalSubmitRef.current();
-      }
-      return;
-    }
-    const t = setTimeout(() => setPerQSecs((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }); // no dep array — heartbeat, guarded by ref flag
 
   function trySubmit() {
     const unanswered = (sessionRef.current?.questions ?? []).filter(
@@ -530,13 +484,6 @@ export function AttemptPage() {
             <div className="shrink-0">
               {isOverall && (
                 <TimerDisplay seconds={overallSecs} total={overallTotal} />
-              )}
-              {isPerQuestion && (
-                <TimerDisplay
-                  seconds={perQSecs}
-                  total={PER_Q_SECONDS}
-                  label="Q"
-                />
               )}
               {!isTimed && (
                 <span className="text-xs font-heading text-muted px-2">

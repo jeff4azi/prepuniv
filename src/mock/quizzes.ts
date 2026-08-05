@@ -14,6 +14,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 40,
     attempt_count: 2840,
     created_at: "2026-01-15T08:00:00Z",
+    time_limit_seconds: 2400, // 40 mins
   },
   {
     id: "quiz_002",
@@ -25,6 +26,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 28,
     attempt_count: 1920,
     created_at: "2026-02-03T10:30:00Z",
+    time_limit_seconds: 1800, // 30 mins
   },
   {
     id: "quiz_003",
@@ -36,6 +38,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 20,
     attempt_count: 1560,
     created_at: "2026-02-18T14:00:00Z",
+    time_limit_seconds: 900, // 15 mins
   },
 
   // ── GST 121: Use of English I (2 creators) ────────────────────────────────
@@ -49,6 +52,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 40,
     attempt_count: 1450,
     created_at: "2026-05-11T12:00:00Z",
+    time_limit_seconds: 3000, // 50 mins
   },
   {
     id: "quiz_005",
@@ -60,6 +64,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 80,
     attempt_count: 1240,
     created_at: "2026-07-14T08:30:00Z",
+    time_limit_seconds: 5400, // 90 mins
   },
 
   // ── MTH 201: Mathematical Methods (2 creators) ────────────────────────────
@@ -73,6 +78,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 40,
     attempt_count: 890,
     created_at: "2026-04-18T10:15:00Z",
+    time_limit_seconds: 3600, // 60 mins
   },
   {
     id: "quiz_007",
@@ -84,6 +90,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 35,
     attempt_count: 560,
     created_at: "2026-07-10T15:00:00Z",
+    time_limit_seconds: 3000, // 50 mins
   },
 
   // ── ECO 101: Introduction to Economics (2 creators) ──────────────────────
@@ -97,6 +104,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 60,
     attempt_count: 980,
     created_at: "2026-03-12T11:20:00Z",
+    time_limit_seconds: 3600, // 60 mins
   },
   {
     id: "quiz_009",
@@ -108,6 +116,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 50,
     attempt_count: 540,
     created_at: "2026-05-03T09:45:00Z",
+    time_limit_seconds: 3000, // 50 mins
   },
 
   // ── EDU 221: Educational Psychology ──────────────────────────────────────
@@ -121,6 +130,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 32,
     attempt_count: 670,
     created_at: "2026-04-25T15:30:00Z",
+    time_limit_seconds: 1800, // 30 mins
   },
 
   // ── ECO 301: Development Economics ───────────────────────────────────────
@@ -134,6 +144,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 42,
     attempt_count: 390,
     created_at: "2026-07-05T09:15:00Z",
+    time_limit_seconds: 2700, // 45 mins
   },
 
   // ── STA 121: Introduction to Statistics (2 creators) ─────────────────────
@@ -147,6 +158,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 50,
     attempt_count: 1340,
     created_at: "2026-03-22T16:45:00Z",
+    time_limit_seconds: 3600, // 60 mins
   },
   {
     id: "quiz_013",
@@ -158,6 +170,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 30,
     attempt_count: 820,
     created_at: "2026-05-19T14:20:00Z",
+    time_limit_seconds: 1800, // 30 mins
   },
 
   // ── BIO 101: General Biology I (2 creators) ───────────────────────────────
@@ -171,6 +184,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 55,
     attempt_count: 1120,
     created_at: "2026-04-10T13:00:00Z",
+    time_limit_seconds: 3300, // 55 mins
   },
   {
     id: "quiz_015",
@@ -182,6 +196,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 36,
     attempt_count: 340,
     created_at: "2026-07-22T10:45:00Z",
+    time_limit_seconds: 2400, // 40 mins
   },
 
   // ── BIO 211: Cell Biology and Genetics ───────────────────────────────────
@@ -195,6 +210,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 45,
     attempt_count: 930,
     created_at: "2026-06-04T11:30:00Z",
+    time_limit_seconds: 2700, // 45 mins
   },
 
   // ── HIS 101: Survey of African History ───────────────────────────────────
@@ -208,6 +224,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 45,
     attempt_count: 760,
     created_at: "2026-04-02T08:30:00Z",
+    time_limit_seconds: 2700, // 45 mins
   },
 
   // ── HIS 201: Nigerian History and Politics ────────────────────────────────
@@ -221,6 +238,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 40,
     attempt_count: 610,
     created_at: "2026-05-27T08:00:00Z",
+    time_limit_seconds: 2400, // 40 mins
   },
 
   // ── PHY 101: General Physics I (2 creators) ───────────────────────────────
@@ -234,6 +252,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 40,
     attempt_count: 1560,
     created_at: "2026-02-18T14:00:00Z",
+    time_limit_seconds: 3000, // 50 mins
   },
   {
     id: "quiz_020",
@@ -245,6 +264,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 32,
     attempt_count: 480,
     created_at: "2026-06-28T13:45:00Z",
+    time_limit_seconds: 2400, // 40 mins
   },
 
   // ── PHY 201: Electricity and Magnetism ───────────────────────────────────
@@ -258,6 +278,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 35,
     attempt_count: 670,
     created_at: "2026-04-25T15:30:00Z",
+    time_limit_seconds: 2700, // 45 mins
   },
 
   // ── CHM 101: General Chemistry I ─────────────────────────────────────────
@@ -271,6 +292,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 38,
     attempt_count: 780,
     created_at: "2026-06-12T16:00:00Z",
+    time_limit_seconds: 2400, // 40 mins
   },
 
   // ── CHM 211: Organic Chemistry I ─────────────────────────────────────────
@@ -284,6 +306,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 35,
     attempt_count: 420,
     created_at: "2026-03-01T09:00:00Z",
+    time_limit_seconds: 2400, // 40 mins
   },
   {
     id: "quiz_024",
@@ -295,6 +318,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 28,
     attempt_count: 290,
     created_at: "2026-07-26T14:30:00Z",
+    time_limit_seconds: 2100, // 35 mins
   },
 
   // ── MTH 101: Elementary Mathematics I ────────────────────────────────────
@@ -308,6 +332,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 25,
     attempt_count: 2100,
     created_at: "2026-06-20T10:00:00Z",
+    time_limit_seconds: 1800, // 30 mins
   },
 
   // ── CSC 221: Data Structures and Algorithms ───────────────────────────────
@@ -321,6 +346,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 30,
     attempt_count: 0,
     created_at: "2026-07-28T14:30:00Z",
+    time_limit_seconds: 1800, // 30 mins
   },
 
   // ── GST 211: Logic and Scientific Reasoning ───────────────────────────────
@@ -334,6 +360,7 @@ const quizSeeds: QuizSeed[] = [
     question_count: 50,
     attempt_count: 710,
     created_at: "2026-07-18T12:00:00Z",
+    time_limit_seconds: 3000, // 50 mins
   },
 ];
 

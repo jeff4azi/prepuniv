@@ -13,7 +13,6 @@ import {
   Lock,
   BarChart2,
   Flag,
-  Calculator,
   History,
   ChevronRight,
   Trophy,
@@ -39,6 +38,15 @@ import { formatNaira } from "../components/QuizCard";
 
 function fakeAttemptId() {
   return "atmp_" + Math.random().toString(36).slice(2, 10);
+}
+
+/** Formats seconds into a readable label like "30 min" or "1 hr 30 min" */
+function formatTimeLimitLabel(seconds: number): string {
+  const totalMins = Math.round(seconds / 60);
+  if (totalMins < 60) return `${totalMins} min`;
+  const hrs = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  return mins > 0 ? `${hrs} hr ${mins} min` : `${hrs} hr`;
 }
 
 // ─── Confirm payment step ────────────────────────────────────────────────────
@@ -140,8 +148,8 @@ export function QuizDetailPage() {
   }, [myAttempts]);
 
   // ── local state ────────────────────────────────────────────────────────────
-  const [timingChoice, setTimingChoice] = useState<"timed" | "untimed">(
-    "timed",
+  const [timingChoice, setTimingChoice] = useState<"timed" | "untimed">(() =>
+    quiz?.time_limit_seconds ? "timed" : "untimed",
   );
   const [showConfirm, setShowConfirm] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
@@ -299,7 +307,9 @@ export function QuizDetailPage() {
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <Timer className="w-4 h-4 text-muted" />
-                  Timed or untimed — your choice
+                  {quiz.time_limit_seconds
+                    ? `${formatTimeLimitLabel(quiz.time_limit_seconds)} time limit`
+                    : "Untimed"}
                 </span>
                 <Link
                   to={`/quiz/${quiz.id}/leaderboard`}
@@ -310,13 +320,7 @@ export function QuizDetailPage() {
                 </Link>
               </div>
 
-              {/* computational note */}
-              {course?.is_computational && (
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-warning-bg border border-warning/20 text-xs text-warning font-heading font-medium">
-                  <Calculator className="w-3.5 h-3.5 shrink-0" />
-                  Timed mode uses per-question timing for this subject
-                </div>
-              )}
+              {/* computational note removed — timing is now creator-set */}
 
               {/* creator */}
               {creator && (
@@ -438,47 +442,53 @@ export function QuizDetailPage() {
               <h2 className="font-heading font-semibold text-text text-base">
                 Choose attempt mode
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Timed */}
-                <button
-                  type="button"
-                  onClick={() => setTimingChoice("timed")}
-                  className={`text-left rounded-2xl border-2 p-4 transition-all duration-150 ${
-                    timingChoice === "timed"
-                      ? "border-primary bg-primary/6 shadow-soft"
-                      : "border-border/60 bg-surface/20 hover:border-border hover:bg-surface/40"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 mb-1.5">
-                    <div
-                      className={`h-8 w-8 rounded-xl flex items-center justify-center ${
-                        timingChoice === "timed"
-                          ? "bg-primary text-cream"
-                          : "bg-surface text-muted"
-                      }`}
-                    >
-                      <Timer className="w-4 h-4" />
-                    </div>
-                    <span
-                      className={`font-heading font-semibold text-sm ${
-                        timingChoice === "timed" ? "text-primary" : "text-text"
-                      }`}
-                    >
-                      Timed
-                    </span>
-                    {timingChoice === "timed" && (
-                      <CheckCircle2 className="w-4 h-4 text-primary ml-auto" />
-                    )}
-                  </div>
-                  <p className="text-xs text-text-soft leading-relaxed pl-[2.75rem]">
-                    Platform sets a time limit based on question count
-                    {course?.is_computational && (
-                      <span className="block text-warning font-medium mt-0.5">
-                        Per-question timing for this course
+              <div
+                className={`grid gap-3 ${quiz.time_limit_seconds ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}
+              >
+                {/* Timed — only shown when creator set a time limit */}
+                {quiz.time_limit_seconds && (
+                  <button
+                    type="button"
+                    onClick={() => setTimingChoice("timed")}
+                    className={`text-left rounded-2xl border-2 p-4 transition-all duration-150 ${
+                      timingChoice === "timed"
+                        ? "border-primary bg-primary/6 shadow-soft"
+                        : "border-border/60 bg-surface/20 hover:border-border hover:bg-surface/40"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 mb-1.5">
+                      <div
+                        className={`h-8 w-8 rounded-xl flex items-center justify-center ${
+                          timingChoice === "timed"
+                            ? "bg-primary text-cream"
+                            : "bg-surface text-muted"
+                        }`}
+                      >
+                        <Timer className="w-4 h-4" />
+                      </div>
+                      <span
+                        className={`font-heading font-semibold text-sm ${
+                          timingChoice === "timed"
+                            ? "text-primary"
+                            : "text-text"
+                        }`}
+                      >
+                        Timed
                       </span>
-                    )}
-                  </p>
-                </button>
+                      <span
+                        className={`ml-auto text-xs font-heading font-bold px-2 py-0.5 rounded-lg ${timingChoice === "timed" ? "bg-primary/15 text-primary" : "bg-surface text-muted"}`}
+                      >
+                        {formatTimeLimitLabel(quiz.time_limit_seconds)}
+                      </span>
+                      {timingChoice === "timed" && (
+                        <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-xs text-text-soft leading-relaxed pl-[2.75rem]">
+                      Race the clock — auto-submits when time runs out
+                    </p>
+                  </button>
+                )}
 
                 {/* Untimed */}
                 <button

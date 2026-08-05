@@ -27,6 +27,7 @@ import {
   X,
   AlertCircle,
   Info,
+  Clock,
   Loader2,
   CheckCircle2,
 } from "lucide-react";
@@ -76,6 +77,7 @@ interface QuizDetails {
   level: string; // "100" | "200" | "300" | "400" | ""
   price_naira: string; // raw input, validated on save
   description: string;
+  time_limit_minutes: string; // raw input — empty means no limit
 }
 
 const PRICE_MIN = 50;
@@ -121,6 +123,9 @@ export function QuizBuilderPage() {
     const existingCourse = existingQuiz
       ? allCourses.find((c) => c.id === existingQuiz.course_id)
       : undefined;
+    const existingMinutes = existingQuiz?.time_limit_seconds
+      ? String(Math.round(existingQuiz.time_limit_seconds / 60))
+      : "";
     return {
       title: existingQuiz?.title ?? "",
       course_code: existingCourse?.code ?? "",
@@ -129,6 +134,7 @@ export function QuizBuilderPage() {
       level: existingCourse ? String(existingCourse.level) : "",
       price_naira: existingQuiz ? String(koboToNaira(existingQuiz.price)) : "",
       description: existingQuiz?.description ?? "",
+      time_limit_minutes: existingMinutes,
     };
   });
   const [detailErrors, setDetailErrors] = useState<Partial<QuizDetails>>({});
@@ -358,6 +364,9 @@ export function QuizBuilderPage() {
       question_count: draftQuestions.length,
       attempt_count: existingQuiz?.attempt_count ?? 0,
       created_at: existingQuiz?.created_at ?? now,
+      time_limit_seconds: details.time_limit_minutes.trim()
+        ? Math.round(parseFloat(details.time_limit_minutes) * 60)
+        : undefined,
     };
 
     const savedQuestions: Question[] = draftQuestions.map((dq, i) => ({
@@ -535,7 +544,10 @@ export function QuizBuilderPage() {
                     placeholder="e.g. Computer Science"
                     value={details.subject_area}
                     onChange={(e) =>
-                      setDetails((d) => ({ ...d, subject_area: e.target.value }))
+                      setDetails((d) => ({
+                        ...d,
+                        subject_area: e.target.value,
+                      }))
                     }
                     className="w-full h-11 px-4 rounded-xl bg-cream border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-sm font-heading text-text placeholder:text-muted transition-all"
                   />
@@ -625,22 +637,37 @@ export function QuizBuilderPage() {
                 />
               </FieldWrapper>
 
-              {/* Timing note */}
-              <div className="flex items-start gap-2.5 px-4 py-3 rounded-2xl bg-surface/50 border border-border/40">
-                <Info
-                  className="w-4 h-4 text-muted shrink-0 mt-0.5"
-                  strokeWidth={2}
-                />
-                <p className="text-xs text-text-soft leading-relaxed">
-                  <span className="font-semibold text-text">
-                    No timer setting here.
-                  </span>{" "}
-                  Time limits are calculated automatically based on question
-                  count and course type when a learner starts the quiz —
-                  computational courses (e.g. Maths, Physics, Statistics) get
-                  per-question timing; others get an overall time limit.
-                </p>
-              </div>
+              {/* Time limit */}
+              <FieldWrapper
+                id="qb-time"
+                label="Time limit (minutes)"
+                hint="Leave blank to disable timed mode entirely — learners will only see 'Untimed' as an option."
+              >
+                <div className="relative">
+                  <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
+                  <input
+                    id="qb-time"
+                    type="number"
+                    min={1}
+                    max={300}
+                    step={5}
+                    placeholder="e.g. 45"
+                    value={details.time_limit_minutes}
+                    onChange={(e) =>
+                      setDetails((d) => ({
+                        ...d,
+                        time_limit_minutes: e.target.value,
+                      }))
+                    }
+                    className="w-full h-11 pl-10 pr-20 rounded-xl bg-cream border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-sm font-heading text-text placeholder:text-muted transition-all"
+                  />
+                  {details.time_limit_minutes && (
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-heading text-muted pointer-events-none">
+                      = {details.time_limit_minutes} min
+                    </span>
+                  )}
+                </div>
+              </FieldWrapper>
             </div>
           </Card>
 
@@ -717,8 +744,8 @@ export function QuizBuilderPage() {
                   No questions yet
                 </p>
                 <p className="text-sm text-text-soft max-w-xs leading-relaxed mb-4">
-                  Add questions manually, or paste them into any AI tool with our
-                  reformatting prompt to import them in one click.
+                  Add questions manually, or paste them into any AI tool with
+                  our reformatting prompt to import them in one click.
                 </p>
                 <button
                   onClick={openAddEditor}
@@ -1448,7 +1475,8 @@ function AIImportModal({
                   existing question list
                 </span>{" "}
                 (typed notes, pasted textbook questions, etc.) at the very end.
-                The AI will return a JSON array — bring it back here into Step 2.
+                The AI will return a JSON array — bring it back here into Step
+                2.
               </p>
 
               <div className="rounded-2xl bg-surface/60 border border-border/50 overflow-hidden">
@@ -1497,7 +1525,10 @@ function AIImportModal({
                 to check everything before adding them to your quiz.
               </p>
 
-              <FieldWrapper id="ai-paste" label="Paste the AI's JSON output here">
+              <FieldWrapper
+                id="ai-paste"
+                label="Paste the AI's JSON output here"
+              >
                 <textarea
                   id="ai-paste"
                   rows={7}
@@ -1535,8 +1566,8 @@ function AIImportModal({
                       />
                       <p className="text-sm font-heading font-semibold text-success">
                         {parseResult.questions.length} reformatted question
-                        {parseResult.questions.length !== 1 ? "s" : ""} ready
-                        to add
+                        {parseResult.questions.length !== 1 ? "s" : ""} ready to
+                        add
                       </p>
                     </div>
                     <ul className="divide-y divide-success/10 max-h-48 overflow-y-auto">

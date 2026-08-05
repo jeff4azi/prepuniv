@@ -38,6 +38,8 @@ export interface Quiz {
   question_count: number;
   attempt_count: number;
   created_at: string;
+  /** Total timed-mode duration in seconds, set by the creator. Undefined means no time limit (always untimed). */
+  time_limit_seconds?: number;
 }
 
 export type TransactionType =
