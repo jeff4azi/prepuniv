@@ -37,6 +37,7 @@ import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { FieldWrapper } from "../components/Form";
 import { Toast, useToast } from "../components/Toast";
+import { MathText } from "../components/MathText";
 import { useAuth } from "../context/AuthContext";
 import {
   quizzes as allQuizzes,
@@ -908,11 +909,6 @@ function QuestionRow({
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
-  const preview =
-    question.question_text.length > 90
-      ? question.question_text.slice(0, 90) + "…"
-      : question.question_text;
-
   return (
     <div
       className={`flex items-center gap-3 px-5 py-3.5 min-h-[56px] transition-colors ${isEditing ? "bg-primary/5 border-l-2 border-primary" : "hover:bg-surface/20"}`}
@@ -925,7 +921,11 @@ function QuestionRow({
       {/* Text preview */}
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-heading text-text leading-snug line-clamp-2">
-          {preview || <span className="text-muted italic">No text yet</span>}
+          {question.question_text ? (
+            <MathText text={question.question_text} />
+          ) : (
+            <span className="text-muted italic">No text yet</span>
+          )}
         </p>
       </div>
 
@@ -1194,9 +1194,43 @@ Rules for extraction / formatting:
    - "mcq" → if it has multiple-choice / lettered options (A/B/C/D, a./b./c./d., numbered options, bullet options, etc.)
    - "fill_blank" → if it's a short-answer, word blank, complete-the-sentence, one-word, short-phrase answer question
 4. correct_answer for MCQ must be the EXACT option text (NOT just the letter/number), and it must be a string that appears in the options array. If the original only marked a letter like "B)", copy the FULL text of option B into both correct_answer and the options list.
-5. correct_answer for fill_blank is ALWAYS pipe-separated to include every reasonable acceptable variant (lowercase / Capitalized / UPPERCASE / abbreviations / plural forms / common lenient misspellings). Even if only one answer seems intended, list case variants so students aren't penalized for capitalization. Format: "answer|Answer|ANSWER|abbr"
+5. correct_answer for fill_blank is ALWAYS pipe-separated to include every reasonable acceptable variant (lowercase / Capitalized / UPPERCASE / abbreviations / plural forms / common lenient misspellings / LaTeX equivalents where applicable). Even if only one answer seems intended, list case variants so students aren't penalized for capitalization. Format: "answer|Answer|ANSWER|abbr|$\\mathrm{answer}$"
 6. Use _____ (5 underscores) inside fill_blank question_text to show where the answer goes (if the original didn't mark a blank, rephrase tactfully to insert _____ at the natural slot — but keep wording identical otherwise).
-7. Output ONLY a raw JSON array. No explanations. No headings. No text before or after the array. No code fences. No markdown.
+7. EVERY mathematical element MUST be written in LaTeX (inline math mode with $...$). This is mandatory and non-negotiable. Convert plain-text math into proper LaTeX. Never leave raw numbers with exponents, fractions, Greek letters, units, or symbols as plain text when they are mathematical.
+   This includes (but is not limited to):
+   - variables (e.g. $x$, $v_0$)
+   - constants (e.g. $\\pi$, $e$, $c$)
+   - equations and expressions (e.g. $E = mc^2$)
+   - inequalities (e.g. $x \\ge 0$)
+   - fractions (e.g. $\\frac{1}{2}$, $\\dfrac{a}{b}$)
+   - exponents and powers (e.g. $10^8$, $x^{2}$)
+   - subscripts and superscripts (e.g. $H_2O$, $v_{max}$)
+   - vectors (e.g. $\\vec{v}$, $\\mathbf{F}$)
+   - matrices
+   - functions (e.g. $f(x)$, $\\sin\\theta$)
+   - limits, derivatives, integrals, summations, products
+   - logarithms (e.g. $\\log_{10} x$, $\\ln x$)
+   - trigonometric functions
+   - Greek letters (e.g. $\\alpha$, $\\beta$, $\\Delta$, $\\theta$)
+   - units when part of a mathematical quantity (e.g. $3 \\times 10^8\\text{ m/s}$, $9.8\\,\\mathrm{m/s^2}$)
+   - scientific notation (ALWAYS use $a \\times 10^{b}$ form)
+   - intervals, coordinates, ratios
+   - percentages when used mathematically (e.g. $25\\%$)
+   - all mathematical symbols ($\\times$, $\\div$, $\\pm$, $\\approx$, $\\infty$, $\\sqrt{}$, etc.)
+
+   LaTeX rules inside the JSON:
+   - Use single-dollar inline math: $...$
+   - Escape every backslash for valid JSON: write \\\\ instead of \\
+     Example: the string that should render as $3 \\times 10^8\\text{ m/s}$ must appear in the JSON as "$3 \\\\times 10^8\\\\text{ m/s}$"
+   - Prefer \\text{...} or \\mathrm{...} for units and non-variable text inside math.
+   - Keep the surrounding sentence text outside the $...$ delimiters.
+   - Apply LaTeX consistently in question_text, every option, and the correct_answer field.
+
+8. Output the complete JSON array inside a single markdown code block so the user can easily copy it with one click. 
+   - Start with \`\`\`json
+   - Then the raw JSON array
+   - End with \`\`\`
+   - Nothing else before or after the code block. No explanations, no headings, no extra text.
 
 EXACT schema per object:
 
@@ -1216,12 +1250,20 @@ Fill-in-the-blank question:
 }
 
 Example valid output (so you see the TARGET format only — DO NOT include these in my output):
+
+\`\`\`json
 [
   {
     "type": "mcq",
-    "question_text": "What is the output of: print(2 ** 3)?",
-    "options": ["6", "8", "9", "12"],
-    "correct_answer": "8"
+    "question_text": "What is the speed of light in a vacuum approximately equal to?",
+    "options": ["$3 \\\\times 10^8\\\\text{ m/s}$", "$3 \\\\times 10^6\\\\text{ m/s}$", "$1.5 \\\\times 10^8\\\\text{ m/s}$", "$3 \\\\times 10^{10}\\\\text{ m/s}$"],
+    "correct_answer": "$3 \\\\times 10^8\\\\text{ m/s}$"
+  },
+  {
+    "type": "mcq",
+    "question_text": "Solve for $x$: $2x + 5 = 11$",
+    "options": ["$x = 3$", "$x = 4$", "$x = 5$", "$x = 6$"],
+    "correct_answer": "$x = 3$"
   },
   {
     "type": "fill_blank",
@@ -1230,10 +1272,11 @@ Example valid output (so you see the TARGET format only — DO NOT include these
   },
   {
     "type": "fill_blank",
-    "question_text": "The _____ data structure stores key-value pairs in Python.",
-    "correct_answer": "dictionary|dict|Dictionary|Dict|DICT"
+    "question_text": "The acceleration due to gravity on Earth is approximately _____ $\\\\mathrm{m/s^2}$.",
+    "correct_answer": "9.8|9.81|$9.8$|$9.81$|g"
   }
 ]
+\`\`\`
 
 — END OF INSTRUCTIONS —
 
@@ -1580,7 +1623,7 @@ function AIImportModal({
                             {i + 1}
                           </span>
                           <p className="flex-1 text-[12px] text-text leading-snug line-clamp-2">
-                            {q.question_text}
+                            <MathText text={q.question_text} />
                           </p>
                           <Badge
                             variant={q.type === "mcq" ? "primary" : "secondary"}
