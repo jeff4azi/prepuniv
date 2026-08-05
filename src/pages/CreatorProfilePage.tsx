@@ -15,6 +15,8 @@ import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Avatar } from "../components/Avatar";
 import { QuizCard } from "../components/QuizCard";
+import { ShareIconButton } from "../components/ShareActions";
+import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
 import {
   profiles as allProfiles,
@@ -65,6 +67,7 @@ export function CreatorProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentUser, hasPurchasedQuiz } = useAuth();
+  const [toast, showToast, dismissToast] = useToast();
 
   const coursesById = useMemo(
     () => new Map(allCourses.map((c) => [c.id, c])),
@@ -138,6 +141,13 @@ export function CreatorProfilePage() {
 
   return (
     <PageContainer className="max-w-290!">
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          onDismiss={dismissToast}
+        />
+      )}
       <div className="space-y-5 lg:space-y-6">
         {/* ── Back link ── */}
         <button
@@ -176,9 +186,19 @@ export function CreatorProfilePage() {
                     </span>
                   )}
                 </div>
-                <h1 className="font-heading font-bold text-2xl lg:text-3xl text-text tracking-tight leading-tight">
-                  {profile.full_name}
-                </h1>
+                <div className="flex items-center gap-3">
+                  <h1 className="font-heading font-bold text-2xl lg:text-3xl text-text tracking-tight leading-tight">
+                    {profile.full_name}
+                  </h1>
+                  <ShareIconButton
+                    url={`${window.location.origin}/profile/creator/${profile.id}`}
+                    title={`${profile.full_name} on PrepUniv`}
+                    text={`Check out ${profile.full_name}'s quizzes on PrepUniv`}
+                    showToast={showToast}
+                    label="Share profile"
+                    size="sm"
+                  />
+                </div>
               </div>
             </div>
 

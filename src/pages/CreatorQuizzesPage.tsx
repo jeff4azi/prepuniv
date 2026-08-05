@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Link, Navigate } from "react-router-dom";
 import {
   Plus,
@@ -12,6 +13,11 @@ import {
   FileText,
   Sparkles,
   AlertCircle,
+  Share2,
+  Copy,
+  Check,
+  ExternalLink,
+  MoreHorizontal,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -24,6 +30,11 @@ import {
   type Quiz,
 } from "../mock";
 import { formatNaira } from "./CreatorDashboardPage";
+import { Toast, useToast } from "../components/Toast";
+import {
+  handleShareOrCopy,
+  ShareActionsMenu,
+} from "../components/ShareActions";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,6 +60,13 @@ function formatShortDate(iso: string) {
   });
 }
 
+function publicQuizUrl(quizId: string) {
+  const path = `/quiz/${quizId}`;
+  if (typeof window !== "undefined" && window.location?.origin)
+    return window.location.origin + path;
+  return path;
+}
+
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "newest", label: "Newest" },
   { value: "attempts", label: "Most Attempts" },
@@ -61,6 +79,7 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 export function CreatorQuizzesPage() {
   const { currentUser } = useAuth();
   const creatorId = currentUser.id;
+  const [toast, showToast, dismissToast] = useToast();
 
   // Local mutable quiz list so publish/unpublish updates reflect live
   const [quizList, setQuizList] = useState<MutableQuiz[]>(() =>
@@ -378,6 +397,7 @@ export function CreatorQuizzesPage() {
                     quizzes={filtered}
                     coursesById={coursesById}
                     onTogglePublish={handleTogglePublish}
+                    onShowToast={showToast}
                   />
                 </Card>
               </div>
@@ -389,7 +409,10 @@ export function CreatorQuizzesPage() {
                     key={quiz.id}
                     quiz={quiz}
                     course={coursesById.get(quiz.course_id)?.code}
+                    shareUrl={publicQuizUrl(quiz.id)}
+                    shareTitle={`${coursesById.get(quiz.course_id)?.code ?? "Quiz"} · ${quiz.title}`}
                     onTogglePublish={handleTogglePublish}
+                    showToast={showToast}
                   />
                 ))}
               </div>
@@ -407,6 +430,8 @@ export function CreatorQuizzesPage() {
           </div>
         </div>
       </PageContainer>
+
+      {toast && <Toast toast={toast} onClose={dismissToast} />}
 
       {/* ── Publish/unpublish confirm dialog ─────────────────────────────── */}
       {confirmQuiz && (
@@ -426,6 +451,7 @@ function QuizTable({
   quizzes,
   coursesById,
   onTogglePublish,
+  onShowToast,
 }: {
   quizzes: MutableQuiz[];
   coursesById: Map<
@@ -433,6 +459,10 @@ function QuizTable({
     { id: string; code: string; is_computational: boolean }
   >;
   onTogglePublish: (q: MutableQuiz) => void;
+  onShowToast: (t: {
+    message: string;
+    variant?: "success" | "info" | "error" | "warning";
+  }) => void;
 }) {
   const COL_HDR =
     "px-4 py-3 text-left text-[11px] font-heading font-semibold uppercase tracking-[0.14em] text-muted whitespace-nowrap";
@@ -456,7 +486,10 @@ function QuizTable({
             key={quiz.id}
             quiz={quiz}
             courseCode={coursesById.get(quiz.course_id)?.code}
+            shareUrl={publicQuizUrl(quiz.id)}
+            shareTitle={`${coursesById.get(quiz.course_id)?.code ?? "Quiz"} · ${quiz.title}`}
             onTogglePublish={onTogglePublish}
+            showToast={onShowToast}
           />
         ))}
       </tbody>
@@ -467,29 +500,21 @@ function QuizTable({
 function QuizTableRow({
   quiz,
   courseCode,
+  shareUrl,
+  shareTitle,
   onTogglePublish,
+  showToast,
 }: {
   quiz: MutableQuiz;
   courseCode?: string;
+  shareUrl: string;
+  shareTitle: string;
   onTogglePublish: (q: MutableQuiz) => void;
+  showToast: (t: {
+    message: string;
+    variant?: "success" | "info" | "error" | "warning";
+  }) => void;
 }) {
-  const [overflowOpen, setOverflowOpen] = useState(false);
-  const overflowRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!overflowOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (
-        overflowRef.current &&
-        !overflowRef.current.contains(e.target as Node)
-      ) {
-        setOverflowOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [overflowOpen]);
-
   return (
     <tr className="hover:bg-surface/20 transition-colors group">
       {/* Title + course */}
@@ -568,50 +593,234 @@ function QuizTableRow({
               Analytics
             </button>
           </Link>
-          {/* Overflow: publish toggle */}
-          <div className="relative" ref={overflowRef}>
-            <button
-              onClick={() => setOverflowOpen((v) => !v)}
-              className={`h-8 w-8 rounded-xl border flex items-center justify-center transition-all ${
-                overflowOpen
-                  ? "bg-surface border-border text-text"
-                  : "bg-surface/60 border-border/50 text-muted hover:bg-surface hover:text-text"
-              }`}
-              aria-label="More actions"
-            >
-              <span className="flex flex-col gap-[3px] items-center justify-center">
-                <span className="h-[3px] w-[3px] rounded-full bg-current" />
-                <span className="h-[3px] w-[3px] rounded-full bg-current" />
-                <span className="h-[3px] w-[3px] rounded-full bg-current" />
-              </span>
-            </button>
-            {overflowOpen && (
-              <div className="absolute right-0 top-[calc(100%+5px)] z-30 w-44 rounded-2xl bg-cream border border-border/60 shadow-elevated overflow-hidden">
-                <button
-                  onClick={() => {
-                    setOverflowOpen(false);
-                    onTogglePublish(quiz);
-                  }}
-                  className="w-full text-left px-4 py-2.5 text-sm font-heading font-medium flex items-center gap-2.5 transition-colors hover:bg-surface/60"
-                >
-                  {quiz.is_published ? (
-                    <>
-                      <EyeOff className="w-4 h-4 text-warning" />
-                      <span className="text-warning">Unpublish</span>
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="w-4 h-4 text-success" />
-                      <span className="text-success">Publish</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
+          {/* Single unified ··· menu */}
+          <QuizRowMenu
+            quiz={quiz}
+            shareUrl={shareUrl}
+            shareTitle={shareTitle}
+            onTogglePublish={onTogglePublish}
+            showToast={showToast}
+          />
         </div>
       </td>
     </tr>
+  );
+}
+
+// ─── Unified ··· menu for desktop table rows ──────────────────────────────────
+
+function QuizRowMenu({
+  quiz,
+  shareUrl,
+  shareTitle,
+  onTogglePublish,
+  showToast,
+}: {
+  quiz: MutableQuiz;
+  shareUrl: string;
+  shareTitle: string;
+  onTogglePublish: (q: MutableQuiz) => void;
+  showToast: (t: {
+    message: string;
+    variant?: "success" | "info" | "error" | "warning";
+  }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [justCopied, setJustCopied] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(
+    null,
+  );
+
+  const canShare =
+    typeof navigator !== "undefined" && typeof navigator.share === "function";
+
+  useEffect(() => {
+    if (!open || !btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    setMenuPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDocClick(e: MouseEvent) {
+      if (
+        btnRef.current?.contains(e.target as Node) ||
+        menuRef.current?.contains(e.target as Node)
+      )
+        return;
+      setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    function onScroll() {
+      setOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, [open]);
+
+  const menu =
+    open && menuPos
+      ? createPortal(
+          <div
+            ref={menuRef}
+            role="menu"
+            style={{
+              position: "fixed",
+              top: menuPos.top,
+              right: menuPos.right,
+              zIndex: 9999,
+            }}
+            className="min-w-52 rounded-2xl bg-cream shadow-elevated ring-1 ring-border/40 p-1.5 animate-in fade-in zoom-in-95 duration-120"
+          >
+            {/* ── Share section ── */}
+            {canShare && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={async () => {
+                  setOpen(false);
+                  await handleShareOrCopy(shareUrl, {
+                    title: shareTitle,
+                    showToast,
+                    preferred: "share",
+                  });
+                }}
+                className="w-full h-9.5 px-3 rounded-xl text-[13px] font-heading font-semibold flex items-center gap-2.5 text-text hover:bg-surface/70 active:scale-[0.99] transition-all"
+              >
+                <Share2
+                  className="w-4 h-4 text-secondary shrink-0"
+                  strokeWidth={2}
+                />
+                Share via…
+                <span className="ml-auto text-[10px] font-heading font-bold uppercase tracking-wider text-muted">
+                  Mobile
+                </span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              role="menuitem"
+              onClick={async () => {
+                const res = await handleShareOrCopy(shareUrl, {
+                  title: shareTitle,
+                  showToast,
+                  preferred: "copy",
+                });
+                if (res === "copied") {
+                  setJustCopied(true);
+                  window.setTimeout(() => setJustCopied(false), 1500);
+                }
+                window.setTimeout(() => setOpen(false), 250);
+              }}
+              className="w-full h-9.5 px-3 rounded-xl text-[13px] font-heading font-semibold flex items-center gap-2.5 text-text hover:bg-surface/70 active:scale-[0.99] transition-all"
+            >
+              {justCopied ? (
+                <Check
+                  className="w-4 h-4 text-success shrink-0"
+                  strokeWidth={2.4}
+                />
+              ) : (
+                <Copy
+                  className="w-4 h-4 text-primary shrink-0"
+                  strokeWidth={2}
+                />
+              )}
+              {justCopied ? "Copied!" : "Copy link"}
+            </button>
+
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                window.open(shareUrl, "_blank", "noopener,noreferrer");
+              }}
+              className="w-full h-9.5 px-3 rounded-xl text-[13px] font-heading font-semibold flex items-center gap-2.5 text-text hover:bg-surface/70 active:scale-[0.99] transition-all"
+            >
+              <ExternalLink
+                className="w-4 h-4 text-muted shrink-0"
+                strokeWidth={2}
+              />
+              Preview public page
+            </button>
+
+            <div className="h-px my-1 bg-border/40 -mx-1" />
+
+            {/* ── Publish / Unpublish ── */}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onTogglePublish(quiz);
+              }}
+              className="w-full h-9.5 px-3 rounded-xl text-[13px] font-heading font-semibold flex items-center gap-2.5 hover:bg-surface/70 active:scale-[0.99] transition-all"
+            >
+              {quiz.is_published ? (
+                <>
+                  <EyeOff
+                    className="w-4 h-4 text-warning shrink-0"
+                    strokeWidth={2}
+                  />
+                  <span className="text-warning">Unpublish</span>
+                </>
+              ) : (
+                <>
+                  <Eye
+                    className="w-4 h-4 text-success shrink-0"
+                    strokeWidth={2}
+                  />
+                  <span className="text-success">Publish</span>
+                </>
+              )}
+            </button>
+
+            <div className="h-px my-1 bg-border/40 -mx-1" />
+
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="w-full h-9 px-3 rounded-xl text-[12px] font-heading font-medium flex items-center gap-2 text-muted hover:bg-surface/50 active:scale-[0.99] transition-all"
+            >
+              <X className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
+              Dismiss
+            </button>
+          </div>,
+          document.body,
+        )
+      : null;
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        aria-label="More actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className={`h-8 w-8 rounded-xl border flex items-center justify-center transition-all ${
+          open
+            ? "bg-surface border-border text-text"
+            : "bg-surface/60 border-border/50 text-muted hover:bg-surface hover:text-text"
+        }`}
+      >
+        <MoreHorizontal className="w-4 h-4" strokeWidth={2.2} />
+      </button>
+      {menu}
+    </>
   );
 }
 
@@ -620,11 +829,20 @@ function QuizTableRow({
 function QuizMobileCard({
   quiz,
   course,
+  shareUrl,
+  shareTitle,
   onTogglePublish,
+  showToast,
 }: {
   quiz: MutableQuiz;
   course?: string;
+  shareUrl: string;
+  shareTitle: string;
   onTogglePublish: (q: MutableQuiz) => void;
+  showToast: (t: {
+    message: string;
+    variant?: "success" | "info" | "error" | "warning";
+  }) => void;
 }) {
   return (
     <Card padded={false} className="overflow-hidden">
@@ -711,6 +929,12 @@ function QuizMobileCard({
               </>
             )}
           </button>
+          <ShareActionsMenu
+            url={shareUrl}
+            title={shareTitle}
+            showToast={showToast}
+            label={`Share ${quiz.title}`}
+          />
         </div>
       </div>
     </Card>

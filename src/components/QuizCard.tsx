@@ -11,6 +11,8 @@ import { Card } from "./Card";
 import { Badge } from "./Badge";
 import { Button } from "./Button";
 import { Avatar } from "./Avatar";
+import { Toast, useToast } from "./Toast";
+import { ShareActionsMenu } from "./ShareActions";
 import type { Quiz, Course, Profile, QuizAttempt } from "../mock";
 
 type QuizCardVariant = "purchased" | "locked" | "attempted";
@@ -71,6 +73,24 @@ export function QuizCard({
 }: QuizCardProps) {
   const cardClass =
     "group relative overflow-hidden " + VARIANT_BG[variant] + " " + className;
+  const [toast, showToast, dismissToast] = useToast();
+
+  // Publicly shareable URL — the /quiz/:id preview page (same for all users)
+  const shareUrl = (() => {
+    try {
+      // Prefer absolute URLs so social apps render them well
+      const p = `/quiz/${quiz.id}`;
+      if (typeof window !== "undefined" && window.location?.origin)
+        return window.location.origin + p;
+      return p;
+    } catch {
+      return `/quiz/${quiz.id}`;
+    }
+  })();
+  const shareTitle = `${course?.code ?? "Quiz"} · ${quiz.title}`;
+  const shareText = creator
+    ? `Take this ${course?.title ?? "quiz"} by ${creator.full_name} on PrepUniv — ${quiz.question_count} questions.`
+    : `Take this ${course?.title ?? "quiz"} on PrepUniv — ${quiz.question_count} questions.`;
 
   const ctaRow = (() => {
     if (variant === "purchased") {
@@ -243,15 +263,31 @@ export function QuizCard({
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-1">
+        <div className="flex items-center justify-between pt-1 gap-2">
           {creatorRow}
-          <Badge variant="muted" size="sm">
-            {quiz.is_published ? "Published" : "Draft"}
-          </Badge>
+          <div className="shrink-0 flex items-center gap-1.5">
+            <Badge variant="muted" size="sm">
+              {quiz.is_published ? "Published" : "Draft"}
+            </Badge>
+            <ShareActionsMenu
+              url={shareUrl}
+              title={shareTitle}
+              text={shareText}
+              showToast={showToast}
+              label={`Share ${quiz.title}`}
+            />
+          </div>
         </div>
       </div>
 
-      <div className="px-5 pb-5 pt-1">{ctaRow}</div>
+      <div className="px-5 pb-5 pt-1">
+        {toast && (
+          <div className="mb-3">
+            <Toast toast={toast} onClose={dismissToast} />
+          </div>
+        )}
+        {ctaRow}
+      </div>
     </Card>
   );
 }

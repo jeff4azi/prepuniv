@@ -25,6 +25,7 @@ import { Button } from "../components/Button";
 import { Avatar } from "../components/Avatar";
 import { ReportModal } from "../components/ReportModal";
 import { Toast, useToast } from "../components/Toast";
+import { ShareActionsMenu } from "../components/ShareActions";
 import { useAuth } from "../context/AuthContext";
 import {
   quizzes as allQuizzes,
@@ -264,21 +265,26 @@ export function QuizDetailPage() {
                 </div>
 
                 {/* STATE INDICATOR — visible immediately at header */}
-                {isPurchased ? (
-                  <div className="shrink-0 flex flex-col items-end gap-1">
+                <div className="shrink-0 flex items-center gap-2">
+                  {isPurchased ? (
                     <Badge variant="success" size="md" dot>
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       Unlocked
                     </Badge>
-                  </div>
-                ) : (
-                  <div className="shrink-0 flex flex-col items-end gap-1">
+                  ) : (
                     <Badge variant="muted" size="md" dot>
                       <Lock className="w-3.5 h-3.5" />
                       Locked
                     </Badge>
-                  </div>
-                )}
+                  )}
+                  <ShareActionsMenu
+                    url={`${window.location.origin}/quiz/${quiz.id}`}
+                    title={quiz.title}
+                    text={`Check out this quiz: ${quiz.title}`}
+                    showToast={showToast}
+                    label="Share quiz"
+                  />
+                </div>
               </div>
 
               {/* meta row */}
