@@ -28,7 +28,6 @@ import {
   profiles as allProfiles,
   quizAttempts as allAttempts,
   type Quiz,
-  type Course,
   type Profile,
 } from "../mock";
 
@@ -395,7 +394,7 @@ export function LibraryPage() {
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [courseFilter, setCourseFilter] = useState("all");
+  const [subjectFilter, setSubjectFilter] = useState("all");
   const [sortKey, setSortKey] = useState<SortKey>("unlocked");
   const [attemptFilter, setAttemptFilter] = useState<AttemptFilter>("all");
 
@@ -438,12 +437,14 @@ export function LibraryPage() {
     return m;
   }, [purchasedQuizzes, currentUser.id]);
 
-  // Courses that actually appear in the library (for chip filter)
-  const libraryCourses = useMemo<Course[]>(() => {
-    const ids = new Set(purchasedQuizzes.map((q) => q.course_id));
-    return [...ids]
-      .map((id) => coursesById.get(id))
-      .filter((c): c is Course => !!c);
+  // Subject areas that actually appear in the library (for chip filter)
+  const librarySubjectAreas = useMemo<string[]>(() => {
+    const areas = new Set<string>();
+    purchasedQuizzes.forEach((q) => {
+      const course = coursesById.get(q.course_id);
+      if (course?.subject_area) areas.add(course.subject_area);
+    });
+    return Array.from(areas).sort();
   }, [purchasedQuizzes, coursesById]);
 
   // Filter → sort
@@ -457,9 +458,12 @@ export function LibraryPage() {
       list = list.filter((q) => (statsMap.get(q.id)?.count ?? 0) === 0);
     }
 
-    // Course filter
-    if (courseFilter !== "all") {
-      list = list.filter((q) => q.course_id === courseFilter);
+    // Subject area filter
+    if (subjectFilter !== "all") {
+      list = list.filter((q) => {
+        const course = coursesById.get(q.course_id);
+        return course?.subject_area === subjectFilter;
+      });
     }
 
     // Search
@@ -507,14 +511,15 @@ export function LibraryPage() {
     purchasedQuizzes,
     statsMap,
     attemptFilter,
-    courseFilter,
+    subjectFilter,
     searchQuery,
     sortKey,
     profilesById,
+    coursesById,
   ]);
 
   const isFiltered =
-    searchQuery !== "" || courseFilter !== "all" || attemptFilter !== "all";
+    searchQuery !== "" || subjectFilter !== "all" || attemptFilter !== "all";
 
   // Summary stats
   const attemptedCount = useMemo(
@@ -570,24 +575,24 @@ export function LibraryPage() {
         {/* ── Filter / sort bar (sticky on scroll like Browse) ── */}
         <div className="sticky top-0 z-20 -mx-4 px-4 py-3 bg-background/95 backdrop-blur-md border-b border-border/25 lg:static lg:mx-0 lg:px-0 lg:py-0 lg:bg-transparent lg:backdrop-blur-none lg:border-0">
           <div className="space-y-3">
-            {/* Course chips */}
-            {libraryCourses.length > 1 && (
+            {/* Subject area chips */}
+            {librarySubjectAreas.length > 1 && (
               <div className="flex gap-2 overflow-x-auto no-scrollbar pb-0.5 -mx-1 px-1">
                 <FilterChip
-                  active={courseFilter === "all"}
-                  onClick={() => setCourseFilter("all")}
+                  active={subjectFilter === "all"}
+                  onClick={() => setSubjectFilter("all")}
                 >
                   All Courses
                 </FilterChip>
-                {libraryCourses.map((c) => (
+                {librarySubjectAreas.map((area) => (
                   <FilterChip
-                    key={c.id}
-                    active={courseFilter === c.id}
+                    key={area}
+                    active={subjectFilter === area}
                     onClick={() =>
-                      setCourseFilter((prev) => (prev === c.id ? "all" : c.id))
+                      setSubjectFilter((prev) => (prev === area ? "all" : area))
                     }
                   >
-                    {c.code}
+                    {area}
                   </FilterChip>
                 ))}
               </div>
@@ -627,7 +632,7 @@ export function LibraryPage() {
                   size="sm"
                   onClick={() => {
                     setSearchInput("");
-                    setCourseFilter("all");
+                    setSubjectFilter("all");
                     setAttemptFilter("all");
                   }}
                   className="h-9! px-3! text-xs"
