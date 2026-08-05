@@ -816,7 +816,7 @@ export function QuizBuilderPage() {
 
       {/* ── Sticky save bar ───────────────────────────────────────────────── */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/90 backdrop-blur-xl border-t border-border/50 safe-bottom lg:pl-65">
-        <div className="max-w-[900px] mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4 -translate-x-31">
+        <div className="max-w-[900px] mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4 lg:-translate-x-31">
           <div className="min-w-0">
             {saveAttempted && !formValid && (
               <p className="text-xs text-danger font-heading font-medium flex items-center gap-1.5">
