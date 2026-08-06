@@ -57,6 +57,52 @@ export const profiles: Profile[] = [
     avatar_url: undefined,
     joined_at: "2025-12-01T00:00:00Z",
   },
+  // ── Applicant users (pending / rejected applications) ─────────────────────
+  {
+    id: "user_app_001",
+    full_name: "Ngozi Adeyemi",
+    email: "ngozi.adeyemi@unilag.edu.ng",
+    role: "user",
+    is_approved_creator: false,
+    avatar_url: undefined,
+    joined_at: "2026-07-01T00:00:00Z",
+  },
+  {
+    id: "user_app_002",
+    full_name: "Emeka Obi",
+    email: "emeka.obi@abu.edu.ng",
+    role: "user",
+    is_approved_creator: false,
+    avatar_url: undefined,
+    joined_at: "2026-07-05T00:00:00Z",
+  },
+  {
+    id: "user_app_003",
+    full_name: "Fatima Bello",
+    email: "fatima.bello@unijos.edu.ng",
+    role: "user",
+    is_approved_creator: false,
+    avatar_url: undefined,
+    joined_at: "2026-07-10T00:00:00Z",
+  },
+  {
+    id: "user_app_004",
+    full_name: "Tunde Fasanya",
+    email: "tunde.fasanya@oauife.edu.ng",
+    role: "user",
+    is_approved_creator: false,
+    avatar_url: undefined,
+    joined_at: "2026-07-15T00:00:00Z",
+  },
+  {
+    id: "user_app_005",
+    full_name: "Blessing Nwosu",
+    email: "blessing.nwosu@unn.edu.ng",
+    role: "user",
+    is_approved_creator: false,
+    avatar_url: undefined,
+    joined_at: "2026-07-18T00:00:00Z",
+  },
 ];
 
 export const purchasedQuizIdsByUser: Record<string, string[]> = {
@@ -94,3 +140,12 @@ export const walletBalancesByUser: Record<string, number> = {
   creator_001: 84500,
   admin_001: 500000,
 };
+
+/** Flip a user's is_approved_creator flag and upgrade their role to 'creator'. */
+export function approveCreator(userId: string): void {
+  const profile = profiles.find((p) => p.id === userId);
+  if (profile) {
+    profile.is_approved_creator = true;
+    if (profile.role === "user") profile.role = "creator";
+  }
+}

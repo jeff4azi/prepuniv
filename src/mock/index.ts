@@ -2,6 +2,7 @@ export {
   profiles,
   purchasedQuizIdsByUser,
   walletBalancesByUser,
+  approveCreator,
 } from "./profiles";
 export { courses } from "./courses";
 export { quizzes, addQuiz, updateQuiz } from "./quizzes";

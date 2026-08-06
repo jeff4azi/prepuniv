@@ -33,6 +33,7 @@ import { QuizBuilderPage as RealQuizBuilderPage } from "./QuizBuilderPage";
 import { QuizAnalyticsPage as RealQuizAnalyticsPage } from "./QuizAnalyticsPage";
 import { CreatorPayoutsPage as RealCreatorPayoutsPage } from "./CreatorPayoutsPage";
 import { AdminDashboardPage as RealAdminDashboardPage } from "./AdminDashboardPage";
+import { AdminApplicationsPage as RealAdminApplicationsPage } from "./AdminApplicationsPage";
 
 // suppress "unused" linter warnings for icons still used by placeholder pages
 void (ClockIcon, SettingsIcon, WalletIcon);
@@ -208,15 +209,7 @@ export function AdminDashboardPage() {
 }
 
 export function AdminApplicationsPage() {
-  return (
-    <PlaceholderPage
-      title="Creator Applications"
-      subtitle="Review and approve creator applications"
-      icon={ListChecks}
-      tag="Admin section"
-      tagVariant="warning"
-    />
-  );
+  return <RealAdminApplicationsPage />;
 }
 
 export function AdminPayoutsPage() {
