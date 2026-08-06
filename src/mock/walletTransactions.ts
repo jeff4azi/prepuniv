@@ -573,3 +573,419 @@ export const walletTransactions: WalletTransaction[] = [
     created_at: "2026-07-05T09:00:00Z",
   },
 ];
+
+// ─── Platform revenue (PrepUniv's 35% cut, recorded against admin_001) ────────
+// Each purchase generates a platform_revenue entry = 35% of purchase price.
+// These are what the admin dashboard aggregates as "platform revenue".
+
+const platformRevenueSeed: Array<{
+  id: string;
+  amount: number;
+  reference: string;
+  related_quiz_id: string;
+  created_at: string;
+}> = [
+  // July 2026
+  {
+    id: "pr_rev_001",
+    amount: 69300,
+    reference: "PLREV-quiz_001-JUL28",
+    related_quiz_id: "quiz_001",
+    created_at: "2026-07-28T06:01:00Z",
+  },
+  {
+    id: "pr_rev_002",
+    amount: 46800,
+    reference: "PLREV-quiz_002-JUL27",
+    related_quiz_id: "quiz_002",
+    created_at: "2026-07-27T10:16:00Z",
+  },
+  {
+    id: "pr_rev_003",
+    amount: 37800,
+    reference: "PLREV-quiz_003-JUL26",
+    related_quiz_id: "quiz_003",
+    created_at: "2026-07-26T14:31:00Z",
+  },
+  {
+    id: "pr_rev_004",
+    amount: 10200,
+    reference: "PLREV-quiz_004-JUL25",
+    related_quiz_id: "quiz_004",
+    created_at: "2026-07-25T09:46:00Z",
+  },
+  {
+    id: "pr_rev_005",
+    amount: 23800,
+    reference: "PLREV-quiz_005-JUL24",
+    related_quiz_id: "quiz_005",
+    created_at: "2026-07-24T11:01:00Z",
+  },
+  {
+    id: "pr_rev_006",
+    amount: 32550,
+    reference: "PLREV-quiz_006-JUL23",
+    related_quiz_id: "quiz_006",
+    created_at: "2026-07-23T08:21:00Z",
+  },
+  {
+    id: "pr_rev_007",
+    amount: 31500,
+    reference: "PLREV-quiz_001-JUL20",
+    related_quiz_id: "quiz_001",
+    created_at: "2026-07-20T16:46:00Z",
+  },
+  {
+    id: "pr_rev_008",
+    amount: 19440,
+    reference: "PLREV-quiz_002-JUL18",
+    related_quiz_id: "quiz_002",
+    created_at: "2026-07-18T07:31:00Z",
+  },
+  {
+    id: "pr_rev_009",
+    amount: 17490,
+    reference: "PLREV-quiz_003-JUL15",
+    related_quiz_id: "quiz_003",
+    created_at: "2026-07-15T13:11:00Z",
+  },
+  {
+    id: "pr_rev_010",
+    amount: 29160,
+    reference: "PLREV-quiz_006-JUL12",
+    related_quiz_id: "quiz_006",
+    created_at: "2026-07-12T09:01:00Z",
+  },
+  {
+    id: "pr_rev_011",
+    amount: 16030,
+    reference: "PLREV-quiz_005-JUL10",
+    related_quiz_id: "quiz_005",
+    created_at: "2026-07-10T15:21:00Z",
+  },
+  {
+    id: "pr_rev_012",
+    amount: 41310,
+    reference: "PLREV-quiz_001-JUL08",
+    related_quiz_id: "quiz_001",
+    created_at: "2026-07-08T10:41:00Z",
+  },
+  // June 2026
+  {
+    id: "pr_rev_020",
+    amount: 60750,
+    reference: "PLREV-quiz_001-JUN28",
+    related_quiz_id: "quiz_001",
+    created_at: "2026-06-28T08:01:00Z",
+  },
+  {
+    id: "pr_rev_021",
+    amount: 48600,
+    reference: "PLREV-quiz_002-JUN24",
+    related_quiz_id: "quiz_002",
+    created_at: "2026-06-24T14:16:00Z",
+  },
+  {
+    id: "pr_rev_022",
+    amount: 38850,
+    reference: "PLREV-quiz_003-JUN20",
+    related_quiz_id: "quiz_003",
+    created_at: "2026-06-20T10:31:00Z",
+  },
+  {
+    id: "pr_rev_023",
+    amount: 27200,
+    reference: "PLREV-quiz_006-JUN16",
+    related_quiz_id: "quiz_006",
+    created_at: "2026-06-16T09:01:00Z",
+  },
+  {
+    id: "pr_rev_024",
+    amount: 19440,
+    reference: "PLREV-quiz_005-JUN10",
+    related_quiz_id: "quiz_005",
+    created_at: "2026-06-10T11:46:00Z",
+  },
+  {
+    id: "pr_rev_025",
+    amount: 49590,
+    reference: "PLREV-quiz_001-JUN05",
+    related_quiz_id: "quiz_001",
+    created_at: "2026-06-05T07:21:00Z",
+  },
+  // May 2026
+  {
+    id: "pr_rev_030",
+    amount: 42525,
+    reference: "PLREV-quiz_001-MAY25",
+    related_quiz_id: "quiz_001",
+    created_at: "2026-05-25T09:31:00Z",
+  },
+  {
+    id: "pr_rev_031",
+    amount: 34020,
+    reference: "PLREV-quiz_002-MAY18",
+    related_quiz_id: "quiz_002",
+    created_at: "2026-05-18T13:01:00Z",
+  },
+  {
+    id: "pr_rev_032",
+    amount: 22360,
+    reference: "PLREV-quiz_006-MAY12",
+    related_quiz_id: "quiz_006",
+    created_at: "2026-05-12T08:46:00Z",
+  },
+  // April 2026 (extra volume for chart)
+  {
+    id: "pr_rev_040",
+    amount: 55125,
+    reference: "PLREV-quiz_001-APR28",
+    related_quiz_id: "quiz_001",
+    created_at: "2026-04-28T10:00:00Z",
+  },
+  {
+    id: "pr_rev_041",
+    amount: 41580,
+    reference: "PLREV-quiz_002-APR22",
+    related_quiz_id: "quiz_002",
+    created_at: "2026-04-22T12:00:00Z",
+  },
+  {
+    id: "pr_rev_042",
+    amount: 28350,
+    reference: "PLREV-quiz_003-APR18",
+    related_quiz_id: "quiz_003",
+    created_at: "2026-04-18T09:00:00Z",
+  },
+  {
+    id: "pr_rev_043",
+    amount: 18900,
+    reference: "PLREV-quiz_005-APR12",
+    related_quiz_id: "quiz_005",
+    created_at: "2026-04-12T14:00:00Z",
+  },
+  {
+    id: "pr_rev_044",
+    amount: 37800,
+    reference: "PLREV-quiz_006-APR06",
+    related_quiz_id: "quiz_006",
+    created_at: "2026-04-06T08:00:00Z",
+  },
+];
+
+platformRevenueSeed.forEach(
+  ({ id, amount, reference, related_quiz_id, created_at }) => {
+    walletTransactions.push({
+      id,
+      user_id: "admin_001",
+      amount,
+      type: "platform_revenue",
+      reference,
+      related_quiz_id,
+      status: "success",
+      created_at,
+    });
+  },
+);
+
+// ─── Synthetic wide-world deposits (many users topping up) ────────────────────
+// Gives the admin "Total Wallet Top-ups" stat real mass.
+const syntheticDeposits: Array<{
+  id: string;
+  user_id: string;
+  amount: number;
+  created_at: string;
+}> = [
+  {
+    id: "sd_001",
+    user_id: "user_016",
+    amount: 500000,
+    created_at: "2026-07-28T07:00:00Z",
+  },
+  {
+    id: "sd_002",
+    user_id: "user_017",
+    amount: 300000,
+    created_at: "2026-07-27T09:00:00Z",
+  },
+  {
+    id: "sd_003",
+    user_id: "user_018",
+    amount: 1000000,
+    created_at: "2026-07-26T11:00:00Z",
+  },
+  {
+    id: "sd_004",
+    user_id: "user_019",
+    amount: 250000,
+    created_at: "2026-07-25T08:00:00Z",
+  },
+  {
+    id: "sd_005",
+    user_id: "user_020",
+    amount: 500000,
+    created_at: "2026-07-24T10:00:00Z",
+  },
+  {
+    id: "sd_006",
+    user_id: "user_021",
+    amount: 200000,
+    created_at: "2026-07-23T07:30:00Z",
+  },
+  {
+    id: "sd_007",
+    user_id: "user_022",
+    amount: 750000,
+    created_at: "2026-07-22T12:00:00Z",
+  },
+  {
+    id: "sd_008",
+    user_id: "user_023",
+    amount: 100000,
+    created_at: "2026-07-21T14:00:00Z",
+  },
+  {
+    id: "sd_009",
+    user_id: "user_024",
+    amount: 500000,
+    created_at: "2026-07-20T09:00:00Z",
+  },
+  {
+    id: "sd_010",
+    user_id: "user_025",
+    amount: 300000,
+    created_at: "2026-07-19T11:00:00Z",
+  },
+  {
+    id: "sd_011",
+    user_id: "user_026",
+    amount: 200000,
+    created_at: "2026-07-18T08:30:00Z",
+  },
+  {
+    id: "sd_012",
+    user_id: "user_027",
+    amount: 1000000,
+    created_at: "2026-07-17T10:00:00Z",
+  },
+  {
+    id: "sd_013",
+    user_id: "user_028",
+    amount: 500000,
+    created_at: "2026-07-16T09:00:00Z",
+  },
+  {
+    id: "sd_014",
+    user_id: "user_029",
+    amount: 300000,
+    created_at: "2026-07-15T07:00:00Z",
+  },
+  {
+    id: "sd_015",
+    user_id: "user_030",
+    amount: 250000,
+    created_at: "2026-07-14T11:00:00Z",
+  },
+  {
+    id: "sd_016",
+    user_id: "user_031",
+    amount: 500000,
+    created_at: "2026-07-13T08:00:00Z",
+  },
+  {
+    id: "sd_017",
+    user_id: "user_032",
+    amount: 200000,
+    created_at: "2026-07-12T10:00:00Z",
+  },
+  {
+    id: "sd_018",
+    user_id: "user_033",
+    amount: 750000,
+    created_at: "2026-07-11T09:00:00Z",
+  },
+  {
+    id: "sd_019",
+    user_id: "user_034",
+    amount: 300000,
+    created_at: "2026-07-10T07:30:00Z",
+  },
+  {
+    id: "sd_020",
+    user_id: "user_035",
+    amount: 100000,
+    created_at: "2026-07-09T11:00:00Z",
+  },
+  {
+    id: "sd_021",
+    user_id: "user_036",
+    amount: 500000,
+    created_at: "2026-06-30T09:00:00Z",
+  },
+  {
+    id: "sd_022",
+    user_id: "user_037",
+    amount: 300000,
+    created_at: "2026-06-25T10:00:00Z",
+  },
+  {
+    id: "sd_023",
+    user_id: "user_038",
+    amount: 200000,
+    created_at: "2026-06-20T08:00:00Z",
+  },
+  {
+    id: "sd_024",
+    user_id: "user_039",
+    amount: 1000000,
+    created_at: "2026-06-15T09:00:00Z",
+  },
+  {
+    id: "sd_025",
+    user_id: "user_040",
+    amount: 500000,
+    created_at: "2026-06-10T11:00:00Z",
+  },
+  {
+    id: "sd_026",
+    user_id: "user_002",
+    amount: 300000,
+    created_at: "2026-06-05T07:00:00Z",
+  },
+  {
+    id: "sd_027",
+    user_id: "user_003",
+    amount: 500000,
+    created_at: "2026-05-28T09:00:00Z",
+  },
+  {
+    id: "sd_028",
+    user_id: "user_004",
+    amount: 200000,
+    created_at: "2026-05-20T10:00:00Z",
+  },
+  {
+    id: "sd_029",
+    user_id: "user_005",
+    amount: 750000,
+    created_at: "2026-05-12T08:00:00Z",
+  },
+  {
+    id: "sd_030",
+    user_id: "user_006",
+    amount: 300000,
+    created_at: "2026-05-05T11:00:00Z",
+  },
+];
+
+syntheticDeposits.forEach(({ id, user_id, amount, created_at }) => {
+  walletTransactions.push({
+    id,
+    user_id,
+    amount,
+    type: "deposit",
+    reference: `FLW-SYN-${id.toUpperCase()}`,
+    status: "success",
+    created_at,
+  });
+});

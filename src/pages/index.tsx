@@ -32,7 +32,7 @@ import { CreatorQuizzesPage as RealCreatorQuizzesPage } from "./CreatorQuizzesPa
 import { QuizBuilderPage as RealQuizBuilderPage } from "./QuizBuilderPage";
 import { QuizAnalyticsPage as RealQuizAnalyticsPage } from "./QuizAnalyticsPage";
 import { CreatorPayoutsPage as RealCreatorPayoutsPage } from "./CreatorPayoutsPage";
-import { CreatorReportsPage as RealCreatorReportsPage } from "./CreatorReportsPage";
+import { AdminDashboardPage as RealAdminDashboardPage } from "./AdminDashboardPage";
 
 // suppress "unused" linter warnings for icons still used by placeholder pages
 void (ClockIcon, SettingsIcon, WalletIcon);
@@ -204,15 +204,7 @@ export function CreatorReportsPage() {
 
 // Admin pages
 export function AdminDashboardPage() {
-  return (
-    <PlaceholderPage
-      title="Admin Dashboard"
-      subtitle="Platform-wide overview & key metrics"
-      icon={ShieldCheck}
-      tag="Admin section"
-      tagVariant="warning"
-    />
-  );
+  return <RealAdminDashboardPage />;
 }
 
 export function AdminApplicationsPage() {
