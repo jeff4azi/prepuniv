@@ -5,12 +5,11 @@
  * Filter tabs: Open / Resolved / Dismissed / All
  * Repeat-reporter detection: reporters with 3+ reports this month get a tag.
  */
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Link, Navigate } from "react-router-dom";
 import {
   Flag,
   ChevronRight,
-  X,
   CheckCircle2,
   MinusCircle,
   AlertCircle,
@@ -27,6 +26,7 @@ import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Avatar } from "../components/Avatar";
 import { Toast, useToast } from "../components/Toast";
+import { DrawerShell } from "../components/DrawerShell";
 import { useAuth } from "../context/AuthContext";
 import {
   creatorReports,
@@ -158,20 +158,6 @@ function ReportReviewSheet({
     quiz ? !quiz.is_published : false,
   );
 
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, []);
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", h);
-    return () => document.removeEventListener("keydown", h);
-  }, [onClose]);
-
   async function handleResolve() {
     setResolving(true);
     await new Promise((r) => setTimeout(r, 600));
@@ -209,366 +195,340 @@ function ReportReviewSheet({
   const isRepeatReporter = reporterMonthlyCount >= 3;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-stretch justify-end p-0">
-      <div
-        className="absolute inset-0 bg-text/40 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden
+    <DrawerShell open={true} onClose={onClose} ariaLabel="Report review">
+      <DrawerShell.Header
+        icon={<Flag className="w-5 h-5" strokeWidth={2} />}
+        iconClassName="bg-danger-bg text-danger"
+        title={
+          <h2 className="font-heading font-bold text-sm text-text leading-tight line-clamp-1">
+            {report.quiz_title}
+          </h2>
+        }
+        statusBadge={<StatusBadge status={report.status} />}
+        meta={`Reported ${formatDate(report.created_at)}`}
+        onClose={onClose}
       />
-      <div className="relative z-10 w-full sm:max-w-lg sm:h-full bg-cream sm:rounded-l-3xl rounded-t-3xl shadow-elevated flex flex-col max-h-[92dvh] sm:max-h-none overflow-hidden">
-        {/* Drag pill */}
-        <div className="sm:hidden pt-2.5 pb-1 flex justify-center shrink-0">
-          <div className="h-1 w-10 rounded-full bg-border" />
-        </div>
 
-        {/* Header */}
-        <div className="flex items-start gap-3 px-5 pt-4 sm:pt-5 pb-4 border-b border-border/40 shrink-0">
-          <div className="h-11 w-11 rounded-xl bg-danger-bg text-danger flex items-center justify-center shrink-0">
-            <Flag className="w-5 h-5" strokeWidth={2} />
-          </div>
+      <DrawerShell.Body>
+        {/* Reporter */}
+        <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-surface/40 border border-border/40">
+          <Avatar name={reporterName} size="sm" />
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="font-heading font-bold text-sm text-text leading-tight line-clamp-1">
-                {report.quiz_title}
-              </h2>
-              <StatusBadge status={report.status} />
-            </div>
-            <p className="text-xs text-muted mt-0.5">
-              Reported {formatDate(report.created_at)}
+            <p className="font-heading font-semibold text-sm text-text leading-tight">
+              {reporterName}
+            </p>
+            <p className="text-xs text-muted">
+              {reporter?.email ?? report.reporter_id}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="h-8 w-8 rounded-xl flex items-center justify-center text-muted hover:bg-surface/70 hover:text-text transition-colors shrink-0"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          {isRepeatReporter && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-warning-bg border border-warning/20 text-[10px] font-heading font-semibold text-warning shrink-0">
+              <AlertCircle className="w-3 h-3" strokeWidth={2} />
+              {reporterMonthlyCount} reports this month
+            </span>
+          )}
         </div>
 
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4 min-h-0">
-          {/* Reporter */}
-          <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-surface/40 border border-border/40">
-            <Avatar name={reporterName} size="sm" />
-            <div className="flex-1 min-w-0">
-              <p className="font-heading font-semibold text-sm text-text leading-tight">
-                {reporterName}
-              </p>
-              <p className="text-xs text-muted">
-                {reporter?.email ?? report.reporter_id}
-              </p>
-            </div>
-            {isRepeatReporter && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-warning-bg border border-warning/20 text-[10px] font-heading font-semibold text-warning shrink-0">
-                <AlertCircle className="w-3 h-3" strokeWidth={2} />
-                {reporterMonthlyCount} reports this month
+        {/* Reason + details */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <ReasonBadge reason={report.reason} />
+            {report.other_text && report.reason === "other" && (
+              <span className="text-xs text-text-soft">
+                — {report.other_text}
               </span>
             )}
           </div>
+          {report.details && (
+            <p className="text-sm text-text-soft leading-relaxed bg-surface/40 rounded-xl px-4 py-3 border border-border/40">
+              {report.details}
+            </p>
+          )}
+        </div>
 
-          {/* Reason + details */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <ReasonBadge reason={report.reason} />
-              {report.other_text && report.reason === "other" && (
-                <span className="text-xs text-text-soft">
-                  — {report.other_text}
-                </span>
-              )}
-            </div>
-            {report.details && (
-              <p className="text-sm text-text-soft leading-relaxed bg-surface/40 rounded-xl px-4 py-3 border border-border/40">
-                {report.details}
-              </p>
-            )}
+        {/* Quiz & creator context */}
+        <div className="rounded-2xl border border-border/40 bg-surface/20 divide-y divide-border/30 overflow-hidden">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <BookOpen
+              className="w-4 h-4 text-muted shrink-0"
+              strokeWidth={2}
+            />
+            <span className="text-xs text-muted font-heading font-semibold uppercase tracking-wider w-20 shrink-0">
+              Quiz
+            </span>
+            <Link
+              to={`/quiz/${report.quiz_id}`}
+              className="text-sm text-primary hover:underline underline-offset-2 font-heading font-medium truncate"
+            >
+              {report.quiz_title}
+            </Link>
           </div>
-
-          {/* Quiz & creator context */}
-          <div className="rounded-2xl border border-border/40 bg-surface/20 divide-y divide-border/30 overflow-hidden">
+          {quizCreator && (
             <div className="flex items-center gap-3 px-4 py-3">
-              <BookOpen
-                className="w-4 h-4 text-muted shrink-0"
-                strokeWidth={2}
-              />
+              <User className="w-4 h-4 text-muted shrink-0" strokeWidth={2} />
               <span className="text-xs text-muted font-heading font-semibold uppercase tracking-wider w-20 shrink-0">
-                Quiz
+                Creator
               </span>
               <Link
-                to={`/quiz/${report.quiz_id}`}
-                className="text-sm text-primary hover:underline underline-offset-2 font-heading font-medium truncate"
+                to={`/profile/creator/${quizCreator.id}`}
+                className="text-sm text-primary hover:underline underline-offset-2 font-heading font-medium"
               >
-                {report.quiz_title}
+                {quizCreator.full_name}
               </Link>
             </div>
-            {quizCreator && (
-              <div className="flex items-center gap-3 px-4 py-3">
-                <User className="w-4 h-4 text-muted shrink-0" strokeWidth={2} />
-                <span className="text-xs text-muted font-heading font-semibold uppercase tracking-wider w-20 shrink-0">
-                  Creator
-                </span>
-                <Link
-                  to={`/profile/creator/${quizCreator.id}`}
-                  className="text-sm text-primary hover:underline underline-offset-2 font-heading font-medium"
-                >
-                  {quizCreator.full_name}
-                </Link>
-              </div>
-            )}
-            {unpublished && (
-              <div className="flex items-center gap-3 px-4 py-3 bg-warning-bg/40">
-                <EyeOff
-                  className="w-4 h-4 text-warning shrink-0"
-                  strokeWidth={2}
-                />
-                <span className="text-xs font-heading font-semibold text-warning">
-                  Quiz was unpublished by admin
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Resolution notes (decided) */}
-          {report.status !== "open" &&
-            report.other_text?.startsWith("Admin:") && (
-              <div
-                className={`flex items-start gap-2.5 px-4 py-3 rounded-2xl border ${
-                  report.status === "resolved"
-                    ? "bg-success-bg border-success/20"
-                    : "bg-surface/40 border-border/40"
-                }`}
-              >
-                <Info
-                  className={`w-4 h-4 shrink-0 mt-0.5 ${report.status === "resolved" ? "text-success" : "text-muted"}`}
-                  strokeWidth={2}
-                />
-                <div>
-                  <p className="text-xs font-heading font-semibold text-muted uppercase tracking-wider mb-0.5">
-                    Admin note
-                  </p>
-                  <p className="text-sm text-text leading-relaxed">
-                    {report.other_text
-                      .replace(/^Admin: /, "")
-                      .replace(/ \| Admin: .*$/, "")}
-                  </p>
-                </div>
-              </div>
-            )}
-          {report.resolved_at && (
-            <p className="text-xs text-muted flex items-center gap-1.5">
-              <Clock className="w-3 h-3" strokeWidth={2} />
-              {report.status === "resolved" ? "Resolved" : "Dismissed"}{" "}
-              {formatDate(report.resolved_at)}
-            </p>
           )}
-
-          {/* ── Unpublish confirm ── */}
-          {isOpen && !unpublished && showUnpublish && (
-            <div className="rounded-2xl border border-warning/25 bg-warning-bg/40 p-4 space-y-3">
-              <p className="text-sm text-text leading-relaxed">
-                Unpublish &ldquo;
-                <span className="font-heading font-semibold">
-                  {report.quiz_title}
-                </span>
-                &rdquo;? It will be hidden from Browse but existing owners keep
-                access, per the pay-once policy.
-              </p>
-              <div className="flex items-center gap-2.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowUnpublish(false)}
-                  disabled={unpublishing}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  isLoading={unpublishing}
-                  onClick={handleUnpublish}
-                  className="border-warning/50 text-warning hover:bg-warning-bg"
-                >
-                  {!unpublishing && <EyeOff className="w-3.5 h-3.5" />}
-                  Confirm unpublish
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* ── Resolve form ── */}
-          {isOpen && showResolveForm && !confirmResolve && (
-            <div className="rounded-2xl border border-border/50 bg-surface/30 p-4 space-y-3">
-              <p className="text-sm font-heading font-semibold text-text">
-                Action taken{" "}
-                <span className="text-muted font-normal">(optional)</span>
-              </p>
-              <textarea
-                rows={2}
-                placeholder="What action was taken, if any? e.g. Creator notified, quiz corrected…"
-                value={resolveNotes}
-                onChange={(e) => setResolveNotes(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-cream border border-border text-sm text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all resize-none leading-relaxed"
+          {unpublished && (
+            <div className="flex items-center gap-3 px-4 py-3 bg-warning-bg/40">
+              <EyeOff
+                className="w-4 h-4 text-warning shrink-0"
+                strokeWidth={2}
               />
-              <div className="flex items-center gap-2.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowResolveForm(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setConfirmResolve(true)}
-                  className="border-success/40 text-success hover:bg-success-bg"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Continue
-                </Button>
-              </div>
-            </div>
-          )}
-          {isOpen && showResolveForm && confirmResolve && (
-            <div className="rounded-2xl border border-success/25 bg-success-bg p-4 space-y-3">
-              <p className="text-sm text-text leading-relaxed">
-                Mark this report as resolved?
-              </p>
-              <div className="flex items-center gap-2.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setConfirmResolve(false)}
-                  disabled={resolving}
-                >
-                  Back
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  isLoading={resolving}
-                  onClick={handleResolve}
-                >
-                  {!resolving && <CheckCircle2 className="w-3.5 h-3.5" />}
-                  Confirm resolve
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* ── Dismiss form ── */}
-          {isOpen && showDismissForm && !confirmDismiss && (
-            <div className="rounded-2xl border border-border/50 bg-surface/30 p-4 space-y-3">
-              <p className="text-sm font-heading font-semibold text-text">
-                Dismissal reason{" "}
-                <span className="text-muted font-normal">(optional)</span>
-              </p>
-              <textarea
-                rows={2}
-                placeholder="Why is this report being dismissed? e.g. Report not substantiated…"
-                value={dismissNotes}
-                onChange={(e) => setDismissNotes(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-cream border border-border text-sm text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all resize-none leading-relaxed"
-              />
-              <div className="flex items-center gap-2.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowDismissForm(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setConfirmDismiss(true)}
-                >
-                  <MinusCircle className="w-3.5 h-3.5" />
-                  Continue
-                </Button>
-              </div>
-            </div>
-          )}
-          {isOpen && showDismissForm && confirmDismiss && (
-            <div className="rounded-2xl border border-border/50 bg-surface/30 p-4 space-y-3">
-              <p className="text-sm text-text leading-relaxed">
-                Dismiss this report? No action will be taken on the quiz.
-              </p>
-              <div className="flex items-center gap-2.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setConfirmDismiss(false)}
-                  disabled={dismissing}
-                >
-                  Back
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  isLoading={dismissing}
-                  onClick={handleDismiss}
-                >
-                  {!dismissing && <MinusCircle className="w-3.5 h-3.5" />}
-                  Confirm dismiss
-                </Button>
-              </div>
+              <span className="text-xs font-heading font-semibold text-warning">
+                Quiz was unpublished by admin
+              </span>
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        {isOpen && !showResolveForm && !showDismissForm && !showUnpublish && (
-          <div className="px-5 pb-5 pt-3 border-t border-border/40 shrink-0 space-y-2">
-            <div className="flex items-center gap-2">
+        {/* Resolution notes (decided) */}
+        {report.status !== "open" &&
+          report.other_text?.startsWith("Admin:") && (
+            <div
+              className={`flex items-start gap-2.5 px-4 py-3 rounded-2xl border ${
+                report.status === "resolved"
+                  ? "bg-success-bg border-success/20"
+                  : "bg-surface/40 border-border/40"
+              }`}
+            >
+              <Info
+                className={`w-4 h-4 shrink-0 mt-0.5 ${report.status === "resolved" ? "text-success" : "text-muted"}`}
+                strokeWidth={2}
+              />
+              <div>
+                <p className="text-xs font-heading font-semibold text-muted uppercase tracking-wider mb-0.5">
+                  Admin note
+                </p>
+                <p className="text-sm text-text leading-relaxed">
+                  {report.other_text
+                    .replace(/^Admin: /, "")
+                    .replace(/ \| Admin: .*$/, "")}
+                </p>
+              </div>
+            </div>
+          )}
+        {report.resolved_at && (
+          <p className="text-xs text-muted flex items-center gap-1.5">
+            <Clock className="w-3 h-3" strokeWidth={2} />
+            {report.status === "resolved" ? "Resolved" : "Dismissed"}{" "}
+            {formatDate(report.resolved_at)}
+          </p>
+        )}
+
+        {/* ── Unpublish confirm ── */}
+        {isOpen && !unpublished && showUnpublish && (
+          <div className="rounded-2xl border border-warning/25 bg-warning-bg/40 p-4 space-y-3">
+            <p className="text-sm text-text leading-relaxed">
+              Unpublish &ldquo;
+              <span className="font-heading font-semibold">
+                {report.quiz_title}
+              </span>
+              &rdquo;? It will be hidden from Browse but existing owners keep
+              access, per the pay-once policy.
+            </p>
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowUnpublish(false)}
+                disabled={unpublishing}
+              >
+                Cancel
+              </Button>
               <Button
                 variant="outline"
-                size="md"
-                className="flex-1"
-                onClick={() => {
-                  setShowDismissForm(true);
-                  setShowResolveForm(false);
-                }}
+                size="sm"
+                isLoading={unpublishing}
+                onClick={handleUnpublish}
+                className="border-warning/50 text-warning hover:bg-warning-bg"
               >
-                <MinusCircle className="w-4 h-4" />
-                Dismiss
+                {!unpublishing && <EyeOff className="w-3.5 h-3.5" />}
+                Confirm unpublish
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Resolve form ── */}
+        {isOpen && showResolveForm && !confirmResolve && (
+          <div className="rounded-2xl border border-border/50 bg-surface/30 p-4 space-y-3">
+            <p className="text-sm font-heading font-semibold text-text">
+              Action taken{" "}
+              <span className="text-muted font-normal">(optional)</span>
+            </p>
+            <textarea
+              rows={2}
+              placeholder="What action was taken, if any? e.g. Creator notified, quiz corrected…"
+              value={resolveNotes}
+              onChange={(e) => setResolveNotes(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl bg-cream border border-border text-sm text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all resize-none leading-relaxed"
+            />
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowResolveForm(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmResolve(true)}
+                className="border-success/40 text-success hover:bg-success-bg"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Continue
+              </Button>
+            </div>
+          </div>
+        )}
+        {isOpen && showResolveForm && confirmResolve && (
+          <div className="rounded-2xl border border-success/25 bg-success-bg p-4 space-y-3">
+            <p className="text-sm text-text leading-relaxed">
+              Mark this report as resolved?
+            </p>
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmResolve(false)}
+                disabled={resolving}
+              >
+                Back
               </Button>
               <Button
                 variant="primary"
-                size="md"
-                className="flex-1"
-                onClick={() => {
-                  setShowResolveForm(true);
-                  setShowDismissForm(false);
-                }}
+                size="sm"
+                isLoading={resolving}
+                onClick={handleResolve}
               >
-                <CheckCircle2 className="w-4 h-4" />
-                Resolve
+                {!resolving && <CheckCircle2 className="w-3.5 h-3.5" />}
+                Confirm resolve
               </Button>
             </div>
-            {!unpublished && quiz?.is_published && (
-              <button
-                type="button"
-                onClick={() => setShowUnpublish(true)}
-                className="w-full h-9 rounded-xl text-xs font-heading font-semibold border border-warning/40 text-warning hover:bg-warning-bg transition-colors flex items-center justify-center gap-1.5"
-              >
-                <EyeOff className="w-3.5 h-3.5" />
-                Unpublish quiz
-              </button>
-            )}
           </div>
         )}
-        {!isOpen && (
-          <div className="px-5 pb-5 pt-3 border-t border-border/40 shrink-0">
-            <Button variant="outline" size="md" fullWidth onClick={onClose}>
-              Close
+
+        {/* ── Dismiss form ── */}
+        {isOpen && showDismissForm && !confirmDismiss && (
+          <div className="rounded-2xl border border-border/50 bg-surface/30 p-4 space-y-3">
+            <p className="text-sm font-heading font-semibold text-text">
+              Dismissal reason{" "}
+              <span className="text-muted font-normal">(optional)</span>
+            </p>
+            <textarea
+              rows={2}
+              placeholder="Why is this report being dismissed? e.g. Report not substantiated…"
+              value={dismissNotes}
+              onChange={(e) => setDismissNotes(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl bg-cream border border-border text-sm text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all resize-none leading-relaxed"
+            />
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDismissForm(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmDismiss(true)}
+              >
+                <MinusCircle className="w-3.5 h-3.5" />
+                Continue
+              </Button>
+            </div>
+          </div>
+        )}
+        {isOpen && showDismissForm && confirmDismiss && (
+          <div className="rounded-2xl border border-border/50 bg-surface/30 p-4 space-y-3">
+            <p className="text-sm text-text leading-relaxed">
+              Dismiss this report? No action will be taken on the quiz.
+            </p>
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmDismiss(false)}
+                disabled={dismissing}
+              >
+                Back
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                isLoading={dismissing}
+                onClick={handleDismiss}
+              >
+                {!dismissing && <MinusCircle className="w-3.5 h-3.5" />}
+                Confirm dismiss
+              </Button>
+            </div>
+          </div>
+        )}
+      </DrawerShell.Body>
+
+      {/* Footer */}
+      {isOpen && !showResolveForm && !showDismissForm && !showUnpublish && (
+        <DrawerShell.Footer className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="md"
+              className="flex-1"
+              onClick={() => {
+                setShowDismissForm(true);
+                setShowResolveForm(false);
+              }}
+            >
+              <MinusCircle className="w-4 h-4" />
+              Dismiss
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              className="flex-1"
+              onClick={() => {
+                setShowResolveForm(true);
+                setShowDismissForm(false);
+              }}
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Resolve
             </Button>
           </div>
-        )}
-      </div>
-    </div>
+          {!unpublished && quiz?.is_published && (
+            <button
+              type="button"
+              onClick={() => setShowUnpublish(true)}
+              className="w-full h-9 rounded-xl text-xs font-heading font-semibold border border-warning/40 text-warning hover:bg-warning-bg transition-colors flex items-center justify-center gap-1.5"
+            >
+              <EyeOff className="w-3.5 h-3.5" />
+              Unpublish quiz
+            </button>
+          )}
+        </DrawerShell.Footer>
+      )}
+      {!isOpen && (
+        <DrawerShell.Footer>
+          <Button variant="outline" size="md" fullWidth onClick={onClose}>
+            Close
+          </Button>
+        </DrawerShell.Footer>
+      )}
+    </DrawerShell>
   );
 }
 

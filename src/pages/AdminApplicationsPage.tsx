@@ -5,12 +5,11 @@
  * Filter tabs: Pending / Approved / Rejected / All
  * Each application opens a side-sheet with full detail + action buttons.
  */
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Navigate } from "react-router-dom";
 import {
   ListChecks,
   ChevronRight,
-  X,
   CheckCircle2,
   XCircle,
   ExternalLink,
@@ -29,6 +28,7 @@ import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Avatar } from "../components/Avatar";
 import { Toast, useToast } from "../components/Toast";
+import { DrawerShell } from "../components/DrawerShell";
 import { useAuth } from "../context/AuthContext";
 import {
   creatorApplications,
@@ -131,23 +131,6 @@ function ReviewSheet({
   const [confirmReject, setConfirmReject] = useState(false);
   const [rejecting, setRejecting] = useState(false);
 
-  // Lock body scroll
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, []);
-
-  // Escape key
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", h);
-    return () => document.removeEventListener("keydown", h);
-  }, [onClose]);
-
   async function handleApprove() {
     setApproving(true);
     await new Promise((r) => setTimeout(r, 700));
@@ -173,244 +156,219 @@ function ReviewSheet({
   const email = profile?.email ?? "";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-stretch justify-end p-0">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-text/40 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden
+    <DrawerShell open={true} onClose={onClose} ariaLabel="Creator application">
+      <DrawerShell.Header
+        icon={<Avatar name={name} size="md" />}
+        iconWrapper={false}
+        title={name}
+        statusBadge={<StatusBadge status={app.status} />}
+        meta={
+          <>
+            <div>{email}</div>
+            <div className="mt-0.5">Submitted {formatDate(app.submitted_at)}</div>
+          </>
+        }
+        onClose={onClose}
       />
 
-      {/* Sheet — full-height right panel on sm+, bottom sheet on mobile */}
-      <div className="relative z-10 w-full sm:max-w-lg sm:h-full bg-cream sm:rounded-l-3xl rounded-t-3xl shadow-elevated flex flex-col max-h-[92dvh] sm:max-h-none overflow-hidden">
-        {/* Drag pill (mobile) */}
-        <div className="sm:hidden pt-2.5 pb-1 flex justify-center shrink-0">
-          <div className="h-1 w-10 rounded-full bg-border" />
-        </div>
+      <DrawerShell.Body className="space-y-5">
+        {/* Courses */}
+        <DetailSection icon={BookOpen} label="Course strengths">
+          <p className="text-sm text-text leading-relaxed">{app.courses}</p>
+        </DetailSection>
 
-        {/* Header */}
-        <div className="flex items-start gap-3 px-5 pt-4 sm:pt-5 pb-4 border-b border-border/40 shrink-0">
-          <Avatar name={name} size="md" />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="font-heading font-bold text-base text-text leading-tight">
-                {name}
-              </h2>
-              <StatusBadge status={app.status} />
-            </div>
-            <p className="text-xs text-muted mt-0.5">{email}</p>
-            <p className="text-xs text-text-soft mt-0.5">
-              Submitted {formatDate(app.submitted_at)}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="h-8 w-8 rounded-xl flex items-center justify-center text-muted hover:bg-surface/70 hover:text-text transition-colors shrink-0"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        {/* Background */}
+        <DetailSection icon={UserCheck} label="Background">
+          <p className="text-sm text-text-soft leading-relaxed whitespace-pre-line">
+            {app.background}
+          </p>
+        </DetailSection>
 
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5 min-h-0">
-          {/* Courses */}
-          <DetailSection icon={BookOpen} label="Course strengths">
-            <p className="text-sm text-text leading-relaxed">{app.courses}</p>
-          </DetailSection>
+        {/* Quiz plans */}
+        <DetailSection icon={FileText} label="Quiz plans">
+          <p className="text-sm text-text-soft leading-relaxed whitespace-pre-line">
+            {app.quiz_plans}
+          </p>
+        </DetailSection>
 
-          {/* Background */}
-          <DetailSection icon={UserCheck} label="Background">
-            <p className="text-sm text-text-soft leading-relaxed whitespace-pre-line">
-              {app.background}
-            </p>
-          </DetailSection>
-
-          {/* Quiz plans */}
-          <DetailSection icon={FileText} label="Quiz plans">
-            <p className="text-sm text-text-soft leading-relaxed whitespace-pre-line">
-              {app.quiz_plans}
-            </p>
-          </DetailSection>
-
-          {/* Links */}
-          <DetailSection icon={LinkIcon} label="Links">
-            {app.links ? (
-              <a
-                href={app.links}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline underline-offset-2 break-all"
-              >
-                {app.links}
-                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-              </a>
-            ) : (
-              <p className="text-sm text-muted italic">No links provided</p>
-            )}
-          </DetailSection>
-
-          {/* Copyright acknowledgement */}
-          <DetailSection icon={ShieldCheck} label="Content originality">
-            <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-success-bg border border-success/20 text-xs font-heading font-semibold text-success">
-              <CheckCircle2
-                className="w-3.5 h-3.5 shrink-0"
-                strokeWidth={2.5}
-              />
-              Confirmed: content will be original
-            </div>
-          </DetailSection>
-
-          {/* Admin notes (approved/rejected) */}
-          {app.status !== "pending" && app.notes && (
-            <div
-              className={`flex items-start gap-3 px-4 py-3 rounded-2xl border ${
-                app.status === "approved"
-                  ? "bg-success-bg border-success/20"
-                  : "bg-danger-bg/30 border-danger/20"
-              }`}
+        {/* Links */}
+        <DetailSection icon={LinkIcon} label="Links">
+          {app.links ? (
+            <a
+              href={app.links}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline underline-offset-2 break-all"
             >
-              <Info
-                className={`w-4 h-4 shrink-0 mt-0.5 ${
+              {app.links}
+              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+            </a>
+          ) : (
+            <p className="text-sm text-muted italic">No links provided</p>
+          )}
+        </DetailSection>
+
+        {/* Copyright acknowledgement */}
+        <DetailSection icon={ShieldCheck} label="Content originality">
+          <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-success-bg border border-success/20 text-xs font-heading font-semibold text-success">
+            <CheckCircle2
+              className="w-3.5 h-3.5 shrink-0"
+              strokeWidth={2.5}
+            />
+            Confirmed: content will be original
+          </div>
+        </DetailSection>
+
+        {/* Admin notes (approved/rejected) */}
+        {app.status !== "pending" && app.notes && (
+          <div
+            className={`flex items-start gap-3 px-4 py-3 rounded-2xl border ${
+              app.status === "approved"
+                ? "bg-success-bg border-success/20"
+                : "bg-danger-bg/30 border-danger/20"
+            }`}
+          >
+            <Info
+              className={`w-4 h-4 shrink-0 mt-0.5 ${
+                app.status === "approved" ? "text-success" : "text-danger"
+              }`}
+              strokeWidth={2}
+            />
+            <div>
+              <p
+                className={`text-xs font-heading font-semibold uppercase tracking-wider mb-1 ${
                   app.status === "approved" ? "text-success" : "text-danger"
                 }`}
+              >
+                {app.status === "approved"
+                  ? "Approval note"
+                  : "Rejection reason"}
+              </p>
+              <p className="text-sm text-text leading-relaxed">{app.notes}</p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Reject form (inline) ── */}
+        {isPending && showRejectForm && !confirmReject && (
+          <div className="rounded-2xl border border-border/50 bg-surface/30 p-4 space-y-3">
+            <p className="text-sm font-heading font-semibold text-text">
+              Rejection feedback{" "}
+              <span className="text-muted font-normal">
+                (optional but helpful)
+              </span>
+            </p>
+            <textarea
+              rows={3}
+              placeholder="Explain why this application isn't approved this round, and what the applicant can do to strengthen a reapplication…"
+              value={rejectNotes}
+              onChange={(e) => setRejectNotes(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl bg-cream border border-border text-sm text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all resize-none leading-relaxed"
+            />
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowRejectForm(false);
+                  setRejectNotes("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmReject(true)}
+                className="border-danger/40 text-danger hover:bg-danger-bg"
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                Continue to confirm
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Confirm reject ── */}
+        {isPending && showRejectForm && confirmReject && (
+          <div className="rounded-2xl border border-danger/25 bg-danger-bg/30 p-4 space-y-3">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle
+                className="w-4 h-4 text-danger shrink-0 mt-0.5"
                 strokeWidth={2}
               />
-              <div>
-                <p
-                  className={`text-xs font-heading font-semibold uppercase tracking-wider mb-1 ${
-                    app.status === "approved" ? "text-success" : "text-danger"
-                  }`}
-                >
-                  {app.status === "approved"
-                    ? "Approval note"
-                    : "Rejection reason"}
-                </p>
-                <p className="text-sm text-text leading-relaxed">{app.notes}</p>
-              </div>
-            </div>
-          )}
-
-          {/* ── Reject form (inline) ── */}
-          {isPending && showRejectForm && !confirmReject && (
-            <div className="rounded-2xl border border-border/50 bg-surface/30 p-4 space-y-3">
-              <p className="text-sm font-heading font-semibold text-text">
-                Rejection feedback{" "}
-                <span className="text-muted font-normal">
-                  (optional but helpful)
-                </span>
+              <p className="text-sm text-text leading-relaxed">
+                Reject{" "}
+                <span className="font-heading font-semibold">{name}</span>
+                &apos;s application? They will be able to reapply after
+                reviewing your feedback.
               </p>
-              <textarea
-                rows={3}
-                placeholder="Explain why this application isn't approved this round, and what the applicant can do to strengthen a reapplication…"
-                value={rejectNotes}
-                onChange={(e) => setRejectNotes(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-cream border border-border text-sm text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all resize-none leading-relaxed"
+            </div>
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmReject(false)}
+                disabled={rejecting}
+              >
+                Back
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                isLoading={rejecting}
+                onClick={handleReject}
+                className="bg-danger! text-cream! hover:bg-danger/90!"
+              >
+                {!rejecting && <XCircle className="w-3.5 h-3.5" />}
+                Confirm rejection
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Confirm approve ── */}
+        {isPending && confirmApprove && (
+          <div className="rounded-2xl border border-success/25 bg-success-bg p-4 space-y-3">
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2
+                className="w-4 h-4 text-success shrink-0 mt-0.5"
+                strokeWidth={2}
               />
-              <div className="flex items-center gap-2.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setShowRejectForm(false);
-                    setRejectNotes("");
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setConfirmReject(true)}
-                  className="border-danger/40 text-danger hover:bg-danger-bg"
-                >
-                  <XCircle className="w-3.5 h-3.5" />
-                  Continue to confirm
-                </Button>
-              </div>
+              <p className="text-sm text-text leading-relaxed">
+                Approve{" "}
+                <span className="font-heading font-semibold">{name}</span> as
+                a creator? This will give them access to publish quizzes
+                immediately.
+              </p>
             </div>
-          )}
-
-          {/* ── Confirm reject ── */}
-          {isPending && showRejectForm && confirmReject && (
-            <div className="rounded-2xl border border-danger/25 bg-danger-bg/30 p-4 space-y-3">
-              <div className="flex items-start gap-2.5">
-                <AlertCircle
-                  className="w-4 h-4 text-danger shrink-0 mt-0.5"
-                  strokeWidth={2}
-                />
-                <p className="text-sm text-text leading-relaxed">
-                  Reject{" "}
-                  <span className="font-heading font-semibold">{name}</span>
-                  &apos;s application? They will be able to reapply after
-                  reviewing your feedback.
-                </p>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setConfirmReject(false)}
-                  disabled={rejecting}
-                >
-                  Back
-                </Button>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  isLoading={rejecting}
-                  onClick={handleReject}
-                  className="bg-danger! text-cream! hover:bg-danger/90!"
-                >
-                  {!rejecting && <XCircle className="w-3.5 h-3.5" />}
-                  Confirm rejection
-                </Button>
-              </div>
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmApprove(false)}
+                disabled={approving}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                isLoading={approving}
+                onClick={handleApprove}
+              >
+                {!approving && <CheckCircle2 className="w-3.5 h-3.5" />}
+                Yes, approve
+              </Button>
             </div>
-          )}
+          </div>
+        )}
+      </DrawerShell.Body>
 
-          {/* ── Confirm approve ── */}
-          {isPending && confirmApprove && (
-            <div className="rounded-2xl border border-success/25 bg-success-bg p-4 space-y-3">
-              <div className="flex items-start gap-2.5">
-                <CheckCircle2
-                  className="w-4 h-4 text-success shrink-0 mt-0.5"
-                  strokeWidth={2}
-                />
-                <p className="text-sm text-text leading-relaxed">
-                  Approve{" "}
-                  <span className="font-heading font-semibold">{name}</span> as
-                  a creator? This will give them access to publish quizzes
-                  immediately.
-                </p>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setConfirmApprove(false)}
-                  disabled={approving}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  isLoading={approving}
-                  onClick={handleApprove}
-                >
-                  {!approving && <CheckCircle2 className="w-3.5 h-3.5" />}
-                  Yes, approve
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer — action buttons for pending only */}
-        {isPending && !showRejectForm && !confirmApprove && (
-          <div className="px-5 pb-5 pt-3 border-t border-border/40 flex items-center gap-2.5 shrink-0">
+      {/* Footer — action buttons for pending only */}
+      {isPending && !showRejectForm && !confirmApprove && (
+        <DrawerShell.Footer>
+          <div className="flex items-center gap-2.5">
             <Button
               variant="outline"
               size="md"
@@ -430,18 +388,18 @@ function ReviewSheet({
               Approve
             </Button>
           </div>
-        )}
+        </DrawerShell.Footer>
+      )}
 
-        {/* Footer — close for non-pending */}
-        {!isPending && (
-          <div className="px-5 pb-5 pt-3 border-t border-border/40 shrink-0">
-            <Button variant="outline" size="md" fullWidth onClick={onClose}>
-              Close
-            </Button>
-          </div>
-        )}
-      </div>
-    </div>
+      {/* Footer — close for non-pending */}
+      {!isPending && (
+        <DrawerShell.Footer>
+          <Button variant="outline" size="md" fullWidth onClick={onClose}>
+            Close
+          </Button>
+        </DrawerShell.Footer>
+      )}
+    </DrawerShell>
   );
 }
 

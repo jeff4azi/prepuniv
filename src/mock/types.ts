@@ -6,6 +6,7 @@ export interface Profile {
   email: string;
   role: UserRole;
   is_approved_creator: boolean;
+  is_suspended?: boolean;
   bank_account_number?: string;
   bank_code?: string;
   avatar_url?: string;

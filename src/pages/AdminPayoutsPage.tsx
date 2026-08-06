@@ -5,12 +5,11 @@
  * Filter tabs: Pending / Approved / Rejected / Paid / Failed / All
  * Simulates transfer processing (mostly-success, occasional failure path).
  */
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Link, Navigate } from "react-router-dom";
 import {
   CreditCard,
   ChevronRight,
-  X,
   CheckCircle2,
   XCircle,
   AlertCircle,
@@ -29,6 +28,7 @@ import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Avatar } from "../components/Avatar";
 import { Toast, useToast } from "../components/Toast";
+import { DrawerShell } from "../components/DrawerShell";
 import { useAuth } from "../context/AuthContext";
 import {
   payoutRequests,
@@ -154,21 +154,6 @@ function PayoutReviewSheet({
   const [confirmReject, setConfirmReject] = useState(false);
   const [rejecting, setRejecting] = useState(false);
 
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, []);
-
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", h);
-    return () => document.removeEventListener("keydown", h);
-  }, [onClose]);
-
   async function handleProcessTransfer() {
     setProcessingState("processing");
     // Simulate ~1.5s network delay, then mostly-success (~85%), occasionally fail
@@ -197,325 +182,295 @@ function PayoutReviewSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-stretch justify-end p-0">
-      <div
-        className="absolute inset-0 bg-text/40 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden
+    <DrawerShell open={true} onClose={onClose} ariaLabel="Payout review">
+      <DrawerShell.Header
+        icon={<CreditCard className="w-5 h-5" strokeWidth={2} />}
+        title={formatNaira(req.amount)}
+        statusBadge={<StatusBadge status={req.status} />}
+        meta={`Requested by ${creatorName} · ${formatDate(req.requested_at)}`}
+        onClose={onClose}
       />
 
-      <div className="relative z-10 w-full sm:max-w-lg sm:h-full bg-cream sm:rounded-l-3xl rounded-t-3xl shadow-elevated flex flex-col max-h-[92dvh] sm:max-h-none overflow-hidden">
-        {/* Drag pill */}
-        <div className="sm:hidden pt-2.5 pb-1 flex justify-center shrink-0">
-          <div className="h-1 w-10 rounded-full bg-border" />
-        </div>
-
-        {/* Header */}
-        <div className="flex items-start gap-3 px-5 pt-4 sm:pt-5 pb-4 border-b border-border/40 shrink-0">
-          <div className="h-11 w-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-            <CreditCard className="w-5 h-5" strokeWidth={2} />
-          </div>
+      <DrawerShell.Body>
+        {/* Creator */}
+        <div className="flex items-center gap-3 p-4 rounded-2xl bg-surface/40 border border-border/40">
+          <Avatar name={creatorName} size="sm" />
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="font-heading font-bold text-base text-text leading-tight">
-                {formatNaira(req.amount)}
-              </h2>
-              <StatusBadge status={req.status} />
-            </div>
-            <p className="text-xs text-muted mt-0.5">
-              Requested by {creatorName} · {formatDate(req.requested_at)}
+            <p className="font-heading font-semibold text-sm text-text leading-tight">
+              {creatorName}
             </p>
+            <p className="text-xs text-muted">{creator?.email ?? ""}</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="h-8 w-8 rounded-xl flex items-center justify-center text-muted hover:bg-surface/70 hover:text-text transition-colors shrink-0"
+          {creator && (
+            <Link
+              to={`/profile/creator/${creator.id}`}
+              className="shrink-0 h-8 w-8 rounded-xl flex items-center justify-center text-muted hover:text-primary hover:bg-primary/8 transition-colors"
+              aria-label="View creator profile"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </Link>
+          )}
+        </div>
+
+        {/* Bank details */}
+        <div className="rounded-2xl border border-border/50 bg-surface/20 divide-y divide-border/30 overflow-hidden">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <Building2
+              className="w-4 h-4 text-muted shrink-0"
+              strokeWidth={2}
+            />
+            <span className="text-xs text-muted font-heading font-semibold uppercase tracking-wider w-24 shrink-0">
+              Bank
+            </span>
+            <span className="text-sm font-heading font-semibold text-text">
+              {bankName}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 px-4 py-3">
+            <CreditCard
+              className="w-4 h-4 text-muted shrink-0"
+              strokeWidth={2}
+            />
+            <span className="text-xs text-muted font-heading font-semibold uppercase tracking-wider w-24 shrink-0">
+              Account
+            </span>
+            <span className="text-sm font-mono font-semibold text-text">
+              {maskedAcct}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 px-4 py-3">
+            <BadgeCheck
+              className="w-4 h-4 text-muted shrink-0"
+              strokeWidth={2}
+            />
+            <span className="text-xs text-muted font-heading font-semibold uppercase tracking-wider w-24 shrink-0">
+              Holder
+            </span>
+            <span className="text-sm font-heading font-semibold text-text uppercase">
+              {creatorName.split(" ").reverse().join(" ").toUpperCase()}
+            </span>
+          </div>
+        </div>
+
+        {/* Amount highlight */}
+        <div className="flex items-center justify-between px-4 py-3.5 rounded-2xl bg-primary/6 border border-primary/15">
+          <span className="text-sm text-text-soft font-heading">
+            Transfer amount
+          </span>
+          <span className="font-heading font-bold text-xl text-primary">
+            {formatNaira(req.amount)}
+          </span>
+        </div>
+
+        {/* Timestamps */}
+        {req.processed_at && (
+          <div className="flex items-center gap-2 text-xs text-muted">
+            <Clock className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
+            <span>
+              {req.status === "paid"
+                ? "Paid"
+                : req.status === "failed"
+                  ? "Failed"
+                  : "Processed"}{" "}
+              {formatDateTime(req.processed_at)}
+            </span>
+          </div>
+        )}
+
+        {/* Notes / failure reason */}
+        {req.notes && (
+          <div
+            className={`flex items-start gap-2.5 px-4 py-3 rounded-2xl border ${
+              req.status === "paid" || req.status === "approved"
+                ? "bg-success-bg border-success/20"
+                : "bg-danger-bg/30 border-danger/20"
+            }`}
           >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+            <Info
+              className={`w-4 h-4 shrink-0 mt-0.5 ${req.status === "paid" ? "text-success" : "text-danger"}`}
+              strokeWidth={2}
+            />
+            <p className="text-sm text-text leading-relaxed">{req.notes}</p>
+          </div>
+        )}
 
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4 min-h-0">
-          {/* Creator */}
-          <div className="flex items-center gap-3 p-4 rounded-2xl bg-surface/40 border border-border/40">
-            <Avatar name={creatorName} size="sm" />
-            <div className="flex-1 min-w-0">
-              <p className="font-heading font-semibold text-sm text-text leading-tight">
-                {creatorName}
-              </p>
-              <p className="text-xs text-muted">{creator?.email ?? ""}</p>
-            </div>
-            {creator && (
-              <Link
-                to={`/profile/creator/${creator.id}`}
-                className="shrink-0 h-8 w-8 rounded-xl flex items-center justify-center text-muted hover:text-primary hover:bg-primary/8 transition-colors"
-                aria-label="View creator profile"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-              </Link>
+        {/* ── Transfer outcome (after processing) ── */}
+        {processingState === "done" && transferOutcome && (
+          <div
+            className={`flex items-start gap-2.5 px-4 py-3 rounded-2xl border ${
+              transferOutcome === "paid"
+                ? "bg-success-bg border-success/20"
+                : "bg-danger-bg/30 border-danger/20"
+            }`}
+          >
+            {transferOutcome === "paid" ? (
+              <CheckCircle2
+                className="w-4 h-4 text-success shrink-0 mt-0.5"
+                strokeWidth={2}
+              />
+            ) : (
+              <AlertCircle
+                className="w-4 h-4 text-danger shrink-0 mt-0.5"
+                strokeWidth={2}
+              />
             )}
-          </div>
-
-          {/* Bank details */}
-          <div className="rounded-2xl border border-border/50 bg-surface/20 divide-y divide-border/30 overflow-hidden">
-            <div className="flex items-center gap-3 px-4 py-3">
-              <Building2
-                className="w-4 h-4 text-muted shrink-0"
-                strokeWidth={2}
-              />
-              <span className="text-xs text-muted font-heading font-semibold uppercase tracking-wider w-24 shrink-0">
-                Bank
-              </span>
-              <span className="text-sm font-heading font-semibold text-text">
-                {bankName}
-              </span>
-            </div>
-            <div className="flex items-center gap-3 px-4 py-3">
-              <CreditCard
-                className="w-4 h-4 text-muted shrink-0"
-                strokeWidth={2}
-              />
-              <span className="text-xs text-muted font-heading font-semibold uppercase tracking-wider w-24 shrink-0">
-                Account
-              </span>
-              <span className="text-sm font-mono font-semibold text-text">
-                {maskedAcct}
-              </span>
-            </div>
-            <div className="flex items-center gap-3 px-4 py-3">
-              <BadgeCheck
-                className="w-4 h-4 text-muted shrink-0"
-                strokeWidth={2}
-              />
-              <span className="text-xs text-muted font-heading font-semibold uppercase tracking-wider w-24 shrink-0">
-                Holder
-              </span>
-              <span className="text-sm font-heading font-semibold text-text uppercase">
-                {creatorName.split(" ").reverse().join(" ").toUpperCase()}
-              </span>
-            </div>
-          </div>
-
-          {/* Amount highlight */}
-          <div className="flex items-center justify-between px-4 py-3.5 rounded-2xl bg-primary/6 border border-primary/15">
-            <span className="text-sm text-text-soft font-heading">
-              Transfer amount
-            </span>
-            <span className="font-heading font-bold text-xl text-primary">
-              {formatNaira(req.amount)}
-            </span>
-          </div>
-
-          {/* Timestamps */}
-          {req.processed_at && (
-            <div className="flex items-center gap-2 text-xs text-muted">
-              <Clock className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
-              <span>
-                {req.status === "paid"
-                  ? "Paid"
-                  : req.status === "failed"
-                    ? "Failed"
-                    : "Processed"}{" "}
-                {formatDateTime(req.processed_at)}
-              </span>
-            </div>
-          )}
-
-          {/* Notes / failure reason */}
-          {req.notes && (
-            <div
-              className={`flex items-start gap-2.5 px-4 py-3 rounded-2xl border ${
-                req.status === "paid" || req.status === "approved"
-                  ? "bg-success-bg border-success/20"
-                  : "bg-danger-bg/30 border-danger/20"
-              }`}
-            >
-              <Info
-                className={`w-4 h-4 shrink-0 mt-0.5 ${req.status === "paid" ? "text-success" : "text-danger"}`}
-                strokeWidth={2}
-              />
-              <p className="text-sm text-text leading-relaxed">{req.notes}</p>
-            </div>
-          )}
-
-          {/* ── Transfer outcome (after processing) ── */}
-          {processingState === "done" && transferOutcome && (
-            <div
-              className={`flex items-start gap-2.5 px-4 py-3 rounded-2xl border ${
-                transferOutcome === "paid"
-                  ? "bg-success-bg border-success/20"
-                  : "bg-danger-bg/30 border-danger/20"
-              }`}
-            >
-              {transferOutcome === "paid" ? (
-                <CheckCircle2
-                  className="w-4 h-4 text-success shrink-0 mt-0.5"
-                  strokeWidth={2}
-                />
-              ) : (
-                <AlertCircle
-                  className="w-4 h-4 text-danger shrink-0 mt-0.5"
-                  strokeWidth={2}
-                />
-              )}
-              <div>
-                <p
-                  className={`text-sm font-heading font-semibold leading-tight ${
-                    transferOutcome === "paid" ? "text-success" : "text-danger"
-                  }`}
-                >
-                  {transferOutcome === "paid"
-                    ? `₦${(req.amount / 100).toLocaleString("en-NG")} sent successfully`
-                    : "Transfer failed"}
-                </p>
-                {transferOutcome === "failed" && (
-                  <p className="text-xs text-danger/80 mt-0.5">
-                    Receiving bank returned an error. No funds were deducted.
-                    The creator can retry.
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ── Confirm approve ── */}
-          {canAct && confirmApprove && processingState === "idle" && (
-            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-3">
-              <p className="text-sm text-text leading-relaxed">
-                Send{" "}
-                <span className="font-heading font-bold text-primary">
-                  {formatNaira(req.amount)}
-                </span>{" "}
-                to{" "}
-                <span className="font-heading font-semibold">
-                  {creatorName}
-                </span>
-                &apos;s {bankName} account ending{" "}
-                <span className="font-mono font-semibold">{last4}</span>? This
-                cannot be undone.
-              </p>
-              <div className="flex items-center gap-2.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setConfirmApprove(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleProcessTransfer}
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Confirm & send
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* ── Processing spinner ── */}
-          {processingState === "processing" && (
-            <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-primary/6 border border-primary/15">
-              <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
-              <span className="text-sm font-heading font-medium text-primary">
-                Processing transfer…
-              </span>
-            </div>
-          )}
-
-          {/* ── Reject form ── */}
-          {canAct && showRejectForm && !confirmReject && (
-            <div className="rounded-2xl border border-border/50 bg-surface/30 p-4 space-y-3">
-              <p className="text-sm font-heading font-semibold text-text">
-                Rejection reason <span className="text-danger">*</span>
-              </p>
-              <textarea
-                rows={3}
-                placeholder="Explain why this payout is being rejected — this message is shown to the creator…"
-                value={rejectNotes}
-                onChange={(e) => {
-                  setRejectNotes(e.target.value);
-                  if (e.target.value.trim()) setRejectNotesError("");
-                }}
-                className={`w-full px-4 py-3 rounded-xl bg-cream border text-sm text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all resize-none leading-relaxed ${
-                  rejectNotesError
-                    ? "border-danger/60 focus:ring-danger/30"
-                    : "border-border"
+            <div>
+              <p
+                className={`text-sm font-heading font-semibold leading-tight ${
+                  transferOutcome === "paid" ? "text-success" : "text-danger"
                 }`}
-              />
-              {rejectNotesError && (
-                <p className="text-xs text-danger flex items-center gap-1.5">
-                  <span className="w-1 h-1 rounded-full bg-danger inline-block" />
-                  {rejectNotesError}
+              >
+                {transferOutcome === "paid"
+                  ? `₦${(req.amount / 100).toLocaleString("en-NG")} sent successfully`
+                  : "Transfer failed"}
+              </p>
+              {transferOutcome === "failed" && (
+                <p className="text-xs text-danger/80 mt-0.5">
+                  Receiving bank returned an error. No funds were deducted.
+                  The creator can retry.
                 </p>
               )}
-              <div className="flex items-center gap-2.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setShowRejectForm(false);
-                    setRejectNotes("");
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setConfirmReject(true)}
-                  className="border-danger/40 text-danger hover:bg-danger-bg"
-                >
-                  <XCircle className="w-3.5 h-3.5" />
-                  Continue
-                </Button>
-              </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* ── Confirm reject ── */}
-          {canAct && showRejectForm && confirmReject && (
-            <div className="rounded-2xl border border-danger/25 bg-danger-bg/30 p-4 space-y-3">
-              <p className="text-sm text-text leading-relaxed">
-                Reject this payout request from{" "}
-                <span className="font-heading font-semibold">
-                  {creatorName}
-                </span>
-                ? They will receive your feedback and can resubmit.
+        {/* ── Confirm approve ── */}
+        {canAct && confirmApprove && processingState === "idle" && (
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+            <p className="text-sm text-text leading-relaxed">
+              Send{" "}
+              <span className="font-heading font-bold text-primary">
+                {formatNaira(req.amount)}
+              </span>{" "}
+              to{" "}
+              <span className="font-heading font-semibold">
+                {creatorName}
+              </span>
+              &apos;s {bankName} account ending{" "}
+              <span className="font-mono font-semibold">{last4}</span>? This
+              cannot be undone.
+            </p>
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmApprove(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleProcessTransfer}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Confirm & send
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Processing spinner ── */}
+        {processingState === "processing" && (
+          <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-primary/6 border border-primary/15">
+            <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+            <span className="text-sm font-heading font-medium text-primary">
+              Processing transfer…
+            </span>
+          </div>
+        )}
+
+        {/* ── Reject form ── */}
+        {canAct && showRejectForm && !confirmReject && (
+          <div className="rounded-2xl border border-border/50 bg-surface/30 p-4 space-y-3">
+            <p className="text-sm font-heading font-semibold text-text">
+              Rejection reason <span className="text-danger">*</span>
+            </p>
+            <textarea
+              rows={3}
+              placeholder="Explain why this payout is being rejected — this message is shown to the creator…"
+              value={rejectNotes}
+              onChange={(e) => {
+                setRejectNotes(e.target.value);
+                if (e.target.value.trim()) setRejectNotesError("");
+              }}
+              className={`w-full px-4 py-3 rounded-xl bg-cream border text-sm text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all resize-none leading-relaxed ${
+                rejectNotesError
+                  ? "border-danger/60 focus:ring-danger/30"
+                  : "border-border"
+              }`}
+            />
+            {rejectNotesError && (
+              <p className="text-xs text-danger flex items-center gap-1.5">
+                <span className="w-1 h-1 rounded-full bg-danger inline-block" />
+                {rejectNotesError}
               </p>
-              <div className="flex items-center gap-2.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setConfirmReject(false)}
-                  disabled={rejecting}
-                >
-                  Back
-                </Button>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  isLoading={rejecting}
-                  onClick={handleReject}
-                  className="bg-danger! text-cream! hover:bg-danger/90!"
-                >
-                  {!rejecting && <XCircle className="w-3.5 h-3.5" />}
-                  Confirm rejection
-                </Button>
-              </div>
+            )}
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowRejectForm(false);
+                  setRejectNotes("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmReject(true)}
+                className="border-danger/40 text-danger hover:bg-danger-bg"
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                Continue
+              </Button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Footer */}
-        {canAct &&
-          processingState === "idle" &&
-          !showRejectForm &&
-          !confirmApprove && (
-            <div className="px-5 pb-5 pt-3 border-t border-border/40 flex items-center gap-2.5 shrink-0">
+        {/* ── Confirm reject ── */}
+        {canAct && showRejectForm && confirmReject && (
+          <div className="rounded-2xl border border-danger/25 bg-danger-bg/30 p-4 space-y-3">
+            <p className="text-sm text-text leading-relaxed">
+              Reject this payout request from{" "}
+              <span className="font-heading font-semibold">
+                {creatorName}
+              </span>
+              ? They will receive your feedback and can resubmit.
+            </p>
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmReject(false)}
+                disabled={rejecting}
+              >
+                Back
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                isLoading={rejecting}
+                onClick={handleReject}
+                className="bg-danger! text-cream! hover:bg-danger/90!"
+              >
+                {!rejecting && <XCircle className="w-3.5 h-3.5" />}
+                Confirm rejection
+              </Button>
+            </div>
+          </div>
+        )}
+      </DrawerShell.Body>
+
+      {/* Footer */}
+      {canAct &&
+        processingState === "idle" &&
+        !showRejectForm &&
+        !confirmApprove && (
+          <DrawerShell.Footer>
+            <div className="flex items-center gap-2.5">
               <Button
                 variant="outline"
                 size="md"
@@ -548,16 +503,16 @@ function PayoutReviewSheet({
                 </Button>
               )}
             </div>
-          )}
-        {(!canAct || processingState === "done") && (
-          <div className="px-5 pb-5 pt-3 border-t border-border/40 shrink-0">
-            <Button variant="outline" size="md" fullWidth onClick={onClose}>
-              Close
-            </Button>
-          </div>
+          </DrawerShell.Footer>
         )}
-      </div>
-    </div>
+      {(!canAct || processingState === "done") && (
+        <DrawerShell.Footer>
+          <Button variant="outline" size="md" fullWidth onClick={onClose}>
+            Close
+          </Button>
+        </DrawerShell.Footer>
+      )}
+    </DrawerShell>
   );
 }
 

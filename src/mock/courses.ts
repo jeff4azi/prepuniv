@@ -238,3 +238,14 @@ export function suggestLevelFromCode(
   }
   return undefined;
 }
+
+// ─── Mock mutation helpers ────────────────────────────────────────────────────
+
+export function addCourse(course: Course): void {
+  courses.push(course);
+}
+
+export function updateCourse(updated: Course): void {
+  const idx = courses.findIndex((c) => c.id === updated.id);
+  if (idx !== -1) courses[idx] = updated;
+}

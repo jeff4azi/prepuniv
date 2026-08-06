@@ -3,8 +3,9 @@ export {
   purchasedQuizIdsByUser,
   walletBalancesByUser,
   approveCreator,
+  toggleSuspension,
 } from "./profiles";
-export { courses } from "./courses";
+export { courses, addCourse, updateCourse } from "./courses";
 export { quizzes, addQuiz, updateQuiz } from "./quizzes";
 export {
   questions,

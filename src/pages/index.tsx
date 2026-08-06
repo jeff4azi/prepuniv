@@ -36,6 +36,8 @@ import { AdminDashboardPage as RealAdminDashboardPage } from "./AdminDashboardPa
 import { AdminApplicationsPage as RealAdminApplicationsPage } from "./AdminApplicationsPage";
 import { AdminPayoutsPage as RealAdminPayoutsPage } from "./AdminPayoutsPage";
 import { AdminReportsPage as RealAdminReportsPage } from "./AdminReportsPage";
+import { AdminUsersPage as RealAdminUsersPage } from "./AdminUsersPage";
+import { AdminCoursesPage as RealAdminCoursesPage } from "./AdminCoursesPage";
 
 // suppress "unused" linter warnings for icons still used by placeholder pages
 void (ClockIcon, SettingsIcon, WalletIcon);
@@ -223,27 +225,11 @@ export function AdminReportsPage() {
 }
 
 export function AdminUsersPage() {
-  return (
-    <PlaceholderPage
-      title="User Management"
-      subtitle="View, search, and manage all users"
-      icon={Users}
-      tag="Admin section"
-      tagVariant="warning"
-    />
-  );
+  return <RealAdminUsersPage />;
 }
 
 export function AdminCoursesPage() {
-  return (
-    <PlaceholderPage
-      title="Courses"
-      subtitle="Manage the course catalog"
-      icon={BookOpen}
-      tag="Admin section"
-      tagVariant="warning"
-    />
-  );
+  return <RealAdminCoursesPage />;
 }
 
 export function AdminQuizzesPage() {

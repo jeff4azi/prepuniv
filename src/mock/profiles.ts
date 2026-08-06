@@ -103,6 +103,81 @@ export const profiles: Profile[] = [
     avatar_url: undefined,
     joined_at: "2026-07-18T00:00:00Z",
   },
+  // ── Additional regular users ──────────────────────────────────────────────
+  {
+    id: "user_002",
+    full_name: "Ifeoma Nwosu",
+    email: "ifeoma.nwosu@example.com",
+    role: "user",
+    is_approved_creator: false,
+    joined_at: "2026-02-14T00:00:00Z",
+  },
+  {
+    id: "user_003",
+    full_name: "Suleiman Garba",
+    email: "suleiman.garba@example.com",
+    role: "user",
+    is_approved_creator: false,
+    joined_at: "2026-03-08T00:00:00Z",
+  },
+  {
+    id: "user_004",
+    full_name: "Chisom Eze",
+    email: "chisom.eze@example.com",
+    role: "user",
+    is_approved_creator: false,
+    joined_at: "2026-04-20T00:00:00Z",
+  },
+  {
+    id: "user_005",
+    full_name: "Aisha Yusuf",
+    email: "aisha.yusuf@example.com",
+    role: "user",
+    is_approved_creator: false,
+    joined_at: "2026-05-03T00:00:00Z",
+  },
+  {
+    id: "user_006",
+    full_name: "Oluwatobi Adewale",
+    email: "oluwatobi.a@example.com",
+    role: "user",
+    is_approved_creator: false,
+    joined_at: "2026-05-17T00:00:00Z",
+    is_suspended: true, // suspended for filing repeated bad-faith reports
+  },
+  {
+    id: "user_007",
+    full_name: "Miriam Okonkwo",
+    email: "miriam.okonkwo@example.com",
+    role: "user",
+    is_approved_creator: false,
+    joined_at: "2026-06-01T00:00:00Z",
+  },
+  {
+    id: "user_008",
+    full_name: "Babatunde Alabi",
+    email: "babatunde.alabi@example.com",
+    role: "user",
+    is_approved_creator: false,
+    joined_at: "2026-06-15T00:00:00Z",
+  },
+  {
+    id: "user_009",
+    full_name: "Zainab Mohammed",
+    email: "zainab.mohammed@example.com",
+    role: "user",
+    is_approved_creator: false,
+    joined_at: "2026-06-28T00:00:00Z",
+  },
+  // ── Second admin ──────────────────────────────────────────────────────────
+  {
+    id: "admin_002",
+    full_name: "Kemi Adeyinka",
+    email: "kemi@prepuniv.ng",
+    role: "admin",
+    is_approved_creator: false,
+    joined_at: "2026-01-05T00:00:00Z",
+  },
 ];
 
 export const purchasedQuizIdsByUser: Record<string, string[]> = {
@@ -148,4 +223,12 @@ export function approveCreator(userId: string): void {
     profile.is_approved_creator = true;
     if (profile.role === "user") profile.role = "creator";
   }
+}
+
+/** Toggle a user's is_suspended flag. */
+export function toggleSuspension(userId: string): boolean {
+  const profile = profiles.find((p) => p.id === userId);
+  if (!profile) return false;
+  profile.is_suspended = !profile.is_suspended;
+  return profile.is_suspended;
 }
