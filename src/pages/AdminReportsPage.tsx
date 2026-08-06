@@ -33,6 +33,7 @@ import {
   updateCreatorReport,
   quizzes as allQuizzes,
   profiles,
+  adminUnpublishQuiz,
   type CreatorReport,
   type Profile,
 } from "../mock";
@@ -185,7 +186,7 @@ function ReportReviewSheet({
   async function handleUnpublish() {
     setUnpublishing(true);
     await new Promise((r) => setTimeout(r, 700));
-    if (quiz) quiz.is_published = false;
+    if (quiz) adminUnpublishQuiz(quiz.id);
     setUnpublished(true);
     setUnpublishing(false);
     setShowUnpublish(false);
@@ -249,10 +250,7 @@ function ReportReviewSheet({
         {/* Quiz & creator context */}
         <div className="rounded-2xl border border-border/40 bg-surface/20 divide-y divide-border/30 overflow-hidden">
           <div className="flex items-center gap-3 px-4 py-3">
-            <BookOpen
-              className="w-4 h-4 text-muted shrink-0"
-              strokeWidth={2}
-            />
+            <BookOpen className="w-4 h-4 text-muted shrink-0" strokeWidth={2} />
             <span className="text-xs text-muted font-heading font-semibold uppercase tracking-wider w-20 shrink-0">
               Quiz
             </span>

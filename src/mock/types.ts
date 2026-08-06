@@ -36,6 +36,8 @@ export interface Quiz {
   description: string;
   price: number;
   is_published: boolean;
+  /** Set to true when an admin force-unpublishes. Distinguishes admin action from creator's own choice. */
+  unpublished_by_admin?: boolean;
   question_count: number;
   attempt_count: number;
   created_at: string;

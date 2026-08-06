@@ -438,3 +438,21 @@ export function updateQuiz(updated: Quiz): void {
   const idx = quizzes.findIndex((q) => q.id === updated.id);
   if (idx !== -1) quizzes[idx] = updated;
 }
+
+/** Admin force-unpublishes a quiz. Sets both is_published=false and unpublished_by_admin=true. */
+export function adminUnpublishQuiz(quizId: string): void {
+  const quiz = quizzes.find((q) => q.id === quizId);
+  if (quiz) {
+    quiz.is_published = false;
+    quiz.unpublished_by_admin = true;
+  }
+}
+
+/** Admin clears the override and republishes. */
+export function adminRepublishQuiz(quizId: string): void {
+  const quiz = quizzes.find((q) => q.id === quizId);
+  if (quiz) {
+    quiz.is_published = true;
+    quiz.unpublished_by_admin = false;
+  }
+}

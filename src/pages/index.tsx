@@ -38,6 +38,7 @@ import { AdminPayoutsPage as RealAdminPayoutsPage } from "./AdminPayoutsPage";
 import { AdminReportsPage as RealAdminReportsPage } from "./AdminReportsPage";
 import { AdminUsersPage as RealAdminUsersPage } from "./AdminUsersPage";
 import { AdminCoursesPage as RealAdminCoursesPage } from "./AdminCoursesPage";
+import { AdminQuizzesPage as RealAdminQuizzesPage } from "./AdminQuizzesPage";
 
 // suppress "unused" linter warnings for icons still used by placeholder pages
 void (ClockIcon, SettingsIcon, WalletIcon);
@@ -233,13 +234,5 @@ export function AdminCoursesPage() {
 }
 
 export function AdminQuizzesPage() {
-  return (
-    <PlaceholderPage
-      title="Quizzes (Admin)"
-      subtitle="Moderate and manage all quizzes"
-      icon={ScrollText}
-      tag="Admin section"
-      tagVariant="warning"
-    />
-  );
+  return <RealAdminQuizzesPage />;
 }

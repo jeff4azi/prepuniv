@@ -6,7 +6,13 @@ export {
   toggleSuspension,
 } from "./profiles";
 export { courses, addCourse, updateCourse } from "./courses";
-export { quizzes, addQuiz, updateQuiz } from "./quizzes";
+export {
+  quizzes,
+  addQuiz,
+  updateQuiz,
+  adminUnpublishQuiz,
+  adminRepublishQuiz,
+} from "./quizzes";
 export {
   questions,
   replaceQuestionsForQuiz,
