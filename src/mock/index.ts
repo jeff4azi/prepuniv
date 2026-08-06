@@ -21,8 +21,12 @@ export {
   addApplication,
   updateApplicationStatus,
 } from "./creatorApplications";
-export { payoutRequests, addPayoutRequest } from "./payoutRequests";
-export { creatorReports } from "./creatorReports";
+export {
+  payoutRequests,
+  addPayoutRequest,
+  updatePayoutRequest,
+} from "./payoutRequests";
+export { creatorReports, updateCreatorReport } from "./creatorReports";
 export {
   MINIMUM_PAYOUT_THRESHOLD,
   PAYOUT_FREQUENCY_CAP_MS,

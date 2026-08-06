@@ -34,6 +34,8 @@ import { QuizAnalyticsPage as RealQuizAnalyticsPage } from "./QuizAnalyticsPage"
 import { CreatorPayoutsPage as RealCreatorPayoutsPage } from "./CreatorPayoutsPage";
 import { AdminDashboardPage as RealAdminDashboardPage } from "./AdminDashboardPage";
 import { AdminApplicationsPage as RealAdminApplicationsPage } from "./AdminApplicationsPage";
+import { AdminPayoutsPage as RealAdminPayoutsPage } from "./AdminPayoutsPage";
+import { AdminReportsPage as RealAdminReportsPage } from "./AdminReportsPage";
 
 // suppress "unused" linter warnings for icons still used by placeholder pages
 void (ClockIcon, SettingsIcon, WalletIcon);
@@ -213,27 +215,11 @@ export function AdminApplicationsPage() {
 }
 
 export function AdminPayoutsPage() {
-  return (
-    <PlaceholderPage
-      title="Admin Payouts"
-      subtitle="Review, process, and audit all payouts"
-      icon={CreditCard}
-      tag="Admin section"
-      tagVariant="warning"
-    />
-  );
+  return <RealAdminPayoutsPage />;
 }
 
 export function AdminReportsPage() {
-  return (
-    <PlaceholderPage
-      title="Admin Reports"
-      subtitle="Content moderation & issue reports from the full platform"
-      icon={FileText}
-      tag="Admin section"
-      tagVariant="warning"
-    />
-  );
+  return <RealAdminReportsPage />;
 }
 
 export function AdminUsersPage() {

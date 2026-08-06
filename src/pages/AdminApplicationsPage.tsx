@@ -173,7 +173,7 @@ function ReviewSheet({
   const email = profile?.email ?? "";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-end p-0 sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-stretch justify-end p-0">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-text/40 backdrop-blur-sm"
@@ -182,7 +182,7 @@ function ReviewSheet({
       />
 
       {/* Sheet — full-height right panel on sm+, bottom sheet on mobile */}
-      <div className="relative z-10 w-full sm:max-w-lg sm:h-full bg-cream sm:rounded-3xl rounded-t-3xl shadow-elevated flex flex-col max-h-[92dvh] sm:max-h-none overflow-hidden">
+      <div className="relative z-10 w-full sm:max-w-lg sm:h-full bg-cream sm:rounded-l-3xl rounded-t-3xl shadow-elevated flex flex-col max-h-[92dvh] sm:max-h-none overflow-hidden">
         {/* Drag pill (mobile) */}
         <div className="sm:hidden pt-2.5 pb-1 flex justify-center shrink-0">
           <div className="h-1 w-10 rounded-full bg-border" />
