@@ -32,6 +32,7 @@ import { CreatorQuizzesPage as RealCreatorQuizzesPage } from "./CreatorQuizzesPa
 import { QuizBuilderPage as RealQuizBuilderPage } from "./QuizBuilderPage";
 import { QuizAnalyticsPage as RealQuizAnalyticsPage } from "./QuizAnalyticsPage";
 import { CreatorPayoutsPage as RealCreatorPayoutsPage } from "./CreatorPayoutsPage";
+import { CreatorReportsPage as RealCreatorReportsPage } from "./CreatorReportsPage";
 import { AdminDashboardPage as RealAdminDashboardPage } from "./AdminDashboardPage";
 import { AdminApplicationsPage as RealAdminApplicationsPage } from "./AdminApplicationsPage";
 import { AdminPayoutsPage as RealAdminPayoutsPage } from "./AdminPayoutsPage";
