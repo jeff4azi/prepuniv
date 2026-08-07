@@ -187,7 +187,7 @@ export function UniversitySelect({
                       {uni.name}
                     </p>
                     <p className="text-[11px] text-muted mt-0.5">
-                      {uni.abbreviation} · {uni.city}
+                      {uni.abbreviation} · {uni.state}
                     </p>
                   </div>
                   {active && (

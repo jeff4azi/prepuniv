@@ -3,8 +3,8 @@ export interface University {
   name: string;
   /** Short abbreviation shown in chips / badges */
   abbreviation: string;
-  /** City the university is located in */
-  city: string;
+  /** State the university is located in */
+  state: string;
 }
 
 export const universities: University[] = [
@@ -12,19 +12,19 @@ export const universities: University[] = [
     id: "uni_001",
     name: "University of Lagos",
     abbreviation: "UNILAG",
-    city: "Lagos",
+    state: "Lagos",
   },
   {
     id: "uni_002",
     name: "Ahmadu Bello University",
     abbreviation: "ABU",
-    city: "Zaria",
+    state: "Kaduna",
   },
   {
     id: "uni_003",
     name: "University of Nigeria, Nsukka",
     abbreviation: "UNN",
-    city: "Nsukka",
+    state: "Enugu",
   },
 ];
 

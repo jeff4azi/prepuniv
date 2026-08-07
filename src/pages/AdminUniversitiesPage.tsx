@@ -6,7 +6,7 @@
  *
  * Admins can:
  *   - Add a new university
- *   - Edit an existing university's name, abbreviation, and city
+ *   - Edit an existing university's name, abbreviation, and state
  *   - Remove a university (only if no users, courses, or quizzes are linked)
  */
 import { useState, useMemo } from "react";
@@ -70,20 +70,20 @@ function universityStats(uniId: string) {
 interface UniversityFormValues {
   name: string;
   abbreviation: string;
-  city: string;
+  state: string;
 }
 
 const EMPTY_FORM: UniversityFormValues = {
   name: "",
   abbreviation: "",
-  city: "",
+  state: "",
 };
 
 function validate(v: UniversityFormValues): Partial<UniversityFormValues> {
   const e: Partial<UniversityFormValues> = {};
   if (!v.name.trim()) e.name = "Name is required.";
   if (!v.abbreviation.trim()) e.abbreviation = "Abbreviation is required.";
-  if (!v.city.trim()) e.city = "City is required.";
+  if (!v.state.trim()) e.state = "State is required.";
   return e;
 }
 
@@ -104,7 +104,7 @@ function UniversityModal({
       ? {
           name: existing.name,
           abbreviation: existing.abbreviation,
-          city: existing.city,
+          state: existing.state,
         }
       : EMPTY_FORM,
   );
@@ -128,7 +128,7 @@ function UniversityModal({
       id: existing?.id ?? "uni_" + Math.random().toString(36).slice(2, 9),
       name: values.name.trim(),
       abbreviation: values.abbreviation.trim().toUpperCase(),
-      city: values.city.trim(),
+      state: values.state.trim(),
     };
     if (isEdit) updateUniversity(saved);
     else addUniversity(saved);
@@ -214,13 +214,13 @@ function UniversityModal({
                 }
               />
             </FieldWrapper>
-            <FieldWrapper id="u-city" label="City" error={errors.city}>
+            <FieldWrapper id="u-state" label="State" error={errors.state}>
               <input
-                id="u-city"
+                id="u-state"
                 type="text"
                 placeholder="e.g. Lagos"
-                value={values.city}
-                onChange={(e) => set("city", e.target.value)}
+                value={values.state}
+                onChange={(e) => set("state", e.target.value)}
                 className={inputBase}
               />
             </FieldWrapper>
@@ -348,7 +348,7 @@ function UniversityRow({
             {university.abbreviation}
           </Badge>
         </div>
-        <p className="text-xs text-text-soft mt-0.5">{university.city}</p>
+        <p className="text-xs text-text-soft mt-0.5">{university.state}</p>
       </div>
 
       {/* Stats */}
