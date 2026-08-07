@@ -33,14 +33,9 @@ export function SignupPage() {
   const [confirm, setConfirm] = useState("");
   const [universityId, setUniversityId] = useState("");
   const [loading, setLoading] = useState(false);
+  // Errors are only shown after the first submit attempt
+  const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<SignupErrors>({});
-  const [touched, setTouched] = useState<Record<keyof SignupErrors, boolean>>({
-    full_name: false,
-    email: false,
-    password: false,
-    confirm: false,
-    university: false,
-  });
 
   function runValidation(): SignupErrors {
     return {
@@ -52,29 +47,20 @@ export function SignupPage() {
     };
   }
 
-  function validateAll(): boolean {
-    const e = runValidation();
-    setErrors(e);
-    setTouched({
-      full_name: true,
-      email: true,
-      password: true,
-      confirm: true,
-      university: true,
-    });
-    return (
-      !e.full_name && !e.email && !e.password && !e.confirm && !e.university
-    );
-  }
-
-  function onBlur(key: keyof SignupErrors) {
-    setTouched((t) => ({ ...t, [key]: true }));
-    setErrors((prev) => ({ ...prev, ...runValidation() }));
-  }
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!validateAll()) return;
+    setSubmitted(true);
+    const errs = runValidation();
+    setErrors(errs);
+    if (
+      errs.full_name ||
+      errs.email ||
+      errs.password ||
+      errs.confirm ||
+      errs.university
+    )
+      return;
+
     setLoading(true);
     await new Promise((r) => setTimeout(r, 650));
     signUp({
@@ -86,14 +72,8 @@ export function SignupPage() {
     navigate("/home", { replace: true });
   }
 
-  const liveErrors = touched ? runValidation() : {};
-  const finalErrors = {
-    full_name: errors.full_name ?? liveErrors.full_name,
-    email: errors.email ?? liveErrors.email,
-    password: errors.password ?? liveErrors.password,
-    confirm: errors.confirm ?? liveErrors.confirm,
-    university: errors.university ?? liveErrors.university,
-  };
+  // Re-validate on every keystroke but only surface errors if submit was attempted
+  const live = submitted ? runValidation() : {};
 
   return (
     <AuthShell
@@ -134,10 +114,17 @@ export function SignupPage() {
             placeholder="e.g. Adebayo Johnson"
             autoComplete="name"
             value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            onBlur={() => onBlur("full_name")}
-            error={finalErrors.full_name ?? undefined}
+            onChange={(e) => {
+              setFullName(e.target.value);
+              if (submitted)
+                setErrors((prev) => ({
+                  ...prev,
+                  full_name: validateFullName(e.target.value),
+                }));
+            }}
+            error={live.full_name ?? undefined}
           />
+
           <TextInput
             id="email"
             name="email"
@@ -146,12 +133,17 @@ export function SignupPage() {
             autoComplete="email"
             inputMode="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onBlur={() => onBlur("email")}
-            error={finalErrors.email ?? undefined}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (submitted)
+                setErrors((prev) => ({
+                  ...prev,
+                  email: validateEmail(e.target.value),
+                }));
+            }}
+            error={live.email ?? undefined}
           />
 
-          {/* University selector */}
           <UniversitySelect
             id="university"
             label="University"
@@ -160,17 +152,13 @@ export function SignupPage() {
             value={universityId}
             onChange={(id) => {
               setUniversityId(id);
-              if (touched.university)
+              if (submitted)
                 setErrors((prev) => ({
                   ...prev,
                   university: id ? null : "Please select your university.",
                 }));
             }}
-            error={
-              touched.university && finalErrors.university
-                ? finalErrors.university
-                : undefined
-            }
+            error={submitted ? (live.university ?? undefined) : undefined}
             hint="Quizzes and courses are scoped to your university."
           />
 
@@ -181,11 +169,18 @@ export function SignupPage() {
             placeholder="At least 8 characters"
             autoComplete="new-password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onBlur={() => onBlur("password")}
-            error={finalErrors.password ?? undefined}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (submitted)
+                setErrors((prev) => ({
+                  ...prev,
+                  password: validatePassword(e.target.value),
+                }));
+            }}
+            error={live.password ?? undefined}
             hint="We'll never ask you to share this."
           />
+
           <PasswordInput
             id="confirm"
             name="confirm"
@@ -193,9 +188,15 @@ export function SignupPage() {
             placeholder="Re-enter password"
             autoComplete="new-password"
             value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            onBlur={() => onBlur("confirm")}
-            error={finalErrors.confirm ?? undefined}
+            onChange={(e) => {
+              setConfirm(e.target.value);
+              if (submitted)
+                setErrors((prev) => ({
+                  ...prev,
+                  confirm: validatePasswordMatch(password, e.target.value),
+                }));
+            }}
+            error={live.confirm ?? undefined}
           />
 
           <Button
