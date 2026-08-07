@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowRight, GraduationCap } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { AuthShell, AuthCard } from "../components/AuthShell";
 import { Button } from "../components/Button";
 import {
@@ -10,8 +10,8 @@ import {
   validatePassword,
   validatePasswordMatch,
   validateFullName,
-  FieldWrapper,
 } from "../components/Form";
+import { UniversitySelect } from "../components/UniversitySelect";
 import { useAuth } from "../context/AuthContext";
 import { universities } from "../mock";
 
@@ -152,58 +152,27 @@ export function SignupPage() {
           />
 
           {/* University selector */}
-          <FieldWrapper
+          <UniversitySelect
             id="university"
             label="University"
+            placeholder="Select your university…"
+            universities={universities}
+            value={universityId}
+            onChange={(id) => {
+              setUniversityId(id);
+              if (touched.university)
+                setErrors((prev) => ({
+                  ...prev,
+                  university: id ? null : "Please select your university.",
+                }));
+            }}
             error={
               touched.university && finalErrors.university
                 ? finalErrors.university
                 : undefined
             }
             hint="Quizzes and courses are scoped to your university."
-          >
-            <div className="relative">
-              <GraduationCap className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-              <select
-                id="university"
-                value={universityId}
-                onChange={(e) => {
-                  setUniversityId(e.target.value);
-                  if (touched.university)
-                    setErrors((prev) => ({
-                      ...prev,
-                      university: e.target.value
-                        ? null
-                        : "Please select your university.",
-                    }));
-                }}
-                onBlur={() => onBlur("university")}
-                className={`w-full h-11 pl-10 pr-10 rounded-xl bg-cream border text-sm font-heading text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 appearance-none cursor-pointer transition-all ${
-                  touched.university && finalErrors.university
-                    ? "border-danger/60"
-                    : "border-border"
-                } ${!universityId ? "text-muted" : ""}`}
-              >
-                <option value="" disabled>
-                  Select your university…
-                </option>
-                {universities.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} ({u.abbreviation})
-                  </option>
-                ))}
-              </select>
-              <svg
-                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </div>
-          </FieldWrapper>
+          />
 
           <PasswordInput
             id="password"

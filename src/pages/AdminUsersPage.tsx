@@ -29,6 +29,7 @@ import { Button } from "../components/Button";
 import { Avatar } from "../components/Avatar";
 import { Toast, useToast } from "../components/Toast";
 import { DrawerShell } from "../components/DrawerShell";
+import { UniversitySelect } from "../components/UniversitySelect";
 import { useAuth } from "../context/AuthContext";
 import {
   profiles,
@@ -414,9 +415,7 @@ export function AdminUsersPage() {
     if (activeTab === "admins") list = list.filter((p) => p.role === "admin");
     if (activeTab === "suspended") list = list.filter((p) => p.is_suspended);
     if (uniFilter !== "all") {
-      list = list.filter((p) =>
-        uniFilter === "none" ? !p.university_id : p.university_id === uniFilter,
-      );
+      list = list.filter((p) => p.university_id === uniFilter);
     }
     if (searchInput.trim()) {
       const q = searchInput.trim().toLowerCase();
@@ -522,31 +521,14 @@ export function AdminUsersPage() {
           {/* Filter tabs */}
           <div className="flex flex-wrap items-center gap-3">
             {/* University filter */}
-            <div className="relative">
-              <select
-                value={uniFilter}
-                onChange={(e) => setUniFilter(e.target.value)}
-                aria-label="Filter by university"
-                className="h-9 pl-3 pr-8 rounded-xl border border-border/60 bg-cream text-xs font-heading font-medium text-text appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40"
-              >
-                <option value="all">All Universities</option>
-                {universities.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.abbreviation}
-                  </option>
-                ))}
-                <option value="none">No University (Admins)</option>
-              </select>
-              <svg
-                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </div>
+            <UniversitySelect
+              id="uni-filter"
+              universities={universities}
+              value={uniFilter}
+              onChange={setUniFilter}
+              includeAll
+              placeholder="All Universities"
+            />
 
             {/* Role tabs */}
             <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 overflow-x-auto no-scrollbar">
