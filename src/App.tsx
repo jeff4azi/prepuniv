@@ -31,6 +31,7 @@ import {
   AdminUsersPage,
   AdminCoursesPage,
   AdminQuizzesPage,
+  AdminUniversitiesPage,
 } from "./pages";
 import { LandingPage } from "./pages/LandingPage";
 import { SignupPage } from "./pages/SignupPage";
@@ -136,6 +137,10 @@ function AppShell() {
               <Route path="/admin/users" element={<AdminUsersPage />} />
               <Route path="/admin/courses" element={<AdminCoursesPage />} />
               <Route path="/admin/quizzes" element={<AdminQuizzesPage />} />
+              <Route
+                path="/admin/universities"
+                element={<AdminUniversitiesPage />}
+              />
 
               <Route path="*" element={<HomePage />} />
             </Routes>

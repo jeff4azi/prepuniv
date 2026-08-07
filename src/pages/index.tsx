@@ -40,6 +40,7 @@ import { AdminReportsPage as RealAdminReportsPage } from "./AdminReportsPage";
 import { AdminUsersPage as RealAdminUsersPage } from "./AdminUsersPage";
 import { AdminCoursesPage as RealAdminCoursesPage } from "./AdminCoursesPage";
 import { AdminQuizzesPage as RealAdminQuizzesPage } from "./AdminQuizzesPage";
+import { AdminUniversitiesPage as RealAdminUniversitiesPage } from "./AdminUniversitiesPage";
 
 // suppress "unused" linter warnings for icons still used by placeholder pages
 void (ClockIcon, SettingsIcon, WalletIcon);
@@ -236,4 +237,8 @@ export function AdminCoursesPage() {
 
 export function AdminQuizzesPage() {
   return <RealAdminQuizzesPage />;
+}
+
+export function AdminUniversitiesPage() {
+  return <RealAdminUniversitiesPage />;
 }

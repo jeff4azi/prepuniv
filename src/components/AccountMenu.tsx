@@ -25,6 +25,7 @@ import {
   ChevronRight,
   Wallet,
   Clock,
+  GraduationCap,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import type { UserRole } from "../mock";
@@ -295,6 +296,13 @@ function MobileMenuBody({ onClose }: { onClose: () => void }) {
               to="/admin/quizzes"
               icon={ScrollText}
               label="Quizzes"
+              onClose={onClose}
+              end
+            />
+            <NavItem
+              to="/admin/universities"
+              icon={GraduationCap}
+              label="Universities"
               onClose={onClose}
               end
             />

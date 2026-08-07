@@ -18,6 +18,7 @@ import {
   Sparkles,
   Library,
   UserPlus,
+  GraduationCap,
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -97,6 +98,12 @@ const ADMIN_NAV: NavItem[] = [
     to: "/admin/quizzes",
     label: "Quizzes",
     icon: ScrollText,
+    roles: ["admin"],
+  },
+  {
+    to: "/admin/universities",
+    label: "Universities",
+    icon: GraduationCap,
     roles: ["admin"],
   },
 ];
