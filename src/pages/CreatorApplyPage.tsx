@@ -21,8 +21,6 @@ import {
   LayoutDashboard,
   ArrowRight,
   RotateCcw,
-  Terminal,
-  ChevronDown,
   BadgeCheck,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
@@ -35,7 +33,6 @@ import { useAuth } from "../context/AuthContext";
 import {
   getApplicationByUserId,
   addApplication,
-  updateApplicationStatus,
   type CreatorApplication,
   type ApplicationStatus,
 } from "../mock";
@@ -120,77 +117,6 @@ function FormInput({
         className={BASE_INPUT + (error ? ERROR_SUFFIX : "")}
       />
     </FieldWrapper>
-  );
-}
-
-// ─── Dev state switcher (inline, apply-page only) ─────────────────────────────
-
-type DevAppState = "none" | "pending" | "rejected" | "approved";
-
-function DevAppSwitcher({
-  currentState,
-  onChange,
-}: {
-  currentState: DevAppState;
-  onChange: (s: DevAppState) => void;
-}) {
-  const [open, setOpen] = useState(false);
-
-  const OPTIONS: { value: DevAppState; label: string }[] = [
-    { value: "none", label: "No application" },
-    { value: "pending", label: "Pending review" },
-    { value: "rejected", label: "Rejected" },
-    { value: "approved", label: "Approved creator" },
-  ];
-
-  const current = OPTIONS.find((o) => o.value === currentState)!;
-
-  return (
-    <div className="relative inline-block">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 pl-3 pr-3 h-9 rounded-xl bg-cream border border-border shadow-soft hover:shadow-elevated transition-all text-xs font-heading font-semibold text-text-soft"
-      >
-        <Terminal className="w-3.5 h-3.5 text-primary shrink-0" />
-        <span className="hidden sm:inline">Dev:</span>
-        <span className="text-text">{current.label}</span>
-        <ChevronDown
-          className={`w-3.5 h-3.5 text-muted transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {open && (
-        <div className="absolute top-11 right-0 z-50 w-52 rounded-2xl bg-cream border border-border shadow-elevated p-1.5">
-          <p className="px-3 pt-1.5 pb-2 text-[10px] font-heading font-semibold uppercase tracking-wider text-muted">
-            Simulate application state
-          </p>
-          {OPTIONS.map((o) => (
-            <button
-              key={o.value}
-              type="button"
-              onClick={() => {
-                onChange(o.value);
-                setOpen(false);
-              }}
-              className={`w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-heading font-medium transition-colors ${
-                currentState === o.value
-                  ? "bg-primary/10 text-primary"
-                  : "text-text-soft hover:bg-surface/60 hover:text-text"
-              }`}
-            >
-              {currentState === o.value && (
-                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-              )}
-              {currentState !== o.value && (
-                <span className="w-1.5 h-1.5 rounded-full bg-border shrink-0" />
-              )}
-              {o.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -543,28 +469,12 @@ function ApplicationForm({
 export function CreatorApplyPage() {
   const { currentUser } = useAuth();
 
-  // ── Resolve real application from mock store ───────────────────────────────
   const realApp = getApplicationByUserId(currentUser.id);
-
-  // ── Dev-only state override ────────────────────────────────────────────────
-  // Maps to the four UI states; "none" means fall back to real data.
-  const [devState, setDevState] = useState<DevAppState>("none");
-
-  // Local app override (set after a live submit or dev switcher change)
   const [localApp, setLocalApp] = useState<CreatorApplication | null>(null);
-
-  // Whether to show the re-apply form after a rejection
   const [reApplying, setReApplying] = useState(false);
-
   const [toast, showToast, dismissToast] = useToast();
 
-  // ── Determine effective application state ──────────────────────────────────
-  // Priority: devState override > localApp > realApp > profile flag
   function effectiveStatus(): ApplicationStatus | "none" {
-    if (devState !== "none") {
-      if (devState === "none") return "none";
-      return devState as ApplicationStatus;
-    }
     if (localApp) return localApp.status;
     if (realApp) return realApp.status;
     if (currentUser.is_approved_creator) return "approved";
@@ -572,71 +482,22 @@ export function CreatorApplyPage() {
   }
 
   function effectiveApp(): CreatorApplication | null {
-    if (devState !== "none") {
-      // Return a synthetic app for the dev state
-      if (devState === "pending") {
-        return {
-          id: "dev_app",
-          user_id: currentUser.id,
-          status: "pending",
-          courses: "Mathematics, Physics",
-          background: "Dev preview — pending state",
-          quiz_plans: "Dev preview",
-          submitted_at: new Date().toISOString(),
-        };
-      }
-      if (devState === "rejected") {
-        return {
-          id: "dev_app",
-          user_id: currentUser.id,
-          status: "rejected",
-          courses: "Mathematics",
-          background: "Dev preview — rejected state",
-          quiz_plans: "Dev preview",
-          notes:
-            "Please provide more detail on your subject background and teaching experience.",
-          submitted_at: new Date().toISOString(),
-        };
-      }
-      if (devState === "approved") {
-        return {
-          id: "dev_app",
-          user_id: currentUser.id,
-          status: "approved",
-          courses: "English",
-          background: "Dev preview",
-          quiz_plans: "Dev preview",
-          submitted_at: new Date().toISOString(),
-        };
-      }
-      return null;
-    }
     return localApp ?? realApp ?? null;
   }
 
   const status = effectiveStatus();
   const app = effectiveApp();
 
-  function handleDevChange(s: DevAppState) {
-    setDevState(s);
-    setReApplying(false);
-    setLocalApp(null);
-  }
-
   function handleSubmitted(submitted: CreatorApplication) {
     setLocalApp(submitted);
-    setDevState("none");
     setReApplying(false);
     showToast({ message: "Application submitted! We'll be in touch soon." });
   }
 
   function handleReApply() {
     setReApplying(true);
-    // Clear the dev override so the form renders cleanly
-    if (devState === "rejected") setDevState("none");
   }
 
-  // Pre-fill values from the previous rejected application
   const prefill =
     (status === "rejected" || reApplying) && app
       ? {
@@ -647,7 +508,6 @@ export function CreatorApplyPage() {
         }
       : undefined;
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   const showForm = status === "none" || reApplying;
 
   return (
@@ -662,35 +522,21 @@ export function CreatorApplyPage() {
 
       <PageContainer>
         <div className="max-w-2xl space-y-5">
-          {/* ── Page heading + dev switcher ── */}
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <Badge variant="secondary" size="sm" dot className="mb-2">
-                <Sparkles className="w-3 h-3" />
-                Creator programme
-              </Badge>
-              <h1 className="font-heading font-bold text-2xl lg:text-[28px] text-text tracking-tight leading-tight">
-                Become a Creator
-              </h1>
-              <p className="mt-1.5 text-sm text-text-soft leading-relaxed max-w-lg">
-                Share your expertise and earn from every learner who benefits
-                from your quizzes.
-              </p>
-            </div>
-
-            {/* Dev-only tool */}
-            <div className="shrink-0 flex flex-col items-end gap-1 pt-1">
-              <DevAppSwitcher
-                currentState={devState}
-                onChange={handleDevChange}
-              />
-              <p className="text-[10px] text-muted font-heading">
-                Dev preview only
-              </p>
-            </div>
+          {/* Page heading */}
+          <div>
+            <Badge variant="secondary" size="sm" dot className="mb-2">
+              <Sparkles className="w-3 h-3" />
+              Creator programme
+            </Badge>
+            <h1 className="font-heading font-bold text-2xl lg:text-[28px] text-text tracking-tight leading-tight">
+              Become a Creator
+            </h1>
+            <p className="mt-1.5 text-sm text-text-soft leading-relaxed max-w-lg">
+              Share your expertise and earn from every learner who benefits from
+              your quizzes.
+            </p>
           </div>
 
-          {/* ── State-driven content ── */}
           {showForm && (
             <ApplicationForm
               key={reApplying ? "reapply" : "fresh"}

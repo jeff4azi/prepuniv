@@ -9,7 +9,6 @@ import {
 import { AuthProvider } from "./context/AuthContext";
 import { Sidebar, TopBar, BottomNav } from "./components/Navigation";
 import { AccountSheet } from "./components/AccountMenu";
-import { DevRoleSwitcher } from "./components/DevRoleSwitcher";
 import {
   HomePage,
   BrowsePage,
@@ -154,12 +153,9 @@ function AppShell() {
         open={accountMenuOpen}
         onClose={() => setAccountMenuOpen(false)}
       />
-      <DevRoleSwitcher />
     </div>
   );
 }
-
-/** Attempt routes render full-screen — no sidebar, topbar, or bottom nav. */
 function AttemptShell() {
   return (
     <Routes>
