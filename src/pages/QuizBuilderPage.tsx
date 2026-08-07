@@ -143,19 +143,18 @@ export function QuizBuilderPage() {
   });
   const [detailErrors, setDetailErrors] = useState<Partial<QuizDetails>>({});
 
-  // ── Course autocomplete state ──
-  const courseInputRef = useRef<HTMLInputElement | null>(null);
-  const courseWrapRef = useRef<HTMLDivElement | null>(null);
-  const [courseSearch, setCourseSearch] = useState<string>("");
-  const [courseAcOpen, setCourseAcOpen] = useState(false);
-  const [courseAcHoverIdx, setCourseAcHoverIdx] = useState<number>(0);
+  // ── Course autocomplete state (attached to Course Code field only) ──
+  const courseCodeInputRef = useRef<HTMLInputElement | null>(null);
+  const courseCodeWrapRef = useRef<HTMLDivElement | null>(null);
+  const [courseCodeAcOpen, setCourseCodeAcOpen] = useState(false);
+  const [courseCodeAcHoverIdx, setCourseCodeAcHoverIdx] = useState<number>(0);
   const [courseAcVersion, setCourseAcVersion] = useState(0);
 
   const matchedCourses = useMemo(() => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _v = courseAcVersion;
-    return findCoursesByQuery(courseSearch, { limit: 6 });
-  }, [courseSearch, courseAcVersion]);
+    return findCoursesByQuery(details.course_code, { limit: 6 });
+  }, [details.course_code, courseAcVersion]);
 
   function applyCourse(c: { id: string; code: string; title: string; subject_area: string; level: 100 | 200 | 300 | 400 }) {
     setDetails((d) => ({
@@ -165,51 +164,23 @@ export function QuizBuilderPage() {
       subject_area: c.subject_area,
       level: String(c.level),
     }));
-    setCourseSearch(`${c.code} — ${c.title}`);
-    setCourseAcOpen(false);
+    setCourseCodeAcOpen(false);
   }
-
-  function syncCourseSearchFromDetails(code: string, title: string) {
-    if (!code && !title) {
-      setCourseSearch("");
-    } else {
-      setCourseSearch(title ? `${code} — ${title}` : code);
-    }
-  }
-
-  // Keep the display field in sync if any of code/title changed programmatically
-  useEffect(() => {
-    if (courseAcOpen) return; // don't overwrite while user is actively searching
-    const expected = details.course_title
-      ? `${details.course_code} — ${details.course_title}`
-      : details.course_code;
-    if (expected !== courseSearch) {
-      // only write if actually different to avoid fighting with onInput typing
-      if (
-        details.course_code &&
-        (courseSearch === "" ||
-          courseSearch.toLowerCase().includes(details.course_code.toLowerCase()) === false)
-      ) {
-        setCourseSearch(expected);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [details.course_code, details.course_title]);
 
   // Close autocomplete dropdown when clicking outside
   useEffect(() => {
-    if (!courseAcOpen) return;
+    if (!courseCodeAcOpen) return;
     function onDocClick(ev: globalThis.MouseEvent) {
       if (
-        courseWrapRef.current &&
-        !courseWrapRef.current.contains(ev.target as Node)
+        courseCodeWrapRef.current &&
+        !courseCodeWrapRef.current.contains(ev.target as Node)
       ) {
-        setCourseAcOpen(false);
+        setCourseCodeAcOpen(false);
       }
     }
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
-  }, [courseAcOpen]);
+  }, [courseCodeAcOpen]);
 
   // ── Questions state ──
   const [draftQuestions, setDraftQuestions] = useState<DraftQuestion[]>(() =>
@@ -535,91 +506,76 @@ export function QuizBuilderPage() {
                 />
               </FieldWrapper>
 
-              {/* Course — smart autocomplete (find existing, or create new on save) */}
-              <div ref={courseWrapRef} className="relative">
-                <FieldWrapper
-                  id="qb-course"
-                  label="Course"
-                  error={
-                    saveAttempted && !details.course_code.trim()
-                      ? "Pick a course from the suggestions, or type a new one."
-                      : undefined
-                  }
-                  hint="Search existing courses by code or name. If yours isn't in the list, type it anyway — it'll be added automatically when you save."
-                >
-                  <div className="relative">
-                    <BookOpen className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                    <input
-                      ref={courseInputRef}
-                      id="qb-course"
-                      type="text"
-                      placeholder="e.g. CSC 122 — Introduction to Programming"
-                      value={courseSearch}
-                      onFocus={() => {
-                        setCourseAcHoverIdx(0);
-                        setCourseAcOpen(true);
-                      }}
-                      onKeyDown={(e) => {
-                        // Arrow navigation in the autocomplete dropdown
-                        if (!courseAcOpen && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
-                          setCourseAcOpen(true);
-                          return;
-                        }
-                        if (!courseAcOpen) return;
-                        if (e.key === "ArrowDown") {
-                          e.preventDefault();
-                          setCourseAcHoverIdx((i) =>
-                            matchedCourses.length === 0 ? 0 : Math.min(i + 1, matchedCourses.length - 1),
-                          );
-                        } else if (e.key === "ArrowUp") {
-                          e.preventDefault();
-                          setCourseAcHoverIdx((i) =>
-                            matchedCourses.length === 0 ? 0 : Math.max(0, i - 1),
-                          );
-                        } else if (e.key === "Enter") {
-                          const pick = matchedCourses[courseAcHoverIdx];
-                          if (pick && courseAcOpen && matchedCourses.length > 0) {
-                            e.preventDefault();
-                            applyCourse(pick);
+              {/* Course Code + Course Title (separate inputs, autocomplete on code) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Course Code — autocomplete */}
+                <div ref={courseCodeWrapRef} className="relative">
+                  <FieldWrapper
+                    id="qb-course-code"
+                    label="Course Code"
+                    error={
+                      saveAttempted && !details.course_code.trim()
+                        ? "Course code is required."
+                        : undefined
+                    }
+                    hint="Start typing — suggestions from existing courses appear below. Pick one to auto-fill the title/subject/level."
+                  >
+                    <div className="relative">
+                      <BookOpen className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                      <input
+                        ref={courseCodeInputRef}
+                        id="qb-course-code"
+                        type="text"
+                        placeholder="e.g. CSC 122"
+                        value={details.course_code}
+                        onFocus={() => {
+                          setCourseCodeAcHoverIdx(0);
+                          setCourseCodeAcOpen(true);
+                        }}
+                        onKeyDown={(e) => {
+                          if (!courseCodeAcOpen && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+                            setCourseCodeAcOpen(true);
+                            return;
                           }
-                        } else if (e.key === "Escape") {
-                          setCourseAcOpen(false);
-                        }
-                      }}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setCourseSearch(val);
-                        setCourseAcOpen(true);
-                        setCourseAcHoverIdx(0);
+                          if (!courseCodeAcOpen) return;
+                          if (e.key === "ArrowDown") {
+                            e.preventDefault();
+                            setCourseCodeAcHoverIdx((i) =>
+                              matchedCourses.length === 0 ? 0 : Math.min(i + 1, matchedCourses.length - 1),
+                            );
+                          } else if (e.key === "ArrowUp") {
+                            e.preventDefault();
+                            setCourseCodeAcHoverIdx((i) =>
+                              matchedCourses.length === 0 ? 0 : Math.max(0, i - 1),
+                            );
+                          } else if (e.key === "Enter") {
+                            const pick = matchedCourses[courseCodeAcHoverIdx];
+                            if (pick && courseCodeAcOpen && matchedCourses.length > 0) {
+                              e.preventDefault();
+                              applyCourse(pick);
+                            }
+                          } else if (e.key === "Escape") {
+                            setCourseCodeAcOpen(false);
+                          }
+                        }}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const upper = val.toUpperCase();
+                          setCourseCodeAcOpen(true);
+                          setCourseCodeAcHoverIdx(0);
 
-                        // Split input for auto-derives: "CODE — Title" pattern,
-                        // or standalone code guess for subject/level
-                        const parts = val.split(/\s+[—\-]\s+/);
-                        const codePart = (parts[0] ?? "").trim();
-                        const titlePart = (parts[1] ?? "").trim();
-                        const prefix = codePart
-                          .split(/\s+/)[0]
-                          ?.toUpperCase();
-                        const suggestedArea =
-                          prefix && COURSE_PREFIX_SUBJECT_AREA[prefix]
-                            ? COURSE_PREFIX_SUBJECT_AREA[prefix]
-                            : "";
-                        const suggestedLevel = suggestLevelFromCode(codePart);
-                        setDetails((d) => {
-                          // Keep original if creator already typed custom overrides,
-                          // otherwise auto-derive from the parsed code portion
-                          const keepSubject =
-                            d.subject_area && !suggestedArea
-                              ? d.subject_area
-                              : d.subject_area === "" ||
-                                  (suggestedArea &&
-                                    !/[—\-]/.test(d.course_code) === false)
-                                ? suggestedArea || d.subject_area
-                                : d.subject_area;
-                          return {
+                          const prefix = upper
+                            .split(/\s+/)[0]
+                            ?.toUpperCase();
+                          const suggestedArea =
+                            prefix && COURSE_PREFIX_SUBJECT_AREA[prefix]
+                              ? COURSE_PREFIX_SUBJECT_AREA[prefix]
+                              : "";
+                          const suggestedLevel = suggestLevelFromCode(upper);
+
+                          setDetails((d) => ({
                             ...d,
-                            course_code: codePart.toUpperCase(),
-                            course_title: titlePart || d.course_title,
+                            course_code: upper,
                             subject_area:
                               d.subject_area === "" && suggestedArea
                                 ? suggestedArea
@@ -628,89 +584,105 @@ export function QuizBuilderPage() {
                               d.level === "" && suggestedLevel
                                 ? String(suggestedLevel)
                                 : d.level,
-                            // quiet lint — keepSubject var used above for readability only
-                            ...(keepSubject ? {} : {}),
-                          };
-                        });
-                      }}
-                      className="w-full h-11 pl-10 pr-10 rounded-xl bg-cream border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-sm font-heading text-text placeholder:text-muted transition-all"
-                    />
-                    <ChevronDown
-                      className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted transition-transform duration-150 ${
-                        courseAcOpen ? "rotate-180" : ""
-                      }`}
-                    />
-                  </div>
-                </FieldWrapper>
+                          }));
+                        }}
+                        className="w-full h-11 pl-10 pr-10 rounded-xl bg-cream border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-sm font-heading font-semibold tracking-wide text-text placeholder:text-muted placeholder:font-normal placeholder:tracking-normal transition-all"
+                      />
+                      <ChevronDown
+                        className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted transition-transform duration-150 ${
+                          courseCodeAcOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    </div>
+                  </FieldWrapper>
 
-                {/* Autocomplete dropdown */}
-                {courseAcOpen && (
-                  <div className="absolute left-0 right-0 z-30 mt-2 rounded-2xl border border-border/60 bg-cream shadow-elevated overflow-hidden divide-y divide-border/30">
-                    {matchedCourses.length === 0 ? (
-                      <div className="px-4 py-3.5">
-                        <p className="text-sm font-heading font-semibold text-text leading-tight">
-                          No existing course matches that search.
-                        </p>
-                        <p className="text-xs text-text-soft mt-1 leading-relaxed">
-                          No worries — finish typing the course code and name,
-                          and a new entry will be created automatically when you
-                          save this quiz.
-                        </p>
-                      </div>
-                    ) : (
-                      matchedCourses.map((c, idx) => {
-                        const isHover = idx === courseAcHoverIdx;
-                        return (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onMouseEnter={() => setCourseAcHoverIdx(idx)}
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => applyCourse(c)}
-                            className={`w-full text-left flex items-center gap-3 px-4 py-3 transition-colors ${
-                              isHover ? "bg-primary/5" : "hover:bg-surface/40"
-                            }`}
-                          >
-                            <div
-                              className={`h-9 w-9 shrink-0 rounded-xl flex items-center justify-center ${
-                                isHover
-                                  ? "bg-primary/10 text-primary"
-                                  : "bg-surface/60 text-muted"
+                  {/* Autocomplete dropdown */}
+                  {courseCodeAcOpen && (
+                    <div className="absolute left-0 right-0 z-30 mt-2 rounded-2xl border border-border/60 bg-cream shadow-elevated overflow-hidden divide-y divide-border/30 sm:max-w-[560px]">
+                      {matchedCourses.length === 0 ? (
+                        <div className="px-4 py-3.5">
+                          <p className="text-sm font-heading font-semibold text-text leading-tight">
+                            No existing course matches that code.
+                          </p>
+                          <p className="text-xs text-text-soft mt-1 leading-relaxed">
+                            No worries — keep typing your code, then fill in the
+                            Course Title on the right. The new course entry is
+                            created automatically when you save this quiz.
+                          </p>
+                        </div>
+                      ) : (
+                        matchedCourses.map((c, idx) => {
+                          const isHover = idx === courseCodeAcHoverIdx;
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onMouseEnter={() => setCourseCodeAcHoverIdx(idx)}
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => applyCourse(c)}
+                              className={`w-full text-left flex items-center gap-3 px-4 py-3 transition-colors ${
+                                isHover ? "bg-primary/5" : "hover:bg-surface/40"
                               }`}
                             >
-                              <BookOpen className="w-4 h-4" strokeWidth={2} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span
-                                  className={`text-[12px] font-heading font-bold tracking-tight ${
-                                    isHover ? "text-primary" : "text-text"
-                                  }`}
-                                >
-                                  {c.code}
-                                </span>
-                                <Badge variant="muted" size="sm">
-                                  {c.level}L
-                                </Badge>
-                                <Badge variant="secondary" size="sm">
-                                  {c.subject_area}
-                                </Badge>
+                              <div
+                                className={`h-9 w-9 shrink-0 rounded-xl flex items-center justify-center ${
+                                  isHover
+                                    ? "bg-primary/10 text-primary"
+                                    : "bg-surface/60 text-muted"
+                                }`}
+                              >
+                                <BookOpen className="w-4 h-4" strokeWidth={2} />
                               </div>
-                              <p className="text-xs text-text-soft mt-0.5 truncate">
-                                {c.title}
-                              </p>
-                            </div>
-                            {isHover && (
-                              <div className="shrink-0 text-[10px] font-heading font-semibold text-muted">
-                                Enter ↵
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span
+                                    className={`text-[12px] font-heading font-bold tracking-tight ${
+                                      isHover ? "text-primary" : "text-text"
+                                    }`}
+                                  >
+                                    {c.code}
+                                  </span>
+                                  <Badge variant="muted" size="sm">
+                                    {c.level}L
+                                  </Badge>
+                                  <Badge variant="secondary" size="sm">
+                                    {c.subject_area}
+                                  </Badge>
+                                </div>
+                                <p className="text-xs text-text-soft mt-0.5 truncate">
+                                  {c.title}
+                                </p>
                               </div>
-                            )}
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                )}
+                              {isHover && (
+                                <div className="shrink-0 text-[10px] font-heading font-semibold text-muted">
+                                  Enter ↵
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Course Title — separate, pre-filled from match */}
+                <FieldWrapper
+                  id="qb-course-title"
+                  label="Course Title"
+                  hint="Auto-filled if you pick a suggestion on the left. Otherwise, type it here."
+                >
+                  <input
+                    id="qb-course-title"
+                    type="text"
+                    placeholder="e.g. Introduction to Programming"
+                    value={details.course_title}
+                    onChange={(e) =>
+                      setDetails((d) => ({ ...d, course_title: e.target.value }))
+                    }
+                    className="w-full h-11 px-4 rounded-xl bg-cream border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-sm font-heading text-text placeholder:text-muted transition-all"
+                  />
+                </FieldWrapper>
               </div>
 
               {/* Subject Area + Level + Price row */}
