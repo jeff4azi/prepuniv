@@ -130,8 +130,16 @@ export function QuizBuilderPage() {
     const existingMinutes = existingQuiz?.time_limit_seconds
       ? String(Math.round(existingQuiz.time_limit_seconds / 60))
       : "";
+    // Strip the "{CODE} — " prefix from stored titles so creators only see the
+    // friendly quiz title in the editor. The prefix is re-added on save.
+    const codePrefixToStrip = existingCourse ? `${existingCourse.code} — ` : "";
+    const rawTitle = existingQuiz?.title ?? "";
+    const editorTitle =
+      codePrefixToStrip && rawTitle.startsWith(codePrefixToStrip)
+        ? rawTitle.slice(codePrefixToStrip.length)
+        : rawTitle;
     return {
-      title: existingQuiz?.title ?? "",
+      title: editorTitle,
       course_code: existingCourse?.code ?? "",
       course_title: existingCourse?.title ?? "",
       subject_area: existingCourse?.subject_area ?? "",
@@ -156,7 +164,13 @@ export function QuizBuilderPage() {
     return findCoursesByQuery(details.course_code, { limit: 6 });
   }, [details.course_code, courseAcVersion]);
 
-  function applyCourse(c: { id: string; code: string; title: string; subject_area: string; level: 100 | 200 | 300 | 400 }) {
+  function applyCourse(c: {
+    id: string;
+    code: string;
+    title: string;
+    subject_area: string;
+    level: 100 | 200 | 300 | 400;
+  }) {
     setDetails((d) => ({
       ...d,
       course_code: c.code,
@@ -393,7 +407,7 @@ export function QuizBuilderPage() {
       id: quizId,
       creator_id: currentUser.id,
       course_id: matchedCourse.id,
-      title: details.title.trim(),
+      title: `${matchedCourse.code} — ${details.title.trim()}`,
       description: details.description.trim(),
       price: nairaToKobo(priceNaira),
       is_published: existingQuiz?.is_published ?? true,
@@ -497,7 +511,7 @@ export function QuizBuilderPage() {
                 <input
                   id="qb-title"
                   type="text"
-                  placeholder="e.g. CSC 122 — Loops & Arrays Practice"
+                  placeholder="e.g. Loops, Arrays & Functions Practice"
                   value={details.title}
                   onChange={(e) =>
                     setDetails((d) => ({ ...d, title: e.target.value }))
@@ -533,7 +547,10 @@ export function QuizBuilderPage() {
                           setCourseCodeAcOpen(true);
                         }}
                         onKeyDown={(e) => {
-                          if (!courseCodeAcOpen && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+                          if (
+                            !courseCodeAcOpen &&
+                            (e.key === "ArrowDown" || e.key === "ArrowUp")
+                          ) {
                             setCourseCodeAcOpen(true);
                             return;
                           }
@@ -541,16 +558,24 @@ export function QuizBuilderPage() {
                           if (e.key === "ArrowDown") {
                             e.preventDefault();
                             setCourseCodeAcHoverIdx((i) =>
-                              matchedCourses.length === 0 ? 0 : Math.min(i + 1, matchedCourses.length - 1),
+                              matchedCourses.length === 0
+                                ? 0
+                                : Math.min(i + 1, matchedCourses.length - 1),
                             );
                           } else if (e.key === "ArrowUp") {
                             e.preventDefault();
                             setCourseCodeAcHoverIdx((i) =>
-                              matchedCourses.length === 0 ? 0 : Math.max(0, i - 1),
+                              matchedCourses.length === 0
+                                ? 0
+                                : Math.max(0, i - 1),
                             );
                           } else if (e.key === "Enter") {
                             const pick = matchedCourses[courseCodeAcHoverIdx];
-                            if (pick && courseCodeAcOpen && matchedCourses.length > 0) {
+                            if (
+                              pick &&
+                              courseCodeAcOpen &&
+                              matchedCourses.length > 0
+                            ) {
                               e.preventDefault();
                               applyCourse(pick);
                             }
@@ -564,9 +589,7 @@ export function QuizBuilderPage() {
                           setCourseCodeAcOpen(true);
                           setCourseCodeAcHoverIdx(0);
 
-                          const prefix = upper
-                            .split(/\s+/)[0]
-                            ?.toUpperCase();
+                          const prefix = upper.split(/\s+/)[0]?.toUpperCase();
                           const suggestedArea =
                             prefix && COURSE_PREFIX_SUBJECT_AREA[prefix]
                               ? COURSE_PREFIX_SUBJECT_AREA[prefix]
@@ -678,7 +701,10 @@ export function QuizBuilderPage() {
                     placeholder="e.g. Introduction to Programming"
                     value={details.course_title}
                     onChange={(e) =>
-                      setDetails((d) => ({ ...d, course_title: e.target.value }))
+                      setDetails((d) => ({
+                        ...d,
+                        course_title: e.target.value,
+                      }))
                     }
                     className="w-full h-11 px-4 rounded-xl bg-cream border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-sm font-heading text-text placeholder:text-muted transition-all"
                   />
