@@ -28,6 +28,7 @@ import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Avatar } from "../components/Avatar";
 import { Toast, useToast } from "../components/Toast";
+import { DrawerShell } from "../components/DrawerShell";
 import { useAuth } from "../context/AuthContext";
 import {
   profiles,
@@ -187,107 +188,89 @@ function UserDetailPanel({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-stretch justify-end p-0">
-      <div
-        className="absolute inset-0 bg-text/40 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden
+    <DrawerShell open={true} onClose={onClose} ariaLabel="User detail">
+      <DrawerShell.Header
+        icon={<Avatar name={profile.full_name} size="md" />}
+        iconWrapper={false}
+        title={
+          <div className="min-w-0">
+            <p className="font-heading font-bold text-base text-text leading-tight truncate">
+              {profile.full_name}
+            </p>
+            <p className="text-xs text-muted truncate">{profile.email}</p>
+          </div>
+        }
+        onClose={onClose}
       />
-      <div className="relative z-10 w-full sm:max-w-sm sm:h-full bg-cream sm:rounded-l-3xl rounded-t-3xl shadow-elevated flex flex-col max-h-[80dvh] sm:max-h-none overflow-hidden">
-        <div className="sm:hidden pt-2.5 pb-1 flex justify-center shrink-0">
-          <div className="h-1 w-10 rounded-full bg-border" />
+
+      <DrawerShell.Body className="space-y-5">
+        {/* Badges */}
+        <div className="flex flex-wrap gap-2">
+          <RoleBadge profile={profile} />
+          {profile.is_suspended && (
+            <Badge variant="danger" size="sm" dot>
+              Suspended
+            </Badge>
+          )}
         </div>
-        <div className="flex items-center justify-between px-5 pt-4 pb-4 border-b border-border/40 shrink-0">
-          <h2 className="font-heading font-bold text-base text-text">
-            User detail
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="h-8 w-8 rounded-xl flex items-center justify-center text-muted hover:bg-surface/70 hover:text-text transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5 min-h-0">
-          {/* Identity */}
-          <div className="flex items-center gap-3">
-            <Avatar name={profile.full_name} size="md" />
-            <div className="min-w-0">
-              <p className="font-heading font-bold text-base text-text leading-tight">
-                {profile.full_name}
-              </p>
-              <p className="text-xs text-muted">{profile.email}</p>
-            </div>
+        {/* Meta */}
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center gap-2 text-text-soft">
+            <Clock className="w-4 h-4 text-muted shrink-0" strokeWidth={2} />
+            Joined {formatDate(profile.joined_at)}
           </div>
-          {/* Badges */}
-          <div className="flex flex-wrap gap-2">
-            <RoleBadge profile={profile} />
-            {profile.is_suspended && (
-              <Badge variant="danger" size="sm" dot>
-                Suspended
-              </Badge>
-            )}
+          <div className="flex items-center gap-2 text-text-soft">
+            <FileQuestion
+              className="w-4 h-4 text-muted shrink-0"
+              strokeWidth={2}
+            />
+            <span>
+              <span className="font-heading font-semibold text-text">
+                {attemptCount}
+              </span>{" "}
+              quiz attempts
+            </span>
           </div>
-          {/* Meta */}
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2 text-text-soft">
-              <Clock className="w-4 h-4 text-muted shrink-0" strokeWidth={2} />
-              Joined {formatDate(profile.joined_at)}
-            </div>
-            <div className="flex items-center gap-2 text-text-soft">
-              <FileQuestion
-                className="w-4 h-4 text-muted shrink-0"
-                strokeWidth={2}
-              />
-              <span>
-                <span className="font-heading font-semibold text-text">
-                  {attemptCount}
-                </span>{" "}
-                quiz attempts
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-text-soft">
-              <Wallet className="w-4 h-4 text-muted shrink-0" strokeWidth={2} />
-              <span>
-                <span className="font-heading font-semibold text-text">
-                  ₦{(topUpTotal / 100).toLocaleString("en-NG")}
-                </span>{" "}
-                topped up
-              </span>
-            </div>
+          <div className="flex items-center gap-2 text-text-soft">
+            <Wallet className="w-4 h-4 text-muted shrink-0" strokeWidth={2} />
+            <span>
+              <span className="font-heading font-semibold text-text">
+              ₦{(topUpTotal / 100).toLocaleString("en-NG")}
+              </span>{" "}
+              topped up
+            </span>
           </div>
         </div>
-        {/* Footer */}
-        <div className="px-5 pb-5 pt-3 border-t border-border/40 shrink-0 space-y-2">
-          <Button
-            variant="outline"
-            size="md"
-            fullWidth
-            onClick={onSuspendClick}
-            className={
-              profile.is_suspended
-                ? ""
-                : "border-danger/40 text-danger hover:bg-danger-bg"
-            }
-          >
-            {profile.is_suspended ? (
-              <>
-                <CheckCircle2 className="w-4 h-4" /> Unsuspend
-              </>
-            ) : (
-              <>
-                <Ban className="w-4 h-4" /> Suspend
-              </>
-            )}
-          </Button>
-          <Button variant="ghost" size="md" fullWidth onClick={onClose}>
-            Close
-          </Button>
-        </div>
-      </div>
-    </div>
+      </DrawerShell.Body>
+
+      {/* Footer */}
+      <DrawerShell.Footer className="space-y-2">
+        <Button
+          variant="outline"
+          size="md"
+          fullWidth
+          onClick={onSuspendClick}
+          className={
+            profile.is_suspended
+              ? ""
+              : "border-danger/40 text-danger hover:bg-danger-bg"
+          }
+        >
+          {profile.is_suspended ? (
+            <>
+              <CheckCircle2 className="w-4 h-4" /> Unsuspend
+            </>
+          ) : (
+            <>
+              <Ban className="w-4 h-4" /> Suspend
+            </>
+          )}
+        </Button>
+        <Button variant="ghost" size="md" fullWidth onClick={onClose}>
+          Close
+        </Button>
+      </DrawerShell.Footer>
+    </DrawerShell>
   );
 }
 

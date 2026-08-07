@@ -61,11 +61,10 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className={`transition-all duration-200 ease-out ${
-        phase === "idle"
-          ? "opacity-0 translate-y-1"
-          : "opacity-100 translate-y-0"
+      className={`relative transition-all duration-200 ease-out ${
+        phase === "idle" ? "opacity-0" : "opacity-100"
       }`}
+      style={{ top: phase === "idle" ? "4px" : "0" }}
     >
       {display}
     </div>
