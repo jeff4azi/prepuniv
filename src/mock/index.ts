@@ -5,7 +5,7 @@ export {
   approveCreator,
   toggleSuspension,
 } from "./profiles";
-export { courses, addCourse, updateCourse } from "./courses";
+export { courses, addCourse, updateCourse, findCoursesByQuery, getOrCreateCourse } from "./courses";
 export {
   quizzes,
   addQuiz,
