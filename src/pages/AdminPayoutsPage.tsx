@@ -234,8 +234,10 @@ function PayoutReviewSheet({
             <span className="text-xs text-muted font-heading font-semibold uppercase tracking-wider w-24 shrink-0">
               Account
             </span>
-            <span className="text-sm font-mono font-semibold text-text">
-              {maskedAcct}
+            <span className="text-sm font-mono font-semibold tracking-wider text-text">
+              {req.bank_account_number.slice(0, 3)}{" "}
+              {req.bank_account_number.slice(3, 6)}{" "}
+              {req.bank_account_number.slice(6)}
             </span>
           </div>
           <div className="flex items-center gap-3 px-4 py-3">
@@ -529,6 +531,7 @@ function PayoutRow({
 }) {
   const name = creator?.full_name ?? "Unknown";
   const bankName = getBankName(req.bank_code);
+  const acct = req.bank_account_number;
   return (
     <div className="flex items-center gap-3 sm:gap-4 py-3.5 px-5 border-b border-border/30 last:border-0 hover:bg-surface/20 transition-colors">
       <Avatar name={name} size="sm" />
@@ -539,7 +542,17 @@ function PayoutRow({
           </span>
           <StatusBadge status={req.status} />
         </div>
-        <p className="text-xs text-muted mt-0.5">{bankName}</p>
+        <p className="text-xs text-muted mt-0.5">
+          <Building2
+            className="w-3 h-3 inline-block mr-1 -mt-0.5 text-muted/80"
+            strokeWidth={2}
+          />
+          {bankName}
+          <span className="mx-1.5 text-border/80">·</span>
+          <span className="font-mono tracking-wider text-text-soft">
+            {acct.slice(0, 3)} {acct.slice(3, 6)} {acct.slice(6)}
+          </span>
+        </p>
         <p className="text-xs text-text-soft mt-0.5">
           <Clock
             className="w-3 h-3 inline-block mr-1 text-muted"
