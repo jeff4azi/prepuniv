@@ -161,8 +161,11 @@ export function QuizBuilderPage() {
   const matchedCourses = useMemo(() => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _v = courseAcVersion;
-    return findCoursesByQuery(details.course_code, { limit: 6 });
-  }, [details.course_code, courseAcVersion]);
+    return findCoursesByQuery(details.course_code, {
+      limit: 6,
+      university_id: currentUser.university_id,
+    });
+  }, [details.course_code, courseAcVersion, currentUser.university_id]);
 
   function applyCourse(c: {
     id: string;
@@ -397,6 +400,7 @@ export function QuizBuilderPage() {
       title: details.course_title,
       subject_area: details.subject_area,
       level: levelNum,
+      university_id: currentUser.university_id ?? "uni_001",
       mergeTitleOnMatch: true,
     });
     // Bump course autocomplete re-render so new courses instantly show up in
@@ -407,6 +411,7 @@ export function QuizBuilderPage() {
       id: quizId,
       creator_id: currentUser.id,
       course_id: matchedCourse.id,
+      university_id: currentUser.university_id ?? "uni_001",
       title: `${matchedCourse.code} — ${details.title.trim()}`,
       description: details.description.trim(),
       price: nairaToKobo(priceNaira),

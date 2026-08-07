@@ -5,7 +5,19 @@ export {
   approveCreator,
   toggleSuspension,
 } from "./profiles";
-export { courses, addCourse, updateCourse, findCoursesByQuery, getOrCreateCourse } from "./courses";
+export {
+  courses,
+  addCourse,
+  updateCourse,
+  findCoursesByQuery,
+  getOrCreateCourse,
+} from "./courses";
+export {
+  universities,
+  getUniversityById,
+  getUniversityByName,
+  type University,
+} from "./universities";
 export {
   quizzes,
   addQuiz,

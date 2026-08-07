@@ -12,6 +12,8 @@ export interface Profile {
   avatar_url?: string;
   bio?: string;
   joined_at?: string;
+  /** The university this user belongs to. Undefined only for platform admins. */
+  university_id?: string;
 }
 
 export interface Course {
@@ -26,12 +28,16 @@ export interface Course {
   level: 100 | 200 | 300 | 400;
   /** Whether the course requires per-question timing (computational) */
   is_computational: boolean;
+  /** University this course belongs to */
+  university_id: string;
 }
 
 export interface Quiz {
   id: string;
   creator_id: string;
   course_id: string;
+  /** The university this quiz belongs to (inherited from the creator at save time) */
+  university_id: string;
   title: string;
   description: string;
   price: number;

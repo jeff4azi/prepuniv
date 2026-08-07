@@ -35,6 +35,7 @@ import {
   toggleSuspension,
   quizAttempts as allAttempts,
   walletTransactions as allTxns,
+  universities,
   type Profile,
 } from "../mock";
 
@@ -235,7 +236,7 @@ function UserDetailPanel({
             <Wallet className="w-4 h-4 text-muted shrink-0" strokeWidth={2} />
             <span>
               <span className="font-heading font-semibold text-text">
-              ₦{(topUpTotal / 100).toLocaleString("en-NG")}
+                ₦{(topUpTotal / 100).toLocaleString("en-NG")}
               </span>{" "}
               topped up
             </span>
@@ -388,6 +389,7 @@ export function AdminUsersPage() {
   const [toast, showToast, dismissToast] = useToast();
   const [searchInput, setSearchInput] = useState("");
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
+  const [uniFilter, setUniFilter] = useState<string>("all");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [suspendId, setSuspendId] = useState<string | null>(null);
   const [suspending, setSuspending] = useState(false);
@@ -411,6 +413,11 @@ export function AdminUsersPage() {
       list = list.filter((p) => p.role === "creator");
     if (activeTab === "admins") list = list.filter((p) => p.role === "admin");
     if (activeTab === "suspended") list = list.filter((p) => p.is_suspended);
+    if (uniFilter !== "all") {
+      list = list.filter((p) =>
+        uniFilter === "none" ? !p.university_id : p.university_id === uniFilter,
+      );
+    }
     if (searchInput.trim()) {
       const q = searchInput.trim().toLowerCase();
       list = list.filter(
@@ -425,7 +432,7 @@ export function AdminUsersPage() {
         new Date(a.joined_at ?? 0).getTime(),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [managedProfiles, activeTab, searchInput, version]);
+  }, [managedProfiles, activeTab, searchInput, uniFilter, version]);
 
   const counts = useMemo(
     () => ({
@@ -513,34 +520,64 @@ export function AdminUsersPage() {
           </div>
 
           {/* Filter tabs */}
-          <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 w-fit overflow-x-auto no-scrollbar">
-            {TABS.map((tab) => (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => setActiveTab(tab.value)}
-                className={`h-9 px-3.5 rounded-xl text-xs font-heading font-semibold transition-all duration-150 flex items-center gap-1.5 shrink-0 ${
-                  activeTab === tab.value
-                    ? "bg-cream shadow-soft text-text"
-                    : "text-text-soft hover:text-text"
-                }`}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* University filter */}
+            <div className="relative">
+              <select
+                value={uniFilter}
+                onChange={(e) => setUniFilter(e.target.value)}
+                aria-label="Filter by university"
+                className="h-9 pl-3 pr-8 rounded-xl border border-border/60 bg-cream text-xs font-heading font-medium text-text appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40"
               >
-                {tab.label}
-                {counts[tab.value] > 0 && (
-                  <span
-                    className={`inline-flex h-5 min-w-5 px-1 items-center justify-center rounded-full text-[10px] font-bold ${
-                      tab.value === "suspended" && counts.suspended > 0
-                        ? activeTab === "suspended"
-                          ? "bg-danger text-cream"
-                          : "bg-danger/15 text-danger"
-                        : "bg-border text-muted"
-                    }`}
-                  >
-                    {counts[tab.value]}
-                  </span>
-                )}
-              </button>
-            ))}
+                <option value="all">All Universities</option>
+                {universities.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.abbreviation}
+                  </option>
+                ))}
+                <option value="none">No University (Admins)</option>
+              </select>
+              <svg
+                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
+
+            {/* Role tabs */}
+            <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 overflow-x-auto no-scrollbar">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => setActiveTab(tab.value)}
+                  className={`h-9 px-3.5 rounded-xl text-xs font-heading font-semibold transition-all duration-150 flex items-center gap-1.5 shrink-0 ${
+                    activeTab === tab.value
+                      ? "bg-cream shadow-soft text-text"
+                      : "text-text-soft hover:text-text"
+                  }`}
+                >
+                  {tab.label}
+                  {counts[tab.value] > 0 && (
+                    <span
+                      className={`inline-flex h-5 min-w-5 px-1 items-center justify-center rounded-full text-[10px] font-bold ${
+                        tab.value === "suspended" && counts.suspended > 0
+                          ? activeTab === "suspended"
+                            ? "bg-danger text-cream"
+                            : "bg-danger/15 text-danger"
+                          : "bg-border text-muted"
+                      }`}
+                    >
+                      {counts[tab.value]}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* List */}

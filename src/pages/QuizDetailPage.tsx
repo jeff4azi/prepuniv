@@ -179,6 +179,36 @@ export function QuizDetailPage() {
     );
   }
 
+  // Block cross-university access: if the quiz belongs to a different
+  // university than the current user, treat it as not found.
+  const isAdmin = currentUser.role === "admin";
+  if (
+    !isAdmin &&
+    currentUser.university_id &&
+    quiz.university_id !== currentUser.university_id
+  ) {
+    return (
+      <PageContainer>
+        <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
+          <div className="h-16 w-16 rounded-3xl bg-surface flex items-center justify-center">
+            <FileQuestion className="w-8 h-8 text-muted" strokeWidth={1.8} />
+          </div>
+          <h2 className="font-heading font-bold text-xl text-text">
+            Quiz not available
+          </h2>
+          <p className="text-sm text-text-soft max-w-sm leading-relaxed">
+            This quiz belongs to a different university and isn't available for
+            your account.
+          </p>
+          <Button variant="outline" onClick={() => navigate("/browse")}>
+            <ArrowLeft className="w-4 h-4" />
+            Back to Browse
+          </Button>
+        </div>
+      </PageContainer>
+    );
+  }
+
   const isPurchased = hasPurchasedQuiz(quiz.id);
 
   async function handlePayAndStart() {

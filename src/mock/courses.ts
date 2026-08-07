@@ -3,13 +3,16 @@ import type { Course } from "./types";
 /**
  * Course catalogue — living list, not static.
  *
- * Initial seed data gives us a base set, but the list grows automatically
- * whenever a creator publishes a quiz for a course that isn't in here yet
- * (see `getOrCreateCourse` below). Admin's role is to *edit/clean up the
- * metadata afterwards* (fix typos, merge duplicates), not gate creation.
+ * Each course is scoped to a specific university. Courses with the same code
+ * at different universities are independent records.
+ *
+ * The list grows automatically whenever a creator publishes a quiz for a course
+ * that isn't in here yet (see `getOrCreateCourse` below).
  */
 export const courses: Course[] = [
-  // ── Computer Science ──────────────────────────────────────────────────────
+  // ── UNILAG (uni_001) ──────────────────────────────────────────────────────
+
+  // Computer Science
   {
     id: "course_001",
     code: "CSC 122",
@@ -17,6 +20,7 @@ export const courses: Course[] = [
     subject_area: "Computer Science",
     level: 100,
     is_computational: true,
+    university_id: "uni_001",
   },
   {
     id: "course_002",
@@ -25,6 +29,7 @@ export const courses: Course[] = [
     subject_area: "Computer Science",
     level: 200,
     is_computational: true,
+    university_id: "uni_001",
   },
   {
     id: "course_003",
@@ -33,9 +38,10 @@ export const courses: Course[] = [
     subject_area: "Computer Science",
     level: 300,
     is_computational: false,
+    university_id: "uni_001",
   },
 
-  // ── General Studies ───────────────────────────────────────────────────────
+  // General Studies
   {
     id: "course_004",
     code: "GST 121",
@@ -43,6 +49,7 @@ export const courses: Course[] = [
     subject_area: "General Studies",
     level: 100,
     is_computational: false,
+    university_id: "uni_001",
   },
   {
     id: "course_005",
@@ -51,27 +58,10 @@ export const courses: Course[] = [
     subject_area: "General Studies",
     level: 200,
     is_computational: false,
+    university_id: "uni_001",
   },
 
-  // ── Mathematics ───────────────────────────────────────────────────────────
-  {
-    id: "course_006",
-    code: "MTH 101",
-    title: "Elementary Mathematics I",
-    subject_area: "Mathematics",
-    level: 100,
-    is_computational: true,
-  },
-  {
-    id: "course_007",
-    code: "MTH 201",
-    title: "Mathematical Methods",
-    subject_area: "Mathematics",
-    level: 200,
-    is_computational: true,
-  },
-
-  // ── Economics ─────────────────────────────────────────────────────────────
+  // Economics
   {
     id: "course_008",
     code: "ECO 101",
@@ -79,6 +69,7 @@ export const courses: Course[] = [
     subject_area: "Economics",
     level: 100,
     is_computational: false,
+    university_id: "uni_001",
   },
   {
     id: "course_009",
@@ -87,27 +78,10 @@ export const courses: Course[] = [
     subject_area: "Economics",
     level: 300,
     is_computational: false,
+    university_id: "uni_001",
   },
 
-  // ── Education ─────────────────────────────────────────────────────────────
-  {
-    id: "course_010",
-    code: "EDU 221",
-    title: "Educational Psychology",
-    subject_area: "Education",
-    level: 200,
-    is_computational: false,
-  },
-  {
-    id: "course_011",
-    code: "EDU 311",
-    title: "Curriculum Theory and Practice",
-    subject_area: "Education",
-    level: 300,
-    is_computational: false,
-  },
-
-  // ── Biology ───────────────────────────────────────────────────────────────
+  // Biology
   {
     id: "course_012",
     code: "BIO 101",
@@ -115,6 +89,7 @@ export const courses: Course[] = [
     subject_area: "Biology",
     level: 100,
     is_computational: false,
+    university_id: "uni_001",
   },
   {
     id: "course_013",
@@ -123,63 +98,10 @@ export const courses: Course[] = [
     subject_area: "Biology",
     level: 200,
     is_computational: false,
+    university_id: "uni_001",
   },
 
-  // ── Physics ───────────────────────────────────────────────────────────────
-  {
-    id: "course_014",
-    code: "PHY 101",
-    title: "General Physics I",
-    subject_area: "Physics",
-    level: 100,
-    is_computational: true,
-  },
-  {
-    id: "course_015",
-    code: "PHY 201",
-    title: "Electricity and Magnetism",
-    subject_area: "Physics",
-    level: 200,
-    is_computational: true,
-  },
-
-  // ── Chemistry ─────────────────────────────────────────────────────────────
-  {
-    id: "course_016",
-    code: "CHM 101",
-    title: "General Chemistry I",
-    subject_area: "Chemistry",
-    level: 100,
-    is_computational: true,
-  },
-  {
-    id: "course_017",
-    code: "CHM 211",
-    title: "Organic Chemistry I",
-    subject_area: "Chemistry",
-    level: 200,
-    is_computational: true,
-  },
-
-  // ── Statistics ────────────────────────────────────────────────────────────
-  {
-    id: "course_018",
-    code: "STA 121",
-    title: "Introduction to Statistics",
-    subject_area: "Statistics",
-    level: 100,
-    is_computational: true,
-  },
-  {
-    id: "course_019",
-    code: "STA 221",
-    title: "Probability and Distributions",
-    subject_area: "Statistics",
-    level: 200,
-    is_computational: true,
-  },
-
-  // ── History ───────────────────────────────────────────────────────────────
+  // History
   {
     id: "course_020",
     code: "HIS 101",
@@ -187,6 +109,7 @@ export const courses: Course[] = [
     subject_area: "History",
     level: 100,
     is_computational: false,
+    university_id: "uni_001",
   },
   {
     id: "course_021",
@@ -195,6 +118,155 @@ export const courses: Course[] = [
     subject_area: "History",
     level: 200,
     is_computational: false,
+    university_id: "uni_001",
+  },
+
+  // Chemistry
+  {
+    id: "course_016",
+    code: "CHM 101",
+    title: "General Chemistry I",
+    subject_area: "Chemistry",
+    level: 100,
+    is_computational: true,
+    university_id: "uni_001",
+  },
+  {
+    id: "course_017",
+    code: "CHM 211",
+    title: "Organic Chemistry I",
+    subject_area: "Chemistry",
+    level: 200,
+    is_computational: true,
+    university_id: "uni_001",
+  },
+
+  // ── ABU (uni_002) ─────────────────────────────────────────────────────────
+
+  // Mathematics
+  {
+    id: "course_006",
+    code: "MTH 101",
+    title: "Elementary Mathematics I",
+    subject_area: "Mathematics",
+    level: 100,
+    is_computational: true,
+    university_id: "uni_002",
+  },
+  {
+    id: "course_007",
+    code: "MTH 201",
+    title: "Mathematical Methods",
+    subject_area: "Mathematics",
+    level: 200,
+    is_computational: true,
+    university_id: "uni_002",
+  },
+
+  // Physics
+  {
+    id: "course_014",
+    code: "PHY 101",
+    title: "General Physics I",
+    subject_area: "Physics",
+    level: 100,
+    is_computational: true,
+    university_id: "uni_002",
+  },
+  {
+    id: "course_015",
+    code: "PHY 201",
+    title: "Electricity and Magnetism",
+    subject_area: "Physics",
+    level: 200,
+    is_computational: true,
+    university_id: "uni_002",
+  },
+
+  // Statistics
+  {
+    id: "course_018",
+    code: "STA 121",
+    title: "Introduction to Statistics",
+    subject_area: "Statistics",
+    level: 100,
+    is_computational: true,
+    university_id: "uni_002",
+  },
+  {
+    id: "course_019",
+    code: "STA 221",
+    title: "Probability and Distributions",
+    subject_area: "Statistics",
+    level: 200,
+    is_computational: true,
+    university_id: "uni_002",
+  },
+
+  // General Studies (ABU)
+  {
+    id: "course_abu_gst",
+    code: "GST 101",
+    title: "Communication in English",
+    subject_area: "General Studies",
+    level: 100,
+    is_computational: false,
+    university_id: "uni_002",
+  },
+
+  // ── UNN (uni_003) ─────────────────────────────────────────────────────────
+
+  // Education
+  {
+    id: "course_010",
+    code: "EDU 221",
+    title: "Educational Psychology",
+    subject_area: "Education",
+    level: 200,
+    is_computational: false,
+    university_id: "uni_003",
+  },
+  {
+    id: "course_011",
+    code: "EDU 311",
+    title: "Curriculum Theory and Practice",
+    subject_area: "Education",
+    level: 300,
+    is_computational: false,
+    university_id: "uni_003",
+  },
+
+  // Computer Science (UNN)
+  {
+    id: "course_unn_csc",
+    code: "CSC 101",
+    title: "Introduction to Computing",
+    subject_area: "Computer Science",
+    level: 100,
+    is_computational: true,
+    university_id: "uni_003",
+  },
+
+  // Biology (UNN)
+  {
+    id: "course_unn_bio",
+    code: "BIO 301",
+    title: "Molecular Biology",
+    subject_area: "Biology",
+    level: 300,
+    is_computational: false,
+    university_id: "uni_003",
+  },
+
+  // Economics (UNN)
+  {
+    id: "course_unn_eco",
+    code: "ECO 201",
+    title: "Intermediate Microeconomics",
+    subject_area: "Economics",
+    level: 200,
+    is_computational: false,
+    university_id: "uni_003",
   },
 ];
 
@@ -228,7 +300,6 @@ export const COURSE_PREFIX_SUBJECT_AREA: Record<string, string> = {
 /**
  * Derive a suggested level (100/200/300/400) from the numeric portion of
  * a course code, e.g. "CSC 122" → 100, "MTH 201" → 200.
- * Returns undefined if the code doesn't follow the convention.
  */
 export function suggestLevelFromCode(
   code: string,
@@ -246,7 +317,7 @@ function normalizeCode(code: string): string {
   return code.trim().replace(/\s+/g, " ").toUpperCase();
 }
 
-// ─── Mock mutation helpers (legacy, backwards compat) ──────────────────────
+// ─── Mock mutation helpers ────────────────────────────────────────────────────
 
 export function addCourse(course: Course): void {
   courses.push(course);
@@ -257,34 +328,36 @@ export function updateCourse(updated: Course): void {
   if (idx !== -1) courses[idx] = updated;
 }
 
-// ─── New dynamic helpers for the living-course paradigm ────────────────────
+// ─── Dynamic helpers for the living-course paradigm ──────────────────────────
 
 export interface FindCoursesOptions {
   limit?: number;
-  /** Allow caller to exclude the currently-edited course (when creator types
-   *  the same code as the one they're editing, we don't want a false "match"). */
   excludeId?: string;
+  /** Only return courses belonging to this university */
+  university_id?: string;
 }
 
 /**
  * Fuzzy-search the catalogue from the creator's autocomplete dropdown.
- * Matches against normalized course code or title (case-insensitive substring).
- * Pre-sorts results so code-prefix matches (most common creator workflow)
- * appear before random title substring matches.
+ * When university_id is provided, only courses from that university are returned.
  */
 export function findCoursesByQuery(
   rawQuery: string,
   opts: FindCoursesOptions = {},
 ): Course[] {
-  const { limit = 8, excludeId } = opts;
+  const { limit = 8, excludeId, university_id } = opts;
   const q = rawQuery.trim().toLowerCase();
   const qNoSpace = q.replace(/\s+/g, "");
 
-  const list = excludeId ? courses.filter((c) => c.id !== excludeId) : courses;
+  let list = excludeId ? courses.filter((c) => c.id !== excludeId) : courses;
+  if (university_id) {
+    list = list.filter((c) => c.university_id === university_id);
+  }
 
   if (!q) {
-    // No query — show most-used first (for now: alphabetical top 8)
-    return [...list].sort((a, b) => a.code.localeCompare(b.code)).slice(0, limit);
+    return [...list]
+      .sort((a, b) => a.code.localeCompare(b.code))
+      .slice(0, limit);
   }
 
   const scored: { course: Course; score: number }[] = [];
@@ -296,18 +369,15 @@ export function findCoursesByQuery(
 
     let score = -Infinity;
 
-    // 1. Exact code match — highest priority
     if (codeNorm === q.toUpperCase().replace(/\s+/g, " ")) score = 10_000;
-    // 2. Code starts with the query (e.g. "CSC" matches "CSC 122", "CSC 221"…)
-    else if (codeNormFlat.startsWith(qNoSpace)) score = 1000 + 100 / (1 + codeNorm.length);
-    // 3. Code contains query as substring
-    else if (codeNormFlat.includes(qNoSpace)) score = 500 + 100 / (1 + codeNorm.length);
-    // 4. Title starts with query
+    else if (codeNormFlat.startsWith(qNoSpace))
+      score = 1000 + 100 / (1 + codeNorm.length);
+    else if (codeNormFlat.includes(qNoSpace))
+      score = 500 + 100 / (1 + codeNorm.length);
     else if (titleLow.startsWith(q)) score = 200 + 100 / (1 + c.title.length);
-    // 5. Title contains query
     else if (titleLow.includes(q)) score = 100 + 100 / (1 + c.title.length);
-    // 6. Subject area contains
-    else if (subjectLow.includes(q)) score = 50 + 100 / (1 + c.subject_area.length);
+    else if (subjectLow.includes(q))
+      score = 50 + 100 / (1 + c.subject_area.length);
 
     if (score > -Infinity) scored.push({ course: c, score });
   }
@@ -323,24 +393,14 @@ export interface GetOrCreateCourseInput {
   title?: string;
   subject_area?: string;
   level?: 100 | 200 | 300 | 400;
-  /** When matching by code, if a title was already stored but the caller
-   *  passes a different non-empty title, should we overwrite the stored one?
-   *  Defaults to true for the creator save flow (creator's latest typing wins,
-   *  admin can clean up afterwards). */
+  /** University this course belongs to — required for proper scoping */
+  university_id: string;
   mergeTitleOnMatch?: boolean;
 }
 
 /**
- * The canonical "find or insert" function for the courses catalogue.
- *
- * Identity rules:
- *   1. If a course with the same normalized code (trimmed, upcased,
- *      collapsed whitespace) already exists → that's the match, use it.
- *   2. Otherwise → create a new Course record and append it to `courses`.
- *
- * This is the single source of truth for both:
- *   - Autocomplete (creator chooses existing → caller should pass that id)
- *   - On-save dedupe (creator typed fresh value → add if new).
+ * Find-or-insert for the courses catalogue, scoped to a university.
+ * Two courses with the same code at different universities are separate records.
  */
 export function getOrCreateCourse(input: GetOrCreateCourseInput): Course {
   const codeNorm = normalizeCode(input.code);
@@ -348,20 +408,23 @@ export function getOrCreateCourse(input: GetOrCreateCourseInput): Course {
     throw new Error("getOrCreateCourse: code is required");
   }
 
-  const existing = courses.find((c) => normalizeCode(c.code) === codeNorm);
+  const existing = courses.find(
+    (c) =>
+      normalizeCode(c.code) === codeNorm &&
+      c.university_id === input.university_id,
+  );
 
   if (existing) {
     if (input.mergeTitleOnMatch !== false) {
-      // Merge-in any caller-provided non-empty overrides (creator might have
-      // typed a better title; keeps catalogue growing more accurate over time).
-      if (input.title && input.title.trim()) existing.title = input.title.trim();
-      if (input.subject_area && input.subject_area.trim()) existing.subject_area = input.subject_area.trim();
+      if (input.title && input.title.trim())
+        existing.title = input.title.trim();
+      if (input.subject_area && input.subject_area.trim())
+        existing.subject_area = input.subject_area.trim();
       if (input.level) existing.level = input.level;
     }
     return existing;
   }
 
-  // ── Create new course ────────────────────────────────────────────────────
   const levelNum: 100 | 200 | 300 | 400 =
     input.level ?? suggestLevelFromCode(codeNorm) ?? 100;
   const prefix = codeNorm.split(/\s+/)[0];
@@ -371,8 +434,6 @@ export function getOrCreateCourse(input: GetOrCreateCourseInput): Course {
     "General Studies";
   const title = input.title?.trim() || codeNorm;
 
-  // Infer computational default from prefix best-guess (still just default,
-  // creator/admin can edit later — but better than always false).
   const computationalPrefixes = ["MTH", "STA", "PHY", "CHM", "CSC"];
   const isComp = computationalPrefixes.includes(prefix);
 
@@ -383,6 +444,7 @@ export function getOrCreateCourse(input: GetOrCreateCourseInput): Course {
     subject_area: subjectGuess,
     level: levelNum,
     is_computational: isComp,
+    university_id: input.university_id,
   };
   courses.push(created);
   return created;

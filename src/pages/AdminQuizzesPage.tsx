@@ -37,6 +37,7 @@ import {
   courses as allCourses,
   profiles as allProfiles,
   walletTransactions as allTxns,
+  universities,
   adminUnpublishQuiz,
   adminRepublishQuiz,
   type Quiz,
@@ -424,6 +425,7 @@ export function AdminQuizzesPage() {
   const [courseFilter, setCourseFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("newest");
+  const [activeUniId, setActiveUniId] = useState(universities[0].id);
   const [actionTarget, setActionTarget] = useState<{
     id: string;
     action: "unpublish" | "republish";
@@ -468,7 +470,7 @@ export function AdminQuizzesPage() {
   }, [coursesById]);
 
   const filtered = useMemo(() => {
-    let list = [...allQuizzes];
+    let list = [...allQuizzes].filter((q) => q.university_id === activeUniId);
 
     // Status filter
     if (statusFilter === "published")
@@ -518,6 +520,7 @@ export function AdminQuizzesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     allQuizzes,
+    activeUniId,
     statusFilter,
     courseFilter,
     searchInput,
@@ -581,6 +584,37 @@ export function AdminQuizzesPage() {
             <p className="mt-1.5 text-sm text-text-soft">
               {allQuizzes.length} total quizzes across {creatorCount} creators.
             </p>
+          </div>
+
+          {/* University tabs */}
+          <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 w-fit overflow-x-auto no-scrollbar">
+            {universities.map((uni) => {
+              const count = allQuizzes.filter(
+                (q) => q.university_id === uni.id,
+              ).length;
+              return (
+                <button
+                  key={uni.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveUniId(uni.id);
+                    setCourseFilter("all");
+                    setStatusFilter("all");
+                    setSearchInput("");
+                  }}
+                  className={`h-9 px-3.5 rounded-xl text-xs font-heading font-semibold transition-all duration-150 flex items-center gap-1.5 shrink-0 ${
+                    activeUniId === uni.id
+                      ? "bg-cream shadow-soft text-text"
+                      : "text-text-soft hover:text-text"
+                  }`}
+                >
+                  {uni.abbreviation}
+                  <span className="inline-flex h-5 min-w-5 px-1 items-center justify-center rounded-full text-[10px] font-bold bg-border text-muted">
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Search + sort row */}

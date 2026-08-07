@@ -15,14 +15,7 @@
  */
 import { useState, useMemo } from "react";
 import { Navigate } from "react-router-dom";
-import {
-  BookOpen,
-  Edit2,
-  X,
-  ShieldCheck,
-  Info,
-  Check,
-} from "lucide-react";
+import { BookOpen, Edit2, X, ShieldCheck, Info, Check } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
@@ -34,6 +27,7 @@ import {
   courses,
   updateCourse,
   quizzes as allQuizzes,
+  universities,
   type Course,
 } from "../mock";
 import {
@@ -97,7 +91,9 @@ function CourseEditModal({
       // existing metadata, not creating from scratch. If the subject was
       // already filled, leave it alone.
       subject_area:
-        !v.subject_area.trim() && suggestedDept ? suggestedDept : v.subject_area,
+        !v.subject_area.trim() && suggestedDept
+          ? suggestedDept
+          : v.subject_area,
     }));
   }
 
@@ -336,13 +332,17 @@ export function AdminCoursesPage() {
   const [toast, showToast, dismissToast] = useToast();
   const [editingCourse, setEditingCourse] = useState<Course | undefined>();
   const [version, setVersion] = useState(0);
+  const [activeUniId, setActiveUniId] = useState(universities[0].id);
 
   if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
 
   const sortedCourses = useMemo(
-    () => [...courses].sort((a, b) => a.code.localeCompare(b.code)),
+    () =>
+      [...courses]
+        .filter((c) => c.university_id === activeUniId)
+        .sort((a, b) => a.code.localeCompare(b.code)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [version],
+    [version, activeUniId],
   );
 
   const quizCountMap = useMemo(
@@ -358,13 +358,9 @@ export function AdminCoursesPage() {
   );
 
   const totalAttachedQuizzes = useMemo(
-    () => Object.values(quizCountMap).reduce((s, n) => s + n, 0),
-    [quizCountMap],
+    () => sortedCourses.reduce((s, c) => s + (quizCountMap[c.id] ?? 0), 0),
+    [sortedCourses, quizCountMap],
   );
-
-  function openEdit(c: Course) {
-    setEditingCourse(c);
-  }
 
   function handleSaved(saved: Course) {
     setEditingCourse(undefined);
@@ -402,9 +398,34 @@ export function AdminCoursesPage() {
               {totalAttachedQuizzes} attached quiz
               {totalAttachedQuizzes !== 1 ? "zes" : ""}. This list grows
               automatically whenever a creator publishes a quiz for a new
-              course. Use Edit to correct typos, merge duplicates, or clean up
-              subject/level metadata.
+              course.
             </p>
+          </div>
+
+          {/* University tabs */}
+          <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 w-fit overflow-x-auto no-scrollbar">
+            {universities.map((uni) => {
+              const count = courses.filter(
+                (c) => c.university_id === uni.id,
+              ).length;
+              return (
+                <button
+                  key={uni.id}
+                  type="button"
+                  onClick={() => setActiveUniId(uni.id)}
+                  className={`h-9 px-3.5 rounded-xl text-xs font-heading font-semibold transition-all duration-150 flex items-center gap-1.5 shrink-0 ${
+                    activeUniId === uni.id
+                      ? "bg-cream shadow-soft text-text"
+                      : "text-text-soft hover:text-text"
+                  }`}
+                >
+                  {uni.abbreviation}
+                  <span className="inline-flex h-5 min-w-5 px-1 items-center justify-center rounded-full text-[10px] font-bold bg-border text-muted">
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Info note */}
@@ -415,14 +436,13 @@ export function AdminCoursesPage() {
             />
             <p className="text-xs text-text-soft leading-relaxed">
               Quiz time limits are set <em>per quiz</em> by the creator — not
-              managed here. Courses with quizzes attached can't be deleted;
-              edit the metadata instead to keep the catalogue consistent.
+              managed here. Courses with quizzes attached can't be deleted; edit
+              the metadata instead to keep the catalogue consistent.
             </p>
           </div>
 
           {/* Course list */}
           <Card padded={false} className="overflow-hidden">
-            {/* Column headers */}
             <div className="hidden sm:flex items-center gap-3 px-5 py-2.5 border-b border-border/40 bg-surface/30">
               <div className="w-9 shrink-0" />
               <div className="flex-1 text-[11px] font-heading font-semibold uppercase tracking-wider text-muted">
@@ -441,15 +461,15 @@ export function AdminCoursesPage() {
                   key={c.id}
                   course={c}
                   quizCount={quizCountMap[c.id] ?? 0}
-                  onEdit={() => openEdit(c)}
+                  onEdit={() => setEditingCourse(c)}
                 />
               ))
             )}
           </Card>
 
           <p className="text-xs text-muted text-right">
-            {sortedCourses.length} course
-            {sortedCourses.length !== 1 ? "s" : ""} in catalogue
+            {sortedCourses.length} course{sortedCourses.length !== 1 ? "s" : ""}{" "}
+            in catalogue
           </p>
         </div>
       </PageContainer>

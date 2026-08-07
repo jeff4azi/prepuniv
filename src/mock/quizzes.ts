@@ -3,11 +3,12 @@ import type { Quiz } from "./types";
 type QuizSeed = Omit<Quiz, "description">;
 
 const quizSeeds: QuizSeed[] = [
-  // ── CSC 122: Introduction to Programming (3 creators) ────────────────────
+  // ── CSC 122: Introduction to Programming (UNILAG) ─────────────────────────
   {
     id: "quiz_001",
     creator_id: "creator_001",
     course_id: "course_001", // CSC 122
+    university_id: "uni_001",
     title: "CSC 122 — Loops, Arrays & Functions Bootcamp",
     price: 35000,
     is_published: true,
@@ -20,6 +21,7 @@ const quizSeeds: QuizSeed[] = [
     id: "quiz_002",
     creator_id: "creator_002",
     course_id: "course_001", // CSC 122
+    university_id: "uni_001",
     title: "CSC 122 — Algorithms & Problem Solving Pack",
     price: 20000,
     is_published: true,
@@ -32,6 +34,7 @@ const quizSeeds: QuizSeed[] = [
     id: "quiz_003",
     creator_id: "creator_003",
     course_id: "course_001", // CSC 122
+    university_id: "uni_001",
     title: "CSC 122 — Quick-Fire Syntax Drills",
     price: 15000,
     is_published: true,
@@ -41,11 +44,12 @@ const quizSeeds: QuizSeed[] = [
     time_limit_seconds: 900, // 15 mins
   },
 
-  // ── GST 121: Use of English I (2 creators) ────────────────────────────────
+  // ── GST 121: Use of English I (2 creators) — UNILAG ──────────────────────
   {
     id: "quiz_004",
     creator_id: "creator_001",
     course_id: "course_004", // GST 121
+    university_id: "uni_001",
     title: "GST 121 — Comprehension & Summary Skills",
     price: 8500,
     is_published: true,
@@ -58,6 +62,7 @@ const quizSeeds: QuizSeed[] = [
     id: "quiz_005",
     creator_id: "creator_003",
     course_id: "course_004", // GST 121
+    university_id: "uni_001",
     title: "GST 121 — Lexis, Structure & Grammar Bootcamp",
     price: 8500,
     is_published: true,
@@ -67,11 +72,12 @@ const quizSeeds: QuizSeed[] = [
     time_limit_seconds: 5400, // 90 mins
   },
 
-  // ── MTH 201: Mathematical Methods (2 creators) ────────────────────────────
+  // ── MTH 201: Mathematical Methods (ABU) ──────────────────────────────────
   {
     id: "quiz_006",
     creator_id: "creator_002",
     course_id: "course_007", // MTH 201
+    university_id: "uni_002",
     title: "MTH 201 — Calculus: Limits & Derivatives",
     price: 25000,
     is_published: true,
@@ -84,6 +90,7 @@ const quizSeeds: QuizSeed[] = [
     id: "quiz_007",
     creator_id: "creator_001",
     course_id: "course_007", // MTH 201
+    university_id: "uni_002",
     title: "MTH 201 — Integration & Series",
     price: 45000,
     is_published: true,
@@ -93,11 +100,12 @@ const quizSeeds: QuizSeed[] = [
     time_limit_seconds: 3000, // 50 mins
   },
 
-  // ── ECO 101: Introduction to Economics (2 creators) ──────────────────────
+  // ── ECO 101: Introduction to Economics (UNILAG) ──────────────────────────
   {
     id: "quiz_008",
     creator_id: "creator_001",
     course_id: "course_008", // ECO 101
+    university_id: "uni_001",
     title: "ECO 101 — Microeconomics: Supply & Demand",
     price: 12000,
     is_published: true,
@@ -110,6 +118,7 @@ const quizSeeds: QuizSeed[] = [
     id: "quiz_009",
     creator_id: "creator_002",
     course_id: "course_008", // ECO 101
+    university_id: "uni_001",
     title: "ECO 101 — Macroeconomics: GDP, Inflation & Fiscal Policy",
     price: 14000,
     is_published: true,
@@ -119,11 +128,12 @@ const quizSeeds: QuizSeed[] = [
     time_limit_seconds: 3000, // 50 mins
   },
 
-  // ── EDU 221: Educational Psychology ──────────────────────────────────────
+  // ── EDU 221: Educational Psychology (UNN) ────────────────────────────────
   {
     id: "quiz_010",
     creator_id: "creator_003",
     course_id: "course_010", // EDU 221
+    university_id: "uni_003",
     title: "EDU 221 — Learning Theories & Motivation",
     price: 19000,
     is_published: true,
@@ -133,11 +143,12 @@ const quizSeeds: QuizSeed[] = [
     time_limit_seconds: 1800, // 30 mins
   },
 
-  // ── ECO 301: Development Economics ───────────────────────────────────────
+  // ── ECO 301: Development Economics (UNILAG) ──────────────────────────────
   {
     id: "quiz_011",
     creator_id: "creator_001",
     course_id: "course_009", // ECO 301
+    university_id: "uni_001",
     title: "ECO 301 — Development Economics: Nigeria Case Studies",
     price: 6000,
     is_published: true,
@@ -147,11 +158,12 @@ const quizSeeds: QuizSeed[] = [
     time_limit_seconds: 2700, // 45 mins
   },
 
-  // ── STA 121: Introduction to Statistics (2 creators) ─────────────────────
+  // ── STA 121: Introduction to Statistics (ABU) ────────────────────────────
   {
     id: "quiz_012",
     creator_id: "creator_001",
     course_id: "course_018", // STA 121
+    university_id: "uni_002",
     title: "STA 121 — Probability & Data Interpretation",
     price: 15000,
     is_published: true,
@@ -164,6 +176,7 @@ const quizSeeds: QuizSeed[] = [
     id: "quiz_013",
     creator_id: "creator_003",
     course_id: "course_018", // STA 121
+    university_id: "uni_002",
     title: "STA 121 — Descriptive Stats: Mean, Median & Mode",
     price: 11000,
     is_published: true,
@@ -173,11 +186,12 @@ const quizSeeds: QuizSeed[] = [
     time_limit_seconds: 1800, // 30 mins
   },
 
-  // ── BIO 101: General Biology I (2 creators) ───────────────────────────────
+  // ── BIO 101: General Biology I (UNILAG) ──────────────────────────────────
   {
     id: "quiz_014",
     creator_id: "creator_002",
     course_id: "course_012", // BIO 101
+    university_id: "uni_001",
     title: "BIO 101 — Cell Structure & Function",
     price: 10000,
     is_published: true,
@@ -190,6 +204,7 @@ const quizSeeds: QuizSeed[] = [
     id: "quiz_015",
     creator_id: "creator_003",
     course_id: "course_012", // BIO 101
+    university_id: "uni_001",
     title: "BIO 101 — Ecology & Biodiversity",
     price: 45000,
     is_published: true,
@@ -199,11 +214,12 @@ const quizSeeds: QuizSeed[] = [
     time_limit_seconds: 2400, // 40 mins
   },
 
-  // ── BIO 211: Cell Biology and Genetics ───────────────────────────────────
+  // ── BIO 211: Cell Biology and Genetics (UNILAG) ──────────────────────────
   {
     id: "quiz_016",
     creator_id: "creator_003",
     course_id: "course_013", // BIO 211
+    university_id: "uni_001",
     title: "BIO 211 — Genetics & Mendelian Inheritance",
     price: 16000,
     is_published: true,
@@ -213,11 +229,12 @@ const quizSeeds: QuizSeed[] = [
     time_limit_seconds: 2700, // 45 mins
   },
 
-  // ── HIS 101: Survey of African History ───────────────────────────────────
+  // ── HIS 101: Survey of African History (UNILAG) ──────────────────────────
   {
     id: "quiz_017",
     creator_id: "creator_002",
     course_id: "course_020", // HIS 101
+    university_id: "uni_001",
     title: "HIS 101 — Pre-Colonial Kingdoms to Independence",
     price: 8000,
     is_published: true,
@@ -227,11 +244,12 @@ const quizSeeds: QuizSeed[] = [
     time_limit_seconds: 2700, // 45 mins
   },
 
-  // ── HIS 201: Nigerian History and Politics ────────────────────────────────
+  // ── HIS 201: Nigerian History and Politics (UNILAG) ──────────────────────
   {
     id: "quiz_018",
     creator_id: "creator_003",
     course_id: "course_021", // HIS 201
+    university_id: "uni_001",
     title: "HIS 201 — Civil War, Democracy & Nation-Building",
     price: 7500,
     is_published: true,
@@ -241,11 +259,12 @@ const quizSeeds: QuizSeed[] = [
     time_limit_seconds: 2400, // 40 mins
   },
 
-  // ── PHY 101: General Physics I (2 creators) ───────────────────────────────
+  // ── PHY 101: General Physics I (ABU) ─────────────────────────────────────
   {
     id: "quiz_019",
     creator_id: "creator_001",
     course_id: "course_014", // PHY 101
+    university_id: "uni_002",
     title: "PHY 101 — Mechanics: Forces, Motion & Energy",
     price: 18000,
     is_published: true,
@@ -258,6 +277,7 @@ const quizSeeds: QuizSeed[] = [
     id: "quiz_020",
     creator_id: "creator_003",
     course_id: "course_014", // PHY 101
+    university_id: "uni_002",
     title: "PHY 101 — Waves, Optics & Modern Physics",
     price: 19000,
     is_published: true,
@@ -267,11 +287,12 @@ const quizSeeds: QuizSeed[] = [
     time_limit_seconds: 2400, // 40 mins
   },
 
-  // ── PHY 201: Electricity and Magnetism ───────────────────────────────────
+  // ── PHY 201: Electricity and Magnetism (ABU) ─────────────────────────────
   {
     id: "quiz_021",
     creator_id: "creator_002",
     course_id: "course_015", // PHY 201
+    university_id: "uni_002",
     title: "PHY 201 — Circuits, Fields & Electromagnetic Induction",
     price: 22000,
     is_published: true,
@@ -281,11 +302,12 @@ const quizSeeds: QuizSeed[] = [
     time_limit_seconds: 2700, // 45 mins
   },
 
-  // ── CHM 101: General Chemistry I ─────────────────────────────────────────
+  // ── CHM 101: General Chemistry I (UNILAG) ────────────────────────────────
   {
     id: "quiz_022",
     creator_id: "creator_001",
     course_id: "course_016", // CHM 101
+    university_id: "uni_001",
     title: "CHM 101 — Periodic Table & Chemical Bonding",
     price: 13000,
     is_published: true,
@@ -295,11 +317,12 @@ const quizSeeds: QuizSeed[] = [
     time_limit_seconds: 2400, // 40 mins
   },
 
-  // ── CHM 211: Organic Chemistry I ─────────────────────────────────────────
+  // ── CHM 211: Organic Chemistry I (UNILAG) ────────────────────────────────
   {
     id: "quiz_023",
     creator_id: "creator_001",
     course_id: "course_017", // CHM 211
+    university_id: "uni_001",
     title: "CHM 211 — Organic Chemistry: Reactions & Nomenclature",
     price: 17000,
     is_published: false,
@@ -312,6 +335,7 @@ const quizSeeds: QuizSeed[] = [
     id: "quiz_024",
     creator_id: "creator_003",
     course_id: "course_017", // CHM 211
+    university_id: "uni_001",
     title: "CHM 211 — Thermodynamics & Equilibrium",
     price: 50000,
     is_published: true,
@@ -321,11 +345,12 @@ const quizSeeds: QuizSeed[] = [
     time_limit_seconds: 2100, // 35 mins
   },
 
-  // ── MTH 101: Elementary Mathematics I ────────────────────────────────────
+  // ── MTH 101: Elementary Mathematics I (ABU) ──────────────────────────────
   {
     id: "quiz_025",
     creator_id: "creator_002",
     course_id: "course_006", // MTH 101
+    university_id: "uni_002",
     title: "MTH 101 — Algebra, Number Theory & Trigonometry",
     price: 5000,
     is_published: true,
@@ -335,11 +360,12 @@ const quizSeeds: QuizSeed[] = [
     time_limit_seconds: 1800, // 30 mins
   },
 
-  // ── CSC 221: Data Structures and Algorithms ───────────────────────────────
+  // ── CSC 221: Data Structures and Algorithms (UNILAG) ─────────────────────
   {
     id: "quiz_026",
     creator_id: "creator_002",
     course_id: "course_002", // CSC 221
+    university_id: "uni_001",
     title: "CSC 221 — Trees, Graphs & Sorting Algorithms",
     price: 22000,
     is_published: false,
@@ -349,11 +375,12 @@ const quizSeeds: QuizSeed[] = [
     time_limit_seconds: 1800, // 30 mins
   },
 
-  // ── GST 211: Logic and Scientific Reasoning ───────────────────────────────
+  // ── GST 211: Logic and Scientific Reasoning (UNILAG) ─────────────────────
   {
     id: "quiz_027",
     creator_id: "creator_002",
     course_id: "course_005", // GST 211
+    university_id: "uni_001",
     title: "GST 211 — World History: Industrial Revolution & Beyond",
     price: 9500,
     is_published: true,

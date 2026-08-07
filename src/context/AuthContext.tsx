@@ -46,7 +46,11 @@ interface AuthContextValue {
   isLoggedIn: boolean;
   logInAsUser: (userId: string) => void;
   logInAsRole: (role: UserRole) => void;
-  signUp: (data: { full_name: string; email: string }) => SessionUser;
+  signUp: (data: {
+    full_name: string;
+    email: string;
+    university_id: string;
+  }) => SessionUser;
   logOut: () => void;
 }
 
@@ -173,19 +177,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const signUp = useCallback((data: { full_name: string; email: string }) => {
-    const id = "user_new_" + Math.random().toString(36).slice(2, 9);
-    const newProfile: Profile = {
-      id,
-      full_name: data.full_name,
-      email: data.email,
-      role: "user",
-      is_approved_creator: false,
-    };
-    setExtraProfiles((prev) => [...prev, newProfile]);
-    setSessionUserId(id);
-    return newProfile;
-  }, []);
+  const signUp = useCallback(
+    (data: { full_name: string; email: string; university_id: string }) => {
+      const id = "user_new_" + Math.random().toString(36).slice(2, 9);
+      const newProfile: Profile = {
+        id,
+        full_name: data.full_name,
+        email: data.email,
+        role: "user",
+        is_approved_creator: false,
+        university_id: data.university_id,
+      };
+      setExtraProfiles((prev) => [...prev, newProfile]);
+      setSessionUserId(id);
+      return newProfile;
+    },
+    [],
+  );
 
   const logOut = useCallback(() => {
     setSessionUserId(null);

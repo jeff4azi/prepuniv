@@ -46,7 +46,8 @@ const SEARCH_DEBOUNCE_MS = 150;
 
 export function BrowsePage() {
   const navigate = useNavigate();
-  const { hasPurchasedQuiz } = useAuth();
+  const { hasPurchasedQuiz, currentUser } = useAuth();
+  const userUniversityId = currentUser.university_id;
 
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState("");
@@ -79,8 +80,15 @@ export function BrowsePage() {
   );
 
   const publishedQuizzes = useMemo(
-    () => allQuizzes.filter((q) => q.is_published),
-    [],
+    () =>
+      allQuizzes.filter(
+        (q) =>
+          q.is_published &&
+          // admins see everything; regular users only see their own university
+          (currentUser.role === "admin" ||
+            q.university_id === userUniversityId),
+      ),
+    [userUniversityId, currentUser.role],
   );
 
   /** Unique subject areas derived from the courses in use */
