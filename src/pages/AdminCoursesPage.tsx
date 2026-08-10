@@ -21,6 +21,7 @@ import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { FieldWrapper } from "../components/Form";
+import { FieldSelect } from "../components/CustomSelect";
 import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -190,20 +191,19 @@ function CourseEditModal({
                 className={inputBase + " uppercase"}
               />
             </FieldWrapper>
-            <FieldWrapper id="c-level" label="Level">
-              <select
-                id="c-level"
-                value={values.level}
-                onChange={(e) => set("level", e.target.value)}
-                className={inputBase + " appearance-none cursor-pointer"}
-              >
-                <option value="">Select…</option>
-                <option value="100">100L</option>
-                <option value="200">200L</option>
-                <option value="300">300L</option>
-                <option value="400">400L</option>
-              </select>
-            </FieldWrapper>
+            <FieldSelect
+              id="c-level"
+              label="Level"
+              value={values.level}
+              onChange={(v) => set("level", v)}
+              placeholder="Select…"
+              options={[
+                { value: "100", label: "100L" },
+                { value: "200", label: "200L" },
+                { value: "300", label: "300L" },
+                { value: "400", label: "400L" },
+              ]}
+            />
           </div>
           <FieldWrapper id="c-title" label="Course title" error={errors.title}>
             <input

@@ -6,7 +6,6 @@ import {
   X,
   Library,
   Compass,
-  ChevronDown,
   GraduationCap,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
@@ -14,6 +13,7 @@ import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { QuizCard } from "../components/QuizCard";
+import { FilterSelect } from "../components/CustomSelect";
 import { useAuth } from "../context/AuthContext";
 import {
   quizzes as allQuizzes,
@@ -297,42 +297,22 @@ export function BrowsePage() {
             {/* Level filter + Sort + library toggle */}
             <div className="flex flex-wrap items-center gap-2.5">
               {/* Level dropdown */}
-              <div className="relative">
-                <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
-                <select
-                  value={levelFilter}
-                  onChange={(e) =>
-                    setLevelFilter(e.target.value as LevelFilter)
-                  }
-                  aria-label="Filter by level"
-                  className="h-9 pl-8 pr-8 rounded-xl border border-border/60 bg-cream text-xs font-heading font-medium text-text appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40"
-                >
-                  {LEVEL_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
-              </div>
+              <FilterSelect
+                value={levelFilter}
+                onChange={(v) => setLevelFilter(v as LevelFilter)}
+                options={LEVEL_OPTIONS}
+                leadingIcon={<GraduationCap className="w-3.5 h-3.5" />}
+                aria-label="Filter by level"
+              />
 
               {/* Sort */}
-              <div className="relative">
-                <SlidersHorizontal className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
-                <select
-                  value={sortKey}
-                  onChange={(e) => setSortKey(e.target.value as SortKey)}
-                  aria-label="Sort quizzes"
-                  className="h-9 pl-8 pr-8 rounded-xl border border-border/60 bg-cream text-xs font-heading font-medium text-text appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40"
-                >
-                  {SORT_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
-              </div>
+              <FilterSelect
+                value={sortKey}
+                onChange={(v) => setSortKey(v as SortKey)}
+                options={SORT_OPTIONS}
+                leadingIcon={<SlidersHorizontal className="w-3.5 h-3.5" />}
+                aria-label="Sort quizzes"
+              />
 
               {/* Library toggle */}
               <div className="inline-flex rounded-xl border border-border/60 bg-cream p-0.5">

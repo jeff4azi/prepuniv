@@ -14,6 +14,7 @@ import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
+import { FilterSelect } from "../components/CustomSelect";
 import { useAuth } from "../context/AuthContext";
 import {
   quizAttempts as allAttempts,
@@ -324,20 +325,12 @@ export function HistoryPage() {
               </div>
 
               {/* Sort */}
-              <div className="relative shrink-0">
-                <Filter className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                <select
-                  value={sortKey}
-                  onChange={(e) => setSortKey(e.target.value as SortKey)}
-                  className="h-11 pl-9 pr-4 rounded-2xl border border-border bg-cream text-sm text-text font-heading font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all appearance-none cursor-pointer"
-                >
-                  {SORT_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <FilterSelect
+                value={sortKey}
+                onChange={(v) => setSortKey(v as SortKey)}
+                options={SORT_OPTIONS}
+                leadingIcon={<Filter className="w-4 h-4" />}
+              />
             </div>
 
             {/* Course chips */}

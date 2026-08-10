@@ -37,6 +37,7 @@ import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { FieldWrapper } from "../components/Form";
+import { FieldSelect } from "../components/CustomSelect";
 import { Toast, useToast } from "../components/Toast";
 import { MathText } from "../components/MathText";
 import { useAuth } from "../context/AuthContext";
@@ -738,29 +739,20 @@ export function QuizBuilderPage() {
                   />
                 </FieldWrapper>
 
-                <FieldWrapper
+                <FieldSelect
                   id="qb-level"
                   label="Level"
                   hint="Auto-suggested from code — override if needed."
-                >
-                  <div className="relative">
-                    <select
-                      id="qb-level"
-                      value={details.level}
-                      onChange={(e) =>
-                        setDetails((d) => ({ ...d, level: e.target.value }))
-                      }
-                      className="w-full h-11 px-4 pr-10 rounded-xl bg-cream border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-sm font-heading text-text appearance-none cursor-pointer transition-all"
-                    >
-                      <option value="">Select level…</option>
-                      <option value="100">100L</option>
-                      <option value="200">200L</option>
-                      <option value="300">300L</option>
-                      <option value="400">400L</option>
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                  </div>
-                </FieldWrapper>
+                  value={details.level}
+                  onChange={(v) => setDetails((d) => ({ ...d, level: v }))}
+                  placeholder="Select level…"
+                  options={[
+                    { value: "100", label: "100L" },
+                    { value: "200", label: "200L" },
+                    { value: "300", label: "300L" },
+                    { value: "400", label: "400L" },
+                  ]}
+                />
 
                 <FieldWrapper
                   id="qb-price"

@@ -16,7 +16,6 @@ import {
   Search,
   X,
   ShieldCheck,
-  ChevronDown,
   SlidersHorizontal,
   Eye,
   EyeOff,
@@ -28,6 +27,7 @@ import {
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
+import { FilterSelect } from "../components/CustomSelect";
 import { Button } from "../components/Button";
 import { Avatar } from "../components/Avatar";
 import { Toast, useToast } from "../components/Toast";
@@ -639,21 +639,12 @@ export function AdminQuizzesPage() {
               )}
             </div>
             {/* Sort */}
-            <div className="relative shrink-0">
-              <SlidersHorizontal className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
-              <select
-                value={sortKey}
-                onChange={(e) => setSortKey(e.target.value as SortKey)}
-                className="h-9 pl-8 pr-8 rounded-xl border border-border/60 bg-cream text-xs font-heading font-medium text-text appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
-              >
-                {SORT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
-            </div>
+            <FilterSelect
+              value={sortKey}
+              onChange={(v) => setSortKey(v as SortKey)}
+              options={SORT_OPTIONS}
+              leadingIcon={<SlidersHorizontal className="w-3.5 h-3.5" />}
+            />
           </div>
 
           {/* Filter chips row */}

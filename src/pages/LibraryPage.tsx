@@ -5,7 +5,6 @@ import {
   Search,
   X,
   SlidersHorizontal,
-  ChevronDown,
   PlayCircle,
   RotateCcw,
   Compass,
@@ -21,6 +20,7 @@ import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Avatar } from "../components/Avatar";
+import { FilterSelect } from "../components/CustomSelect";
 import { useAuth } from "../context/AuthContext";
 import {
   quizzes as allQuizzes,
@@ -601,22 +601,13 @@ export function LibraryPage() {
             {/* Sort + attempted toggle row */}
             <div className="flex flex-wrap items-center gap-2.5">
               {/* Sort select */}
-              <div className="relative">
-                <SlidersHorizontal className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
-                <select
-                  value={sortKey}
-                  onChange={(e) => setSortKey(e.target.value as SortKey)}
-                  aria-label="Sort library"
-                  className="h-9 pl-8 pr-8 rounded-xl border border-border/60 bg-cream text-xs font-heading font-medium text-text appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40"
-                >
-                  {SORT_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
-              </div>
+              <FilterSelect
+                value={sortKey}
+                onChange={(v) => setSortKey(v as SortKey)}
+                options={SORT_OPTIONS}
+                leadingIcon={<SlidersHorizontal className="w-3.5 h-3.5" />}
+                aria-label="Sort library"
+              />
 
               {/* All / Attempted / Not Started */}
               <SegmentedControl

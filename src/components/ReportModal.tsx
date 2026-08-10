@@ -8,9 +8,10 @@
  * so the parent can show a toast.
  */
 import { useState, type FormEvent } from "react";
-import { X, Flag, ChevronDown } from "lucide-react";
+import { X, Flag } from "lucide-react";
 import { Button } from "./Button";
 import { FieldWrapper } from "./Form";
+import { FieldSelect } from "./CustomSelect";
 import { addReport } from "../mock/reports";
 import type { ReportReason } from "../mock/types";
 import { useAuth } from "../context/AuthContext";
@@ -39,7 +40,7 @@ export interface ReportModalProps {
   onSuccess: () => void;
 }
 
-// ─── Select (native-style) ────────────────────────────────────────────────────
+// ─── Select ───────────────────────────────────────────────────────────────────
 
 function ReasonSelect({
   value,
@@ -50,40 +51,16 @@ function ReasonSelect({
   onChange: (v: ReportReason | "") => void;
   error?: string;
 }) {
-  const BASE_INPUT = [
-    "w-full h-12 sm:h-[50px] px-4 rounded-xl text-sm appearance-none",
-    "bg-cream text-text",
-    "border border-border focus:outline-none",
-    "ring-0 focus:ring-2 focus:ring-primary/30 focus:border-primary/50",
-    "transition-all duration-150",
-    "disabled:opacity-60 disabled:cursor-not-allowed",
-  ].join(" ");
-
-  const ERROR_INPUT =
-    "border-danger/60 bg-danger-bg/30 focus:ring-danger/30 focus:border-danger";
-
   return (
-    <FieldWrapper id="report-reason" label="Reason" error={error}>
-      <div className="relative">
-        <select
-          id="report-reason"
-          value={value}
-          onChange={(e) => onChange(e.target.value as ReportReason | "")}
-          className={BASE_INPUT + " pr-10 " + (error ? ERROR_INPUT : "")}
-        >
-          <option value="">Select a reason…</option>
-          {REASON_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <ChevronDown
-          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted"
-          strokeWidth={2}
-        />
-      </div>
-    </FieldWrapper>
+    <FieldSelect
+      id="report-reason"
+      label="Reason"
+      error={error}
+      value={value}
+      onChange={(v) => onChange(v as ReportReason | "")}
+      placeholder="Select a reason…"
+      options={REASON_OPTIONS}
+    />
   );
 }
 
