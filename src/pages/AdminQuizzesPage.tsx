@@ -587,7 +587,7 @@ export function AdminQuizzesPage() {
           </div>
 
           {/* University tabs */}
-          <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 overflow-x-auto no-scrollbar">
+          <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 w-fit max-w-full overflow-x-auto no-scrollbar">
             {universities.map((uni) => {
               const count = allQuizzes.filter(
                 (q) => q.university_id === uni.id,
