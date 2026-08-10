@@ -12,7 +12,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { profiles } from "../mock";
 
-const RESEND_COOLDOWN = 30;
+const RESEND_COOLDOWN = 60;
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -35,6 +35,7 @@ export function LoginPage() {
   const [unconfirmedEmail, setUnconfirmedEmail] = useState("");
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
+  // Start disabled — user must wait before they can resend
   const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
@@ -77,6 +78,7 @@ export function LoginPage() {
     if (matched.email_confirmed === false) {
       setUnconfirmedId(matched.id);
       setUnconfirmedEmail(matched.email);
+      setCooldown(RESEND_COOLDOWN); // reset cooldown at the moment we show the screen
       setLoading(false);
       return;
     }

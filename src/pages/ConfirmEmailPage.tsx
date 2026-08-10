@@ -27,7 +27,7 @@ import { profiles } from "../mock";
 
 // ─── Resend widget (shared by invalid-token state) ────────────────────────────
 
-const RESEND_COOLDOWN = 30;
+const RESEND_COOLDOWN = 60;
 
 function ResendForm() {
   const [email, setEmail] = useState("");

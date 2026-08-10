@@ -24,7 +24,7 @@ interface SignupErrors {
   university?: string | null;
 }
 
-const RESEND_COOLDOWN = 30;
+const RESEND_COOLDOWN = 60;
 
 export function SignupPage() {
   const { signUp } = useAuth();
@@ -42,6 +42,7 @@ export function SignupPage() {
   const [newProfile, setNewProfile] = useState<Profile | null>(null);
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
+  // Start disabled — user must wait before they can resend
   const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
@@ -82,6 +83,7 @@ export function SignupPage() {
       university_id: universityId,
     });
     setLoading(false);
+    setCooldown(RESEND_COOLDOWN); // reset cooldown at the moment of signup
     setNewProfile(profile);
   }
 
