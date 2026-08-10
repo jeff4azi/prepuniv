@@ -90,8 +90,14 @@ export function HomePage() {
   }, []);
 
   const publishedQuizzes = useMemo(
-    () => allQuizzes.filter((q) => q.is_published),
-    [],
+    () =>
+      allQuizzes.filter(
+        (q) =>
+          q.is_published &&
+          (currentUser.role === "admin" ||
+            q.university_id === currentUser.university_id),
+      ),
+    [currentUser.university_id, currentUser.role],
   );
 
   const userAttempts = useMemo(() => {
