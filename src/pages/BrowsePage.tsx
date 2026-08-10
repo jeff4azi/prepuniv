@@ -15,12 +15,12 @@ import { Button } from "../components/Button";
 import { QuizCard } from "../components/QuizCard";
 import { FilterSelect } from "../components/CustomSelect";
 import { useAuth } from "../context/AuthContext";
+import type { Quiz, Course, Profile } from "../mock/types";
 import {
-  quizzes as allQuizzes,
-  courses as allCourses,
-  profiles as allProfiles,
-  type Quiz,
-} from "../mock";
+  fetchPublishedQuizzes,
+  fetchCourses,
+  fetchAllProfiles,
+} from "../lib/queries";
 
 type SortKey = "newest" | "popular" | "price-asc" | "price-desc";
 type LibraryFilter = "all" | "library";
@@ -41,15 +41,17 @@ const LEVEL_OPTIONS: { value: LevelFilter; label: string }[] = [
   { value: "400", label: "400L" },
 ];
 
-const LOADING_MS = 500;
 const SEARCH_DEBOUNCE_MS = 150;
 
 export function BrowsePage() {
   const navigate = useNavigate();
   const { hasPurchasedQuiz, currentUser } = useAuth();
-  const userUniversityId = currentUser.university_id;
+  const userUniversityId = currentUser.university_id || undefined;
 
   const [loading, setLoading] = useState(true);
+  const [allQuizzes, setAllQuizzes] = useState<Quiz[]>([]);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [deptFilter, setDeptFilter] = useState<string>("all");
@@ -58,9 +60,25 @@ export function BrowsePage() {
   const [libraryFilter, setLibraryFilter] = useState<LibraryFilter>("all");
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), LOADING_MS);
-    return () => clearTimeout(t);
-  }, []);
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([
+      fetchPublishedQuizzes(
+        currentUser.role === "admin" ? undefined : userUniversityId,
+      ),
+      fetchCourses(currentUser.role === "admin" ? undefined : userUniversityId),
+      fetchAllProfiles(),
+    ]).then(([quizzes, courses, profiles]) => {
+      if (cancelled) return;
+      setAllQuizzes(quizzes);
+      setAllCourses(courses);
+      setAllProfiles(profiles);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userUniversityId, currentUser.role]);
 
   useEffect(() => {
     const t = setTimeout(
@@ -72,11 +90,11 @@ export function BrowsePage() {
 
   const coursesById = useMemo(
     () => new Map(allCourses.map((c) => [c.id, c])),
-    [],
+    [allCourses],
   );
   const profilesById = useMemo(
     () => new Map(allProfiles.map((p) => [p.id, p])),
-    [],
+    [allProfiles],
   );
 
   const publishedQuizzes = useMemo(
@@ -84,11 +102,11 @@ export function BrowsePage() {
       allQuizzes.filter(
         (q) =>
           q.is_published &&
-          // admins see everything; regular users only see their own university
           (currentUser.role === "admin" ||
+            !userUniversityId ||
             q.university_id === userUniversityId),
       ),
-    [userUniversityId, currentUser.role],
+    [allQuizzes, userUniversityId, currentUser.role],
   );
 
   /** Unique subject areas derived from the courses in use */
@@ -99,7 +117,7 @@ export function BrowsePage() {
       if (usedCourseIds.has(c.id)) areas.add(c.subject_area);
     });
     return Array.from(areas).sort();
-  }, [publishedQuizzes]);
+  }, [publishedQuizzes, allCourses]);
 
   /** Popular course codes: top codes by quiz count */
   const popularCourseCodes = useMemo(() => {

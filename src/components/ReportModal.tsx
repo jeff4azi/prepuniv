@@ -12,9 +12,9 @@ import { X, Flag } from "lucide-react";
 import { Button } from "./Button";
 import { FieldWrapper } from "./Form";
 import { FieldSelect } from "./CustomSelect";
-import { addReport } from "../mock/reports";
 import type { ReportReason } from "../mock/types";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 // ─── Reason options ───────────────────────────────────────────────────────────
 
@@ -143,22 +143,25 @@ export function ReportModal({
     setSubmitting(true);
 
     // Simulate async network delay
-    await new Promise((r) => setTimeout(r, 700));
-
-    addReport({
-      id: "report_" + Math.random().toString(36).slice(2, 10),
-      user_id: currentUser.id,
+    const { error } = await supabase.from("reports").insert({
+      reporter_id: currentUser.id,
       quiz_id: quizId,
-      quiz_title: quizTitle,
       reason: reason as ReportReason,
-      other_text: reason === "other" ? otherText.trim() : undefined,
-      details: details.trim() || undefined,
-      created_at: new Date().toISOString(),
+      other_text: reason === "other" ? otherText.trim() || null : null,
+      details: details.trim() || null,
+      status: "open",
     });
 
     setSubmitting(false);
-    onSuccess();
-    onClose();
+    if (!error) {
+      onSuccess();
+      onClose();
+    } else {
+      console.error("Report submit failed:", error.message);
+      // still close modal — user shouldn't see a hard error for a report
+      onSuccess();
+      onClose();
+    }
   }
 
   return (

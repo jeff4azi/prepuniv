@@ -1,5 +1,14 @@
 export type UserRole = "user" | "creator" | "admin";
 
+export interface University {
+  id: string;
+  name: string;
+  /** Short abbreviation shown in chips / badges */
+  abbreviation: string;
+  /** State the university is located in */
+  state: string;
+}
+
 export interface Profile {
   id: string;
   full_name: string;

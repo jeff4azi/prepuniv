@@ -22,14 +22,13 @@ import { Button } from "../components/Button";
 import { Avatar } from "../components/Avatar";
 import { FilterSelect } from "../components/CustomSelect";
 import { useAuth } from "../context/AuthContext";
+import type { Quiz, Course, Profile, QuizAttempt } from "../mock/types";
 import {
-  quizzes as allQuizzes,
-  courses as allCourses,
-  profiles as allProfiles,
-  quizAttempts as allAttempts,
-  type Quiz,
-  type Profile,
-} from "../mock";
+  fetchPublishedQuizzes,
+  fetchCourses,
+  fetchAllProfiles,
+  fetchUserAttempts,
+} from "../lib/queries";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,8 +50,12 @@ interface AttemptStats {
   lastAttemptId: string | null;
 }
 
-function computeAttemptStats(quizId: string, userId: string): AttemptStats {
-  const mine = allAttempts.filter(
+function computeAttemptStats(
+  quizId: string,
+  userId: string,
+  attempts: QuizAttempt[],
+): AttemptStats {
+  const mine = attempts.filter(
     (a) => a.quiz_id === quizId && a.user_id === userId,
   );
   if (mine.length === 0)
@@ -75,7 +78,7 @@ function shortCourseName(code: string) {
   return code || "Quiz";
 }
 
-// ─── Score pill (reuses the same colour logic as QuizCard / HistoryPage) ──────
+// ─── Score pill ───────────────────────────────────────────────────────────────
 
 function ScorePill({ score }: { score: number }) {
   const cls =
@@ -106,7 +109,7 @@ function ScoreBar({ score }: { score: number }) {
   );
 }
 
-// ─── Library card (extended QuizCard variant for owned quizzes) ───────────────
+// ─── Library card ─────────────────────────────────────────────────────────────
 
 interface LibraryCardProps {
   quiz: Quiz;
@@ -250,7 +253,7 @@ function LibraryCard({ quiz, course, creator, stats }: LibraryCardProps) {
   );
 }
 
-// ─── Skeleton card (matches Browse page pattern exactly) ─────────────────────
+// ─── Skeleton card ────────────────────────────────────────────────────────────
 
 function LibraryCardSkeleton() {
   return (
@@ -379,7 +382,6 @@ function EmptyState({ isFiltered }: { isFiltered: boolean }) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-const LOADING_MS = 400;
 const DEBOUNCE_MS = 150;
 
 const ATTEMPT_FILTER_OPTIONS: { value: AttemptFilter; label: string }[] = [
@@ -392,17 +394,37 @@ export function LibraryPage() {
   const { currentUser, purchasedQuizIds } = useAuth();
 
   const [loading, setLoading] = useState(true);
+  const [allQuizzes, setAllQuizzes] = useState<Quiz[]>([]);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
+  const [allAttempts, setAllAttempts] = useState<QuizAttempt[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [sortKey, setSortKey] = useState<SortKey>("unlocked");
   const [attemptFilter, setAttemptFilter] = useState<AttemptFilter>("all");
 
-  // Simulate brief loading skeleton (consistent with Browse)
+  // Load all data on mount
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), LOADING_MS);
-    return () => clearTimeout(t);
-  }, []);
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([
+      fetchPublishedQuizzes(currentUser.university_id || undefined),
+      fetchCourses(currentUser.university_id || undefined),
+      fetchAllProfiles(),
+      fetchUserAttempts(currentUser.id),
+    ]).then(([quizzes, courses, profiles, attempts]) => {
+      if (cancelled) return;
+      setAllQuizzes(quizzes);
+      setAllCourses(courses);
+      setAllProfiles(profiles);
+      setAllAttempts(attempts);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser.id, currentUser.university_id]);
 
   // Debounce search
   useEffect(() => {
@@ -413,31 +435,30 @@ export function LibraryPage() {
   // Lookup maps
   const coursesById = useMemo(
     () => new Map(allCourses.map((c) => [c.id, c])),
-    [],
+    [allCourses],
   );
   const profilesById = useMemo(
     () => new Map(allProfiles.map((p) => [p.id, p])),
-    [],
+    [allProfiles],
   );
 
   // Purchased quizzes in the order they appear in purchasedQuizIds
-  // (purchasedQuizIds preserves insertion order = "recently unlocked")
   const purchasedQuizzes = useMemo<Quiz[]>(() => {
     return purchasedQuizIds
       .map((id) => allQuizzes.find((q) => q.id === id))
       .filter((q): q is Quiz => q !== undefined);
-  }, [purchasedQuizIds]);
+  }, [purchasedQuizIds, allQuizzes]);
 
   // Precompute attempt stats for every purchased quiz
   const statsMap = useMemo<Map<string, AttemptStats>>(() => {
     const m = new Map<string, AttemptStats>();
     for (const q of purchasedQuizzes) {
-      m.set(q.id, computeAttemptStats(q.id, currentUser.id));
+      m.set(q.id, computeAttemptStats(q.id, currentUser.id, allAttempts));
     }
     return m;
-  }, [purchasedQuizzes, currentUser.id]);
+  }, [purchasedQuizzes, currentUser.id, allAttempts]);
 
-  // Subject areas that actually appear in the library (for chip filter)
+  // Subject areas that actually appear in the library
   const librarySubjectAreas = useMemo<string[]>(() => {
     const areas = new Set<string>();
     purchasedQuizzes.forEach((q) => {
@@ -451,14 +472,12 @@ export function LibraryPage() {
   const displayQuizzes = useMemo<Quiz[]>(() => {
     let list = purchasedQuizzes;
 
-    // Attempt filter
     if (attemptFilter === "attempted") {
       list = list.filter((q) => (statsMap.get(q.id)?.count ?? 0) > 0);
     } else if (attemptFilter === "not-attempted") {
       list = list.filter((q) => (statsMap.get(q.id)?.count ?? 0) === 0);
     }
 
-    // Subject area filter
     if (subjectFilter !== "all") {
       list = list.filter((q) => {
         const course = coursesById.get(q.course_id);
@@ -466,7 +485,6 @@ export function LibraryPage() {
       });
     }
 
-    // Search
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       list = list.filter((quiz) => {
@@ -479,7 +497,6 @@ export function LibraryPage() {
       });
     }
 
-    // Sort
     const sorted = [...list];
     switch (sortKey) {
       case "alpha":
@@ -497,13 +514,11 @@ export function LibraryPage() {
         sorted.sort((a, b) => {
           const ca = statsMap.get(a.id)?.count ?? 0;
           const cb = statsMap.get(b.id)?.count ?? 0;
-          return ca - cb; // 0 attempts first
+          return ca - cb;
         });
         break;
       case "unlocked":
       default:
-        // purchasedQuizIds is already insertion-order = recently unlocked first
-        // (we keep the order from purchasedQuizzes above)
         break;
     }
     return sorted;
@@ -521,7 +536,6 @@ export function LibraryPage() {
   const isFiltered =
     searchQuery !== "" || subjectFilter !== "all" || attemptFilter !== "all";
 
-  // Summary stats
   const attemptedCount = useMemo(
     () => [...statsMap.values()].filter((s) => s.count > 0).length,
     [statsMap],
@@ -572,7 +586,7 @@ export function LibraryPage() {
           </div>
         </section>
 
-        {/* ── Filter / sort bar (sticky on scroll like Browse) ── */}
+        {/* ── Filter / sort bar ── */}
         <div className="sticky top-0 z-20 -mx-4 px-4 py-3 bg-background/95 backdrop-blur-md border-b border-border/25 lg:static lg:mx-0 lg:px-0 lg:py-0 lg:bg-transparent lg:backdrop-blur-none lg:border-0">
           <div className="space-y-3">
             {/* Subject area chips */}
@@ -600,7 +614,6 @@ export function LibraryPage() {
 
             {/* Sort + attempted toggle row */}
             <div className="flex flex-wrap items-center gap-2.5">
-              {/* Sort select */}
               <FilterSelect
                 value={sortKey}
                 onChange={(v) => setSortKey(v as SortKey)}
@@ -609,14 +622,12 @@ export function LibraryPage() {
                 aria-label="Sort library"
               />
 
-              {/* All / Attempted / Not Started */}
               <SegmentedControl
                 value={attemptFilter}
                 onChange={setAttemptFilter}
                 options={ATTEMPT_FILTER_OPTIONS}
               />
 
-              {/* Clear filters */}
               {isFiltered && (
                 <Button
                   variant="ghost"
@@ -636,7 +647,7 @@ export function LibraryPage() {
           </div>
         </div>
 
-        {/* ── Stats strip (only when content is loaded and non-empty) ── */}
+        {/* ── Stats strip ── */}
         {!loading && purchasedQuizzes.length > 0 && (
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
             <p className="text-sm text-text-soft">

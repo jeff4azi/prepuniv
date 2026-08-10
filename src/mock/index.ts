@@ -18,8 +18,8 @@ export {
   universities,
   getUniversityById,
   getUniversityByName,
-  type University,
 } from "./universities";
+export type { University } from "./types";
 export {
   quizzes,
   addQuiz,

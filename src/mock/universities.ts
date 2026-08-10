@@ -1,11 +1,6 @@
-export interface University {
-  id: string;
-  name: string;
-  /** Short abbreviation shown in chips / badges */
-  abbreviation: string;
-  /** State the university is located in */
-  state: string;
-}
+import type { University } from "./types";
+
+export type { University };
 
 export const universities: University[] = [
   {

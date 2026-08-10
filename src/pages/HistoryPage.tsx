@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Clock,
@@ -16,13 +16,12 @@ import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { FilterSelect } from "../components/CustomSelect";
 import { useAuth } from "../context/AuthContext";
+import type { Quiz, Course, QuizAttempt } from "../mock/types";
 import {
-  quizAttempts as allAttempts,
-  quizzes as allQuizzes,
-  courses as allCourses,
-  type QuizAttempt,
-  type Course,
-} from "../mock";
+  fetchUserAttempts,
+  fetchAllQuizzes,
+  fetchCourses,
+} from "../lib/queries";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -208,29 +207,87 @@ function EmptyState({ filtered }: { filtered: boolean }) {
   );
 }
 
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function HistorySkeleton() {
+  return (
+    <div className="space-y-5">
+      <Card padded={false}>
+        <div className="px-5 py-4 space-y-3 animate-pulse">
+          <div className="h-11 w-full rounded-2xl bg-surface" />
+          <div className="flex gap-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-9 w-20 rounded-2xl bg-surface" />
+            ))}
+          </div>
+        </div>
+      </Card>
+      <Card padded={false} className="animate-pulse">
+        <div className="px-5 divide-y divide-border/0">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="py-4 flex gap-4 items-center">
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-3/4 rounded-lg bg-surface" />
+                <div className="h-3 w-1/2 rounded-lg bg-surface" />
+              </div>
+              <div className="h-2 w-48 rounded-full bg-surface" />
+              <div className="h-9 w-24 rounded-xl bg-surface" />
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function HistoryPage() {
   const { currentUser } = useAuth();
 
+  const [loading, setLoading] = useState(true);
+  const [allAttempts, setAllAttempts] = useState<QuizAttempt[]>([]);
+  const [allQuizzes, setAllQuizzes] = useState<Quiz[]>([]);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
+
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("newest");
   const [courseFilter, setCourseFilter] = useState<string>("all");
 
+  // Load all data on mount
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([
+      fetchUserAttempts(currentUser.id),
+      fetchAllQuizzes(),
+      fetchCourses(),
+    ]).then(([attempts, quizzes, courses]) => {
+      if (cancelled) return;
+      setAllAttempts(attempts);
+      setAllQuizzes(quizzes);
+      setAllCourses(courses);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser.id]);
+
   // Build lookup maps
   const quizzesById = useMemo(
     () => new Map(allQuizzes.map((q) => [q.id, q])),
-    [],
+    [allQuizzes],
   );
   const coursesById = useMemo(
     () => new Map(allCourses.map((c) => [c.id, c])),
-    [],
+    [allCourses],
   );
 
-  // All attempts for the current user
+  // All attempts for the current user (already filtered server-side, but keep guard)
   const myAttempts = useMemo(
     () => allAttempts.filter((a) => a.user_id === currentUser.id),
-    [currentUser.id],
+    [allAttempts, currentUser.id],
   );
 
   // Courses the user has actually attempted quizzes in (for filter chips)
@@ -265,7 +322,7 @@ export function HistoryPage() {
     return sortAttempts(list, sortKey);
   }, [myAttempts, courseFilter, search, sortKey, quizzesById]);
 
-  // Group by calendar month (newest month first by default)
+  // Group by calendar month
   const grouped = useMemo(() => {
     const map = new Map<string, { label: string; attempts: QuizAttempt[] }>();
     for (const a of filtered) {
@@ -275,7 +332,6 @@ export function HistoryPage() {
       }
       map.get(key)!.attempts.push(a);
     }
-    // Sort groups newest-first when sort is by date, else keep insertion order
     const entries = [...map.entries()];
     if (sortKey === "oldest") {
       entries.sort(([a], [b]) => a.localeCompare(b));
@@ -297,103 +353,112 @@ export function HistoryPage() {
       }
     >
       <div className="space-y-5">
-        {/* ── Toolbar ── */}
-        <Card padded={false}>
-          <div className="px-4 pt-4 pb-3 space-y-3">
-            {/* Search + Sort row */}
-            <div className="flex flex-col sm:flex-row gap-2.5">
-              {/* Search */}
-              <div className="flex-1 relative">
-                <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                <input
-                  type="search"
-                  placeholder="Search by quiz title…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full h-11 pl-10 pr-10 rounded-2xl border border-border bg-cream text-sm text-text placeholder:text-muted/70 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
-                />
-                {search && (
-                  <button
-                    type="button"
-                    onClick={() => setSearch("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-text transition-colors"
-                    aria-label="Clear search"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+        {loading ? (
+          <HistorySkeleton />
+        ) : (
+          <>
+            {/* ── Toolbar ── */}
+            <Card padded={false}>
+              <div className="px-4 pt-4 pb-3 space-y-3">
+                {/* Search + Sort row */}
+                <div className="flex flex-col sm:flex-row gap-2.5">
+                  {/* Search */}
+                  <div className="flex-1 relative">
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                    <input
+                      type="search"
+                      placeholder="Search by quiz title…"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="w-full h-11 pl-10 pr-10 rounded-2xl border border-border bg-cream text-sm text-text placeholder:text-muted/70 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                    />
+                    {search && (
+                      <button
+                        type="button"
+                        onClick={() => setSearch("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-text transition-colors"
+                        aria-label="Clear search"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Sort */}
+                  <FilterSelect
+                    value={sortKey}
+                    onChange={(v) => setSortKey(v as SortKey)}
+                    options={SORT_OPTIONS}
+                    leadingIcon={<Filter className="w-4 h-4" />}
+                  />
+                </div>
+
+                {/* Course chips */}
+                {attemptedCourses.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mb-1">
+                    <Chip
+                      label="All courses"
+                      active={courseFilter === "all"}
+                      onClick={() => setCourseFilter("all")}
+                    />
+                    {attemptedCourses.map((c) => (
+                      <Chip
+                        key={c.id}
+                        label={c.code}
+                        active={courseFilter === c.id}
+                        onClick={() =>
+                          setCourseFilter((prev) =>
+                            prev === c.id ? "all" : c.id,
+                          )
+                        }
+                      />
+                    ))}
+                  </div>
                 )}
               </div>
+            </Card>
 
-              {/* Sort */}
-              <FilterSelect
-                value={sortKey}
-                onChange={(v) => setSortKey(v as SortKey)}
-                options={SORT_OPTIONS}
-                leadingIcon={<Filter className="w-4 h-4" />}
-              />
-            </div>
+            {/* ── Results ── */}
+            {filtered.length === 0 ? (
+              <EmptyState filtered={isFiltered} />
+            ) : (
+              <div className="space-y-5">
+                {grouped.map(([key, { label, attempts }]) => (
+                  <section key={key}>
+                    {/* Sticky month header */}
+                    <div className="sticky top-14 lg:top-0 z-10 flex items-center gap-3 py-2 bg-background/90 backdrop-blur-sm border-b border-border/50 mb-0">
+                      <h2 className="font-heading font-bold text-sm text-text-soft uppercase tracking-wider">
+                        {label}
+                      </h2>
+                      <span className="ml-auto font-heading text-xs text-muted font-medium">
+                        {attempts.length} attempt
+                        {attempts.length !== 1 ? "s" : ""}
+                      </span>
+                    </div>
 
-            {/* Course chips */}
-            {attemptedCourses.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mb-1">
-                <Chip
-                  label="All courses"
-                  active={courseFilter === "all"}
-                  onClick={() => setCourseFilter("all")}
-                />
-                {attemptedCourses.map((c) => (
-                  <Chip
-                    key={c.id}
-                    label={c.code}
-                    active={courseFilter === c.id}
-                    onClick={() =>
-                      setCourseFilter((prev) => (prev === c.id ? "all" : c.id))
-                    }
-                  />
+                    <Card padded={false} className="overflow-hidden">
+                      <div className="px-5 divide-y divide-border/0">
+                        {attempts.map((attempt) => {
+                          const quiz = quizzesById.get(attempt.quiz_id);
+                          const course = quiz
+                            ? coursesById.get(quiz.course_id)
+                            : undefined;
+                          return (
+                            <AttemptRow
+                              key={attempt.id}
+                              attempt={attempt}
+                              quizTitle={quiz?.title ?? "Unknown Quiz"}
+                              course={course}
+                            />
+                          );
+                        })}
+                      </div>
+                    </Card>
+                  </section>
                 ))}
               </div>
             )}
-          </div>
-        </Card>
-
-        {/* ── Results ── */}
-        {filtered.length === 0 ? (
-          <EmptyState filtered={isFiltered} />
-        ) : (
-          <div className="space-y-5">
-            {grouped.map(([key, { label, attempts }]) => (
-              <section key={key}>
-                {/* Sticky month header */}
-                <div className="sticky top-14 lg:top-0 z-10 flex items-center gap-3 py-2 bg-background/90 backdrop-blur-sm border-b border-border/50 mb-0">
-                  <h2 className="font-heading font-bold text-sm text-text-soft uppercase tracking-wider">
-                    {label}
-                  </h2>
-                  <span className="ml-auto font-heading text-xs text-muted font-medium">
-                    {attempts.length} attempt{attempts.length !== 1 ? "s" : ""}
-                  </span>
-                </div>
-
-                <Card padded={false} className="overflow-hidden">
-                  <div className="px-5 divide-y divide-border/0">
-                    {attempts.map((attempt) => {
-                      const quiz = quizzesById.get(attempt.quiz_id);
-                      const course = quiz
-                        ? coursesById.get(quiz.course_id)
-                        : undefined;
-                      return (
-                        <AttemptRow
-                          key={attempt.id}
-                          attempt={attempt}
-                          quizTitle={quiz?.title ?? "Unknown Quiz"}
-                          course={course}
-                        />
-                      );
-                    })}
-                  </div>
-                </Card>
-              </section>
-            ))}
-          </div>
+          </>
         )}
       </div>
     </PageContainer>
