@@ -331,7 +331,7 @@ function ApplicationForm({
               You keep{" "}
               <span className="font-heading font-bold text-primary">65%</span>{" "}
               of every sale. Set your own price between{" "}
-              <span className="font-semibold text-text">₦500 – ₦5,000</span> per
+              <span className="font-semibold text-text">₦50 – ₦500</span> per
               quiz. Approval is required before you can publish — we review
               every application personally.
             </p>
@@ -432,10 +432,17 @@ function ApplicationForm({
                   className="sr-only"
                 />
                 <p className="text-sm text-text leading-relaxed">
-                  I confirm that the quizzes I create will be{" "}
-                  <span className="font-semibold">original content</span>{" "}
-                  written by me, and will not be copied or reproduced from
-                  copyrighted past examination papers or third-party materials.
+                  I confirm that I have read and agree to the{" "}
+                  <Link
+                    to="/creator/agreement"
+                    target="_blank"
+                    className="font-semibold text-primary hover:underline underline-offset-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Creator Agreement
+                  </Link>
+                  , including its requirements regarding original content and
+                  copyright.
                 </p>
               </label>
               {errors.agreed && (

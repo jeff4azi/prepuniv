@@ -40,6 +40,8 @@ import { LoginPage } from "./pages/LoginPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { ConfirmEmailPage } from "./pages/ConfirmEmailPage";
+import { CreatorAgreementPage } from "./pages/CreatorAgreementPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import { QuizDetailPage } from "./pages/QuizDetailPage";
 import { AttemptPage } from "./pages/AttemptPage";
 import { AttemptResultPage } from "./pages/AttemptResultPage";
@@ -113,6 +115,10 @@ function AppShell() {
 
               <Route path="/creator" element={<CreatorDashboardPage />} />
               <Route path="/creator/apply" element={<CreatorApplyPage />} />
+              <Route
+                path="/creator/agreement"
+                element={<CreatorAgreementPage />}
+              />
               <Route path="/creator/quizzes" element={<CreatorQuizzesPage />} />
               <Route
                 path="/creator/quizzes/new"
@@ -143,8 +149,6 @@ function AppShell() {
                 path="/admin/universities"
                 element={<AdminUniversitiesPage />}
               />
-
-              <Route path="*" element={<HomePage />} />
             </Routes>
           </PageTransition>
         </main>
@@ -205,9 +209,16 @@ function RoutingSwitch() {
   const isPublic = publicPaths.includes(loc.pathname);
   const isAttempt = /^\/attempt\//.test(loc.pathname);
 
+  // Known app-shell paths — anything else is a 404, rendered shell-free
+  const isAppPath =
+    /^\/(home|browse|library|wallet|history|settings|quiz|profile|creator|admin)/.test(
+      loc.pathname,
+    );
+
   if (isPublic) return <PublicRoutes />;
   if (isAttempt) return <AttemptShell />;
-  return <AppShell />;
+  if (isAppPath) return <AppShell />;
+  return <NotFoundPage />;
 }
 
 export function App() {

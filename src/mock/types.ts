@@ -17,6 +17,8 @@ export interface Profile {
   university_id?: string;
   /** Whether the user has confirmed their email. Undefined = legacy/admin (treated as confirmed). */
   email_confirmed?: boolean;
+  /** ISO timestamp of when the creator accepted the Creator Agreement. */
+  agreement_accepted_at?: string;
 }
 
 export interface Course {

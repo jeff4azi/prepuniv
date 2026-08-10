@@ -253,11 +253,18 @@ function BankDetailsSection() {
               </div>
             )}
           </div>
-          <Link to="/creator/payouts">
-            <Button variant="outline" size="sm">
-              Manage bank account in Payouts
-            </Button>
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link to="/creator/payouts">
+              <Button variant="outline" size="sm">
+                Manage bank account in Payouts
+              </Button>
+            </Link>
+            <Link to="/creator/agreement">
+              <Button variant="ghost" size="sm" className="text-muted text-xs">
+                View Creator Agreement
+              </Button>
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="space-y-3">

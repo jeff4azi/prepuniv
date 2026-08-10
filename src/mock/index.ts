@@ -5,6 +5,7 @@ export {
   approveCreator,
   toggleSuspension,
   confirmEmail,
+  acceptCreatorAgreement,
 } from "./profiles";
 export {
   courses,

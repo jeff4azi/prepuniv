@@ -267,3 +267,9 @@ export function confirmEmail(userId: string): void {
   const profile = profiles.find((p) => p.id === userId);
   if (profile) profile.email_confirmed = true;
 }
+
+/** Record that a user has accepted the Creator Agreement. */
+export function acceptCreatorAgreement(userId: string): void {
+  const profile = profiles.find((p) => p.id === userId);
+  if (profile) profile.agreement_accepted_at = new Date().toISOString();
+}

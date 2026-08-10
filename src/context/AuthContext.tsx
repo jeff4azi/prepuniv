@@ -12,6 +12,7 @@ import {
   purchasedQuizIdsByUser,
   walletTransactions as baseWalletTransactions,
   confirmEmail as mockConfirmEmail,
+  acceptCreatorAgreement as mockAcceptAgreement,
   type Profile,
   type UserRole,
   type WalletTransaction,
@@ -54,6 +55,7 @@ interface AuthContextValue {
   }) => SessionUser;
   logOut: () => void;
   confirmEmail: (userId: string) => void;
+  acceptAgreement: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -199,15 +201,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const confirmEmail = useCallback((userId: string) => {
-    // Update the extraProfiles list for newly signed-up users
     setExtraProfiles((prev) =>
       prev.map((p) => (p.id === userId ? { ...p, email_confirmed: true } : p)),
     );
-    // Also update seeded profiles (e.g. user_001)
     mockConfirmEmail(userId);
-    // Log the user in
     setSessionUserId(userId);
   }, []);
+
+  const acceptAgreement = useCallback(() => {
+    if (!sessionUserId) return;
+    const ts = new Date().toISOString();
+    setExtraProfiles((prev) =>
+      prev.map((p) =>
+        p.id === sessionUserId ? { ...p, agreement_accepted_at: ts } : p,
+      ),
+    );
+    mockAcceptAgreement(sessionUserId);
+  }, [sessionUserId]);
 
   const logOut = useCallback(() => {
     setSessionUserId(null);
@@ -250,6 +260,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     logOut,
     confirmEmail,
+    acceptAgreement,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
