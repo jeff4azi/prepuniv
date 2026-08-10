@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
+import { ArrowRight, CheckCircle2, Mail } from "lucide-react";
 import { AuthShell, AuthCard } from "../components/AuthShell";
 import { Button } from "../components/Button";
 import {
@@ -14,6 +14,7 @@ import {
 import { UniversitySelect } from "../components/UniversitySelect";
 import { useAuth } from "../context/AuthContext";
 import { universities } from "../mock";
+import type { Profile } from "../mock";
 
 interface SignupErrors {
   full_name?: string | null;
@@ -23,8 +24,9 @@ interface SignupErrors {
   university?: string | null;
 }
 
+const RESEND_COOLDOWN = 30;
+
 export function SignupPage() {
-  const navigate = useNavigate();
   const { signUp } = useAuth();
 
   const [fullName, setFullName] = useState("");
@@ -33,9 +35,20 @@ export function SignupPage() {
   const [confirm, setConfirm] = useState("");
   const [universityId, setUniversityId] = useState("");
   const [loading, setLoading] = useState(false);
-  // Errors are only shown after the first submit attempt
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<SignupErrors>({});
+
+  // Post-submit "check your email" state
+  const [newProfile, setNewProfile] = useState<Profile | null>(null);
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
   function runValidation(): SignupErrors {
     return {
@@ -63,18 +76,107 @@ export function SignupPage() {
 
     setLoading(true);
     await new Promise((r) => setTimeout(r, 650));
-    signUp({
+    const profile = signUp({
       full_name: fullName.trim(),
       email: email.trim(),
       university_id: universityId,
     });
     setLoading(false);
-    navigate("/home", { replace: true });
+    setNewProfile(profile);
   }
 
-  // Re-validate on every keystroke but only surface errors if submit was attempted
+  async function handleResend() {
+    if (resending || cooldown > 0) return;
+    setResending(true);
+    setResent(false);
+    await new Promise((r) => setTimeout(r, 800));
+    setResending(false);
+    setResent(true);
+    setCooldown(RESEND_COOLDOWN);
+  }
+
   const live = submitted ? runValidation() : {};
 
+  // ── "Check your email" screen ─────────────────────────────────────────────
+  if (newProfile) {
+    const devToken = `mock-token-${newProfile.id}`;
+    return (
+      <AuthShell
+        crossLink={{
+          label: "Wrong account?",
+          to: "/signup",
+          cta: "Start over",
+        }}
+      >
+        <AuthCard
+          tag="Almost there"
+          tagTone="primary"
+          title="Check your email"
+          subtitle={`We sent a confirmation link to ${newProfile.email}`}
+        >
+          <div className="space-y-5">
+            {/* Icon + email pill */}
+            <div className="flex flex-col items-center text-center py-2 gap-4">
+              <div className="h-20 w-20 rounded-3xl bg-primary/10 text-primary flex items-center justify-center shadow-soft ring-1 ring-primary/20">
+                <Mail className="w-10 h-10" strokeWidth={1.8} />
+              </div>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface/60 text-text-soft text-sm border border-border/60">
+                <Mail className="w-4 h-4 text-muted" strokeWidth={2} />
+                <span className="font-medium truncate max-w-[260px]">
+                  {newProfile.email}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-sm text-text-soft text-center leading-relaxed">
+              Click the link in that email to activate your account. Didn't get
+              it? Check spam, or resend below.
+            </p>
+
+            {/* Resend */}
+            <div className="space-y-2">
+              {resent && (
+                <p className="text-xs text-success font-heading font-medium flex items-center justify-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  Email resent — check your inbox and spam folder.
+                </p>
+              )}
+              <Button
+                fullWidth
+                variant="outline"
+                size="lg"
+                className="h-12"
+                isLoading={resending}
+                disabled={cooldown > 0}
+                onClick={handleResend}
+              >
+                {cooldown > 0
+                  ? `Resend in ${cooldown}s`
+                  : resent
+                    ? "Resend again"
+                    : "Resend Email"}
+              </Button>
+            </div>
+
+            {/* Dev shortcut */}
+            <div className="pt-1">
+              <Link
+                to={`/confirm-email?token=${devToken}`}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border text-xs font-heading font-semibold text-muted hover:text-text-soft hover:border-border/80 transition-colors"
+              >
+                <span className="text-[10px] uppercase tracking-wider opacity-60">
+                  [DEV]
+                </span>
+                Skip to confirmation page →
+              </Link>
+            </div>
+          </div>
+        </AuthCard>
+      </AuthShell>
+    );
+  }
+
+  // ── Signup form ───────────────────────────────────────────────────────────
   return (
     <AuthShell
       crossLink={{
@@ -117,8 +219,8 @@ export function SignupPage() {
             onChange={(e) => {
               setFullName(e.target.value);
               if (submitted)
-                setErrors((prev) => ({
-                  ...prev,
+                setErrors((p) => ({
+                  ...p,
                   full_name: validateFullName(e.target.value),
                 }));
             }}
@@ -136,8 +238,8 @@ export function SignupPage() {
             onChange={(e) => {
               setEmail(e.target.value);
               if (submitted)
-                setErrors((prev) => ({
-                  ...prev,
+                setErrors((p) => ({
+                  ...p,
                   email: validateEmail(e.target.value),
                 }));
             }}
@@ -153,8 +255,8 @@ export function SignupPage() {
             onChange={(id) => {
               setUniversityId(id);
               if (submitted)
-                setErrors((prev) => ({
-                  ...prev,
+                setErrors((p) => ({
+                  ...p,
                   university: id ? null : "Please select your university.",
                 }));
             }}
@@ -172,8 +274,8 @@ export function SignupPage() {
             onChange={(e) => {
               setPassword(e.target.value);
               if (submitted)
-                setErrors((prev) => ({
-                  ...prev,
+                setErrors((p) => ({
+                  ...p,
                   password: validatePassword(e.target.value),
                 }));
             }}
@@ -191,8 +293,8 @@ export function SignupPage() {
             onChange={(e) => {
               setConfirm(e.target.value);
               if (submitted)
-                setErrors((prev) => ({
-                  ...prev,
+                setErrors((p) => ({
+                  ...p,
                   confirm: validatePasswordMatch(password, e.target.value),
                 }));
             }}

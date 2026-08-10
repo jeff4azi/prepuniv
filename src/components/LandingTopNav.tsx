@@ -1,16 +1,16 @@
-import { Button } from './Button';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation } from "react-router-dom";
+import { Button } from "./Button";
 
 export function LandingTopNav() {
   const loc = useLocation();
-  const isLanding = loc.pathname === '/';
+  const isLanding = loc.pathname === "/";
 
   return (
     <header
       className={`sticky top-0 z-50 w-full safe-top transition-all duration-300 ${
         isLanding
-          ? 'bg-background/80 backdrop-blur-xl border-b border-border/40'
-          : 'bg-background border-b border-border/60'
+          ? "bg-background/80 backdrop-blur-xl border-b border-border/40"
+          : "bg-background border-b border-border/60"
       }`}
     >
       <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -25,14 +25,15 @@ export function LandingTopNav() {
           </span>
         </Link>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          <Button variant="ghost" size="sm" onClick={() => (window.location.href = '/login')}>
-            Log in
-          </Button>
-          <Button variant="primary" size="sm" onClick={() => (window.location.href = '/signup')}>
-            Sign up
-          </Button>
-        </div>
+        {isLanding ? (
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Button variant="ghost" size="sm" onClick={() => (window.location.href = '/login')}>Log in</Button>
+            <Button variant="primary" size="sm" onClick={() => (window.location.href = '/signup')}>Sign up</Button>
+          </div>
+        ) : (
+          <Link to="/" className="text-primary font-medium hover:underline">Back to PrepUniv</Link>
+        )}
+
       </div>
     </header>
   );

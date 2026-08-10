@@ -9,6 +9,8 @@ import {
 import { AuthProvider } from "./context/AuthContext";
 import { Sidebar, TopBar, BottomNav } from "./components/Navigation";
 import { AccountSheet } from "./components/AccountMenu";
+import { TermsPage } from "./pages/TermsPage";
+import { PrivacyPage } from "./pages/PrivacyPage";
 import {
   HomePage,
   BrowsePage,
@@ -37,6 +39,7 @@ import { SignupPage } from "./pages/SignupPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
+import { ConfirmEmailPage } from "./pages/ConfirmEmailPage";
 import { QuizDetailPage } from "./pages/QuizDetailPage";
 import { AttemptPage } from "./pages/AttemptPage";
 import { AttemptResultPage } from "./pages/AttemptResultPage";
@@ -177,6 +180,9 @@ function PublicRoutes() {
       />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/confirm-email" element={<ConfirmEmailPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
     </Routes>
   );
 }
@@ -190,6 +196,11 @@ function RoutingSwitch() {
     "/signup",
     "/forgot-password",
     "/reset-password",
+    "/confirm-email",
+    "/terms",
+    "/privacy",
+    "/terms/",
+    "/privacy/",
   ];
   const isPublic = publicPaths.includes(loc.pathname);
   const isAttempt = /^\/attempt\//.test(loc.pathname);

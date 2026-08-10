@@ -11,6 +11,7 @@ import {
   profiles,
   purchasedQuizIdsByUser,
   walletTransactions as baseWalletTransactions,
+  confirmEmail as mockConfirmEmail,
   type Profile,
   type UserRole,
   type WalletTransaction,
@@ -52,6 +53,7 @@ interface AuthContextValue {
     university_id: string;
   }) => SessionUser;
   logOut: () => void;
+  confirmEmail: (userId: string) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -184,16 +186,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id,
         full_name: data.full_name,
         email: data.email,
+        email_confirmed: false,
         role: "user",
         is_approved_creator: false,
         university_id: data.university_id,
       };
       setExtraProfiles((prev) => [...prev, newProfile]);
-      setSessionUserId(id);
+      // Do NOT set sessionUserId here — user must confirm email first
       return newProfile;
     },
     [],
   );
+
+  const confirmEmail = useCallback((userId: string) => {
+    // Update the extraProfiles list for newly signed-up users
+    setExtraProfiles((prev) =>
+      prev.map((p) => (p.id === userId ? { ...p, email_confirmed: true } : p)),
+    );
+    // Also update seeded profiles (e.g. user_001)
+    mockConfirmEmail(userId);
+    // Log the user in
+    setSessionUserId(userId);
+  }, []);
 
   const logOut = useCallback(() => {
     setSessionUserId(null);
@@ -235,6 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logInAsRole,
     signUp,
     logOut,
+    confirmEmail,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

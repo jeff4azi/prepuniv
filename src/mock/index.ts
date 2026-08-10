@@ -4,6 +4,7 @@ export {
   walletBalancesByUser,
   approveCreator,
   toggleSuspension,
+  confirmEmail,
 } from "./profiles";
 export {
   courses,

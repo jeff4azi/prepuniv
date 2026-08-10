@@ -6,6 +6,7 @@ export interface Profile {
   email: string;
   role: UserRole;
   is_approved_creator: boolean;
+  email_confirmed?: boolean;
   is_suspended?: boolean;
   bank_account_number?: string;
   bank_code?: string;
@@ -14,6 +15,8 @@ export interface Profile {
   joined_at?: string;
   /** The university this user belongs to. Undefined only for platform admins. */
   university_id?: string;
+  /** Whether the user has confirmed their email. Undefined = legacy/admin (treated as confirmed). */
+  email_confirmed?: boolean;
 }
 
 export interface Course {

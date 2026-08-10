@@ -773,9 +773,9 @@ function Footer() {
     {
       title: "Legal",
       links: [
-        { t: "Terms of service", to: "#" },
-        { t: "Privacy policy", to: "#" },
-        { t: "Creator agreement", to: "#" },
+        { t: "Terms of service", to: "/terms" },
+        { t: "Privacy policy", to: "/privacy" },
+        { t: "Creator agreement", to: "/creator/agreement" },
       ],
     },
   ];

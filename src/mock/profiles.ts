@@ -11,6 +11,7 @@ export const profiles: Profile[] = [
     avatar_url: undefined,
     joined_at: "2026-03-01T00:00:00Z",
     university_id: "uni_001",
+    email_confirmed: false,
   },
   {
     id: "creator_001",
@@ -259,4 +260,10 @@ export function toggleSuspension(userId: string): boolean {
   if (!profile) return false;
   profile.is_suspended = !profile.is_suspended;
   return profile.is_suspended;
+}
+
+/** Mark a user's email as confirmed. */
+export function confirmEmail(userId: string): void {
+  const profile = profiles.find((p) => p.id === userId);
+  if (profile) profile.email_confirmed = true;
 }
