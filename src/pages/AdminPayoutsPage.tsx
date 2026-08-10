@@ -328,8 +328,8 @@ function PayoutReviewSheet({
               </p>
               {transferOutcome === "failed" && (
                 <p className="text-xs text-danger/80 mt-0.5">
-                  Receiving bank returned an error. No funds were deducted.
-                  The creator can retry.
+                  Receiving bank returned an error. No funds were deducted. The
+                  creator can retry.
                 </p>
               )}
             </div>
@@ -345,9 +345,7 @@ function PayoutReviewSheet({
                 {formatNaira(req.amount)}
               </span>{" "}
               to{" "}
-              <span className="font-heading font-semibold">
-                {creatorName}
-              </span>
+              <span className="font-heading font-semibold">{creatorName}</span>
               &apos;s {bankName} account ending{" "}
               <span className="font-mono font-semibold">{last4}</span>? This
               cannot be undone.
@@ -437,10 +435,8 @@ function PayoutReviewSheet({
           <div className="rounded-2xl border border-danger/25 bg-danger-bg/30 p-4 space-y-3">
             <p className="text-sm text-text leading-relaxed">
               Reject this payout request from{" "}
-              <span className="font-heading font-semibold">
-                {creatorName}
-              </span>
-              ? They will receive your feedback and can resubmit.
+              <span className="font-heading font-semibold">{creatorName}</span>?
+              They will receive your feedback and can resubmit.
             </p>
             <div className="flex items-center gap-2.5">
               <Button
@@ -692,13 +688,13 @@ export function AdminPayoutsPage() {
           </div>
 
           {/* Filter tabs */}
-          <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 w-fit overflow-x-auto no-scrollbar">
+          <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 overflow-x-auto no-scrollbar">
             {TABS.map((tab) => (
               <button
                 key={tab.value}
                 type="button"
                 onClick={() => setActiveTab(tab.value)}
-                className={`h-9 px-3 rounded-xl text-xs font-heading font-semibold transition-all duration-150 flex items-center gap-1.5 shrink-0 ${
+                className={`h-9 px-3 rounded-xl text-xs font-heading font-semibold transition-all duration-150 flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
                   activeTab === tab.value
                     ? "bg-cream shadow-soft text-text"
                     : "text-text-soft hover:text-text"

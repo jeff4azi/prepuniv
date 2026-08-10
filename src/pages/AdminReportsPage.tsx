@@ -718,13 +718,13 @@ export function AdminReportsPage() {
           </div>
 
           {/* Filter tabs */}
-          <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 w-fit">
+          <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 overflow-x-auto no-scrollbar">
             {TABS.map((tab) => (
               <button
                 key={tab.value}
                 type="button"
                 onClick={() => setActiveTab(tab.value)}
-                className={`h-9 px-3.5 rounded-xl text-xs font-heading font-semibold transition-all duration-150 flex items-center gap-1.5 ${
+                className={`h-9 px-3.5 rounded-xl text-xs font-heading font-semibold transition-all duration-150 flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
                   activeTab === tab.value
                     ? "bg-cream shadow-soft text-text"
                     : "text-text-soft hover:text-text"

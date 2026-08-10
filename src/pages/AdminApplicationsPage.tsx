@@ -165,7 +165,9 @@ function ReviewSheet({
         meta={
           <>
             <div>{email}</div>
-            <div className="mt-0.5">Submitted {formatDate(app.submitted_at)}</div>
+            <div className="mt-0.5">
+              Submitted {formatDate(app.submitted_at)}
+            </div>
           </>
         }
         onClose={onClose}
@@ -211,10 +213,7 @@ function ReviewSheet({
         {/* Copyright acknowledgement */}
         <DetailSection icon={ShieldCheck} label="Content originality">
           <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-success-bg border border-success/20 text-xs font-heading font-semibold text-success">
-            <CheckCircle2
-              className="w-3.5 h-3.5 shrink-0"
-              strokeWidth={2.5}
-            />
+            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" strokeWidth={2.5} />
             Confirmed: content will be original
           </div>
         </DetailSection>
@@ -337,8 +336,8 @@ function ReviewSheet({
               />
               <p className="text-sm text-text leading-relaxed">
                 Approve{" "}
-                <span className="font-heading font-semibold">{name}</span> as
-                a creator? This will give them access to publish quizzes
+                <span className="font-heading font-semibold">{name}</span> as a
+                creator? This will give them access to publish quizzes
                 immediately.
               </p>
             </div>
@@ -588,7 +587,7 @@ export function AdminApplicationsPage() {
           </div>
 
           {/* ── Filter tabs ── */}
-          <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 w-fit">
+          <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 overflow-x-auto no-scrollbar">
             {TABS.map((tab) => (
               <button
                 key={tab.value}

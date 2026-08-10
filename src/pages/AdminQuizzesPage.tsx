@@ -587,7 +587,7 @@ export function AdminQuizzesPage() {
           </div>
 
           {/* University tabs */}
-          <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 w-fit overflow-x-auto no-scrollbar">
+          <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 overflow-x-auto no-scrollbar">
             {universities.map((uni) => {
               const count = allQuizzes.filter(
                 (q) => q.university_id === uni.id,
@@ -602,7 +602,7 @@ export function AdminQuizzesPage() {
                     setStatusFilter("all");
                     setSearchInput("");
                   }}
-                  className={`h-9 px-3.5 rounded-xl text-xs font-heading font-semibold transition-all duration-150 flex items-center gap-1.5 shrink-0 ${
+                  className={`h-9 px-3.5 rounded-xl text-xs font-heading font-semibold transition-all duration-150 flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
                     activeUniId === uni.id
                       ? "bg-cream shadow-soft text-text"
                       : "text-text-soft hover:text-text"
@@ -648,16 +648,16 @@ export function AdminQuizzesPage() {
           </div>
 
           {/* Filter chips row */}
-          <div className="flex flex-wrap gap-2.5 items-center">
+          <div className="flex gap-2.5 items-center overflow-x-auto no-scrollbar pb-0.5">
             {/* Status */}
-            <div className="flex gap-1 p-0.5 rounded-xl border border-border/60 bg-cream">
+            <div className="flex gap-1 p-0.5 rounded-xl border border-border/60 bg-cream shrink-0">
               {(["all", "published", "unpublished"] as StatusFilter[]).map(
                 (s) => (
                   <button
                     key={s}
                     type="button"
                     onClick={() => setStatusFilter(s)}
-                    className={`h-8 px-3 rounded-[10px] text-xs font-heading font-semibold transition-all duration-150 capitalize ${
+                    className={`h-8 px-3 rounded-[10px] text-xs font-heading font-semibold transition-all duration-150 capitalize whitespace-nowrap ${
                       statusFilter === s
                         ? "bg-primary text-cream shadow-soft"
                         : "text-text-soft hover:text-text"
@@ -687,7 +687,7 @@ export function AdminQuizzesPage() {
                 key={dept}
                 type="button"
                 onClick={() => setCourseFilter(dept)}
-                className={`h-9 px-3.5 rounded-xl text-xs font-heading font-semibold border shrink-0 transition-all ${
+                className={`h-9 px-3.5 rounded-xl text-xs font-heading font-semibold border shrink-0 transition-all whitespace-nowrap ${
                   courseFilter === dept
                     ? "bg-primary text-cream border-primary shadow-soft"
                     : "bg-cream border-border/60 text-text-soft hover:border-border"
@@ -704,7 +704,7 @@ export function AdminQuizzesPage() {
                   setCourseFilter("all");
                   setStatusFilter("all");
                 }}
-                className="h-9 px-3 rounded-xl text-xs font-heading font-semibold text-muted hover:text-text border border-dashed border-border/60 hover:border-border transition-all flex items-center gap-1.5"
+                className="h-9 px-3 rounded-xl text-xs font-heading font-semibold text-muted hover:text-text border border-dashed border-border/60 hover:border-border transition-all flex items-center gap-1.5 shrink-0"
               >
                 <X className="w-3.5 h-3.5" />
                 Clear
