@@ -7,6 +7,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { RequireAuth } from "./lib/routeGuard";
 import { Sidebar, TopBar, BottomNav } from "./components/Navigation";
 import { AccountSheet } from "./components/AccountMenu";
 import { TermsPage } from "./pages/TermsPage";
@@ -96,58 +97,58 @@ function AppShell() {
         <main className="flex-1 w-full pb-24 lg:pb-0">
           <PageTransition>
             <Routes>
-              <Route path="/home" element={<HomePage />} />
-              <Route path="/browse" element={<BrowsePage />} />
-              <Route path="/library" element={<LibraryPage />} />
-              <Route path="/wallet" element={<WalletPage />} />
-              <Route path="/history" element={<HistoryPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/home" element={<RequireAuth><HomePage /></RequireAuth>} />
+              <Route path="/browse" element={<RequireAuth><BrowsePage /></RequireAuth>} />
+              <Route path="/library" element={<RequireAuth><LibraryPage /></RequireAuth>} />
+              <Route path="/wallet" element={<RequireAuth><WalletPage /></RequireAuth>} />
+              <Route path="/history" element={<RequireAuth><HistoryPage /></RequireAuth>} />
+              <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
 
-              <Route path="/quiz/:id" element={<QuizDetailPage />} />
+              <Route path="/quiz/:id" element={<RequireAuth><QuizDetailPage /></RequireAuth>} />
               <Route
                 path="/quiz/:id/leaderboard"
-                element={<LeaderboardPage />}
+                element={<RequireAuth><LeaderboardPage /></RequireAuth>}
               />
               <Route
                 path="/profile/creator/:id"
-                element={<CreatorProfilePage />}
+                element={<RequireAuth><CreatorProfilePage /></RequireAuth>}
               />
 
-              <Route path="/creator" element={<CreatorDashboardPage />} />
-              <Route path="/creator/apply" element={<CreatorApplyPage />} />
+              <Route path="/creator" element={<RequireAuth role="approvedCreator"><CreatorDashboardPage /></RequireAuth>} />
+              <Route path="/creator/apply" element={<RequireAuth><CreatorApplyPage /></RequireAuth>} />
               <Route
                 path="/creator/agreement"
-                element={<CreatorAgreementPage />}
+                element={<RequireAuth role="approvedCreator"><CreatorAgreementPage /></RequireAuth>}
               />
-              <Route path="/creator/quizzes" element={<CreatorQuizzesPage />} />
+              <Route path="/creator/quizzes" element={<RequireAuth role="approvedCreator"><CreatorQuizzesPage /></RequireAuth>} />
               <Route
                 path="/creator/quizzes/new"
-                element={<CreatorQuizzesNewPage />}
+                element={<RequireAuth role="approvedCreator"><CreatorQuizzesNewPage /></RequireAuth>}
               />
               <Route
                 path="/creator/quizzes/:id/edit"
-                element={<CreatorQuizEditPage />}
+                element={<RequireAuth role="approvedCreator"><CreatorQuizEditPage /></RequireAuth>}
               />
               <Route
                 path="/creator/quizzes/:id/analytics"
-                element={<CreatorQuizAnalyticsPage />}
+                element={<RequireAuth role="approvedCreator"><CreatorQuizAnalyticsPage /></RequireAuth>}
               />
-              <Route path="/creator/payouts" element={<CreatorPayoutsPage />} />
-              <Route path="/creator/reports" element={<CreatorReportsPage />} />
+              <Route path="/creator/payouts" element={<RequireAuth role="approvedCreator"><CreatorPayoutsPage /></RequireAuth>} />
+              <Route path="/creator/reports" element={<RequireAuth role="approvedCreator"><CreatorReportsPage /></RequireAuth>} />
 
-              <Route path="/admin" element={<AdminDashboardPage />} />
+              <Route path="/admin" element={<RequireAuth role="admin"><AdminDashboardPage /></RequireAuth>} />
               <Route
                 path="/admin/applications"
-                element={<AdminApplicationsPage />}
+                element={<RequireAuth role="admin"><AdminApplicationsPage /></RequireAuth>}
               />
-              <Route path="/admin/payouts" element={<AdminPayoutsPage />} />
-              <Route path="/admin/reports" element={<AdminReportsPage />} />
-              <Route path="/admin/users" element={<AdminUsersPage />} />
-              <Route path="/admin/courses" element={<AdminCoursesPage />} />
-              <Route path="/admin/quizzes" element={<AdminQuizzesPage />} />
+              <Route path="/admin/payouts" element={<RequireAuth role="admin"><AdminPayoutsPage /></RequireAuth>} />
+              <Route path="/admin/reports" element={<RequireAuth role="admin"><AdminReportsPage /></RequireAuth>} />
+              <Route path="/admin/users" element={<RequireAuth role="admin"><AdminUsersPage /></RequireAuth>} />
+              <Route path="/admin/courses" element={<RequireAuth role="admin"><AdminCoursesPage /></RequireAuth>} />
+              <Route path="/admin/quizzes" element={<RequireAuth role="admin"><AdminQuizzesPage /></RequireAuth>} />
               <Route
                 path="/admin/universities"
-                element={<AdminUniversitiesPage />}
+                element={<RequireAuth role="admin"><AdminUniversitiesPage /></RequireAuth>}
               />
             </Routes>
           </PageTransition>
@@ -166,8 +167,8 @@ function AppShell() {
 function AttemptShell() {
   return (
     <Routes>
-      <Route path="/attempt/:id" element={<AttemptPage />} />
-      <Route path="/attempt/:id/result" element={<AttemptResultPage />} />
+      <Route path="/attempt/:id" element={<RequireAuth><AttemptPage /></RequireAuth>} />
+      <Route path="/attempt/:id/result" element={<RequireAuth><AttemptResultPage /></RequireAuth>} />
     </Routes>
   );
 }

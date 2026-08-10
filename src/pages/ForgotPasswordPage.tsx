@@ -4,8 +4,10 @@ import { ArrowRight, CheckCircle2, Mail, ArrowLeft } from 'lucide-react';
 import { AuthShell, AuthCard } from '../components/AuthShell';
 import { Button } from '../components/Button';
 import { TextInput, validateEmail } from '../components/Form';
+import { useAuth } from '../context/AuthContext';
 
 export function ForgotPasswordPage() {
+  const { resetPasswordRequest } = useAuth();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,8 +21,12 @@ export function ForgotPasswordPage() {
     setError(err);
     if (err) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 700));
+    const result = await resetPasswordRequest(email);
     setLoading(false);
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
     setSent(true);
   }
 
@@ -87,12 +93,6 @@ export function ForgotPasswordPage() {
               </p>
             </div>
             <div className="space-y-3 pt-1">
-              <Link to="/reset-password">
-                <Button fullWidth size="lg" className="h-12">
-                  Open reset page (demo)
-                  <ArrowRight className="w-[18px] h-[18px]" />
-                </Button>
-              </Link>
               <button
                 type="button"
                 onClick={handleBack}

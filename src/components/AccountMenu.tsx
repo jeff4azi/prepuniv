@@ -27,8 +27,7 @@ import {
   Clock,
   GraduationCap,
 } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
-import type { UserRole } from "../mock";
+import { useAuth, type UserRole } from "../context/AuthContext";
 import { Avatar } from "./Avatar";
 import { Badge } from "./Badge";
 

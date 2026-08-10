@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link, Navigate } from "react-router-dom";
 import {
   TrendingUp,
@@ -20,20 +20,13 @@ import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { useAuth } from "../context/AuthContext";
-import {
-  walletTransactions as allWalletTxns,
-  quizzes as allQuizzes,
-  type WalletTransaction,
-  type Quiz,
-} from "../mock";
+import { supabase, type DbQuiz, type DbWalletTxn } from "../lib/supabase";
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-export function formatNaira(kobo: number) {
-  const abs = Math.abs(kobo);
+export function formatNaira(naira: number) {
+  const abs = Math.abs(Number(naira) || 0);
   const formatted =
-    "₦" + (abs / 100).toLocaleString("en-NG", { maximumFractionDigits: 0 });
-  return kobo < 0 ? "-" + formatted : formatted;
+    "₦" + abs.toLocaleString("en-NG", { maximumFractionDigits: 0 });
+  return naira < 0 ? "-" + formatted : formatted;
 }
 
 function relativeTime(iso: string): string {
@@ -71,38 +64,57 @@ function greetingByTime() {
   return "Good evening";
 }
 
-function quizRevenue(q: Quiz) {
-  return Math.round(q.attempt_count * q.price * 0.9);
+function quizRevenue(q: DbQuiz) {
+  return Math.round(Number(q.attempt_count || 0) * Number(q.price) * 0.9);
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
-
 export function CreatorDashboardPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, walletBalance } = useAuth();
   const now = useMemo(() => new Date(), []);
   const creatorId = currentUser.id;
 
-  const creatorTxns = useMemo(
-    () =>
-      allWalletTxns.filter(
-        (t) =>
-          t.user_id === creatorId &&
-          (t.type === "creator_earning" || t.type === "payout") &&
-          t.status === "success",
-      ),
-    [creatorId],
-  );
+  const [myQuizzes, setMyQuizzes] = useState<DbQuiz[]>([]);
+  const [walletTxns, setWalletTxns] = useState<DbWalletTxn[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const earningsBalance = useMemo(
-    () => creatorTxns.reduce((sum, t) => sum + t.amount, 0),
-    [creatorTxns],
-  );
+  useEffect(() => {
+    if (!currentUser.is_approved_creator) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const [qRes, tRes] = await Promise.all([
+        supabase
+          .from("quizzes")
+          .select("*")
+          .eq("creator_id", creatorId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("wallet_transactions")
+          .select("*")
+          .eq("user_id", creatorId)
+          .in("type", ["creator_earning", "payout"])
+          .eq("status", "completed")
+          .order("created_at", { ascending: false }),
+      ]);
+      if (cancelled) return;
+      setMyQuizzes(qRes.data ?? []);
+      setWalletTxns(tRes.data ?? []);
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [creatorId, currentUser.is_approved_creator]);
+
+  const creatorTxns = walletTxns;
 
   const lifetimeEarnings = useMemo(
     () =>
       creatorTxns
         .filter((t) => t.type === "creator_earning")
-        .reduce((sum, t) => sum + t.amount, 0),
+        .reduce((sum, t) => sum + Number(t.amount), 0),
     [creatorTxns],
   );
 
@@ -112,17 +124,12 @@ export function CreatorDashboardPage() {
         .filter(
           (t) => t.type === "creator_earning" && sameMonth(t.created_at, now),
         )
-        .reduce((sum, t) => sum + t.amount, 0),
+        .reduce((sum, t) => sum + Number(t.amount), 0),
     [creatorTxns, now],
   );
 
-  const myQuizzes = useMemo(
-    () => allQuizzes.filter((q) => q.creator_id === creatorId),
-    [creatorId],
-  );
-
   const totalAttempts = useMemo(
-    () => myQuizzes.reduce((sum, q) => sum + q.attempt_count, 0),
+    () => myQuizzes.reduce((sum, q) => sum + Number(q.attempt_count || 0), 0),
     [myQuizzes],
   );
 
@@ -130,33 +137,23 @@ export function CreatorDashboardPage() {
     () =>
       myQuizzes.length
         ? myQuizzes.reduce((best, q) =>
-            q.attempt_count > best.attempt_count ? q : best,
+            Number(q.attempt_count || 0) > Number(best.attempt_count || 0)
+              ? q
+              : best,
           )
         : null,
     [myQuizzes],
   );
 
   const activityItems = useMemo(() => {
-    return allWalletTxns
-      .filter(
-        (t) =>
-          t.user_id === creatorId &&
-          (t.type === "creator_earning" || t.type === "payout") &&
-          t.status === "success",
-      )
-      .sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-      )
-      .slice(0, 6);
-  }, [creatorId]);
+    return creatorTxns.slice(0, 6);
+  }, [creatorTxns]);
 
   const quizzesById = useMemo(
-    () => new Map(allQuizzes.map((q) => [q.id, q])),
-    [],
+    () => new Map(myQuizzes.map((q) => [q.id, q])),
+    [myQuizzes],
   );
 
-  // Gate after all hooks — React rules of hooks compliant
   if (!currentUser.is_approved_creator) {
     return <Navigate to="/creator/apply" replace />;
   }
@@ -165,10 +162,30 @@ export function CreatorDashboardPage() {
   const publishedCount = myQuizzes.filter((q) => q.is_published).length;
   const draftCount = myQuizzes.filter((q) => !q.is_published).length;
 
+  if (loading) {
+    return (
+      <PageContainer className="!max-w-[1160px]">
+        <div className="space-y-7 lg:space-y-9">
+          <div className="h-24 w-full rounded-2xl bg-surface/50 animate-pulse" />
+          <div className="h-56 w-full rounded-3xl bg-surface/50 animate-pulse" />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="h-32 rounded-2xl bg-surface/50 animate-pulse"
+              />
+            ))}
+          </div>
+          <div className="h-72 w-full rounded-3xl bg-surface/50 animate-pulse" />
+          <div className="h-72 w-full rounded-3xl bg-surface/50 animate-pulse" />
+        </div>
+      </PageContainer>
+    );
+  }
+
   return (
     <PageContainer className="!max-w-[1160px]">
       <div className="space-y-7 lg:space-y-9">
-        {/* 1. Header ─────────────────────────────────────────────────────── */}
         <section className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-2">
@@ -201,7 +218,6 @@ export function CreatorDashboardPage() {
           </div>
         </section>
 
-        {/* 2. Earnings balance card ───────────────────────────────────────── */}
         <section>
           <Card
             padded={false}
@@ -226,7 +242,7 @@ export function CreatorDashboardPage() {
                     Earnings balance
                   </Badge>
                   <p className="mt-3 font-heading font-bold text-[34px] sm:text-[40px] lg:text-[44px] leading-none tracking-tight">
-                    {formatNaira(earningsBalance)}
+                    {formatNaira(walletBalance)}
                   </p>
                   <p className="mt-2 text-[13px] text-cream/75 max-w-sm leading-relaxed">
                     Accumulated earnings after payouts. Request a payout to
@@ -267,7 +283,6 @@ export function CreatorDashboardPage() {
           </Card>
         </section>
 
-        {/* 3. Quick stats row ──────────────────────────────────────────────── */}
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-5">
           <Card padded className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
@@ -285,8 +300,8 @@ export function CreatorDashboardPage() {
             </div>
             {bestQuiz && (
               <p className="text-xs text-text-soft leading-relaxed">
-                {bestQuiz.attempt_count.toLocaleString("en-NG")} attempts
-                &nbsp;·&nbsp;
+                {Number(bestQuiz.attempt_count || 0).toLocaleString("en-NG")}{" "}
+                attempts&nbsp;·&nbsp;
                 {formatNaira(quizRevenue(bestQuiz))} earned
               </p>
             )}
@@ -335,7 +350,6 @@ export function CreatorDashboardPage() {
           </Card>
         </section>
 
-        {/* 4. My quizzes preview ───────────────────────────────────────────── */}
         <section>
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4 mb-4">
             <div>
@@ -374,7 +388,10 @@ export function CreatorDashboardPage() {
           >
             {myQuizzes
               .slice()
-              .sort((a, b) => b.attempt_count - a.attempt_count)
+              .sort(
+                (a, b) =>
+                  Number(b.attempt_count || 0) - Number(a.attempt_count || 0),
+              )
               .slice(0, 4)
               .map((quiz) => (
                 <QuizRow
@@ -383,10 +400,22 @@ export function CreatorDashboardPage() {
                   revenue={quizRevenue(quiz)}
                 />
               ))}
+            {myQuizzes.length === 0 && (
+              <div className="p-8 flex flex-col items-center text-center">
+                <div className="h-14 w-14 rounded-3xl bg-surface/80 text-muted flex items-center justify-center mb-4 shadow-card ring-1 ring-border/50">
+                  <FileText className="w-7 h-7" strokeWidth={1.9} />
+                </div>
+                <h3 className="font-heading font-bold text-lg text-text">
+                  No quizzes yet
+                </h3>
+                <p className="mt-1.5 text-sm text-text-soft max-w-sm leading-relaxed">
+                  Create your first quiz to start seeing stats here.
+                </p>
+              </div>
+            )}
           </Card>
         </section>
 
-        {/* 5. Recent activity feed ─────────────────────────────────────────── */}
         <section>
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4 mb-4">
             <div>
@@ -448,8 +477,6 @@ export function CreatorDashboardPage() {
   );
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
 function EarningsStatChip({
   label,
   value,
@@ -476,7 +503,7 @@ function EarningsStatChip({
   );
 }
 
-function QuizRow({ quiz, revenue }: { quiz: Quiz; revenue: number }) {
+function QuizRow({ quiz, revenue }: { quiz: DbQuiz; revenue: number }) {
   return (
     <div className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 min-h-[64px] hover:bg-surface/30 transition-colors">
       <div
@@ -495,8 +522,9 @@ function QuizRow({ quiz, revenue }: { quiz: Quiz; revenue: number }) {
           </Badge>
         </div>
         <p className="mt-0.5 text-[12px] sm:text-[13px] text-text-soft">
-          {quiz.attempt_count.toLocaleString("en-NG")} attempts &nbsp;·&nbsp;
-          {formatNaira(quiz.price)} per access
+          {Number(quiz.attempt_count || 0).toLocaleString("en-NG")} attempts
+          &nbsp;·&nbsp;
+          {formatNaira(Number(quiz.price))} per access
         </p>
       </div>
 
@@ -516,7 +544,7 @@ function ActivityRow({
   txn,
   quizTitle,
 }: {
-  txn: WalletTransaction;
+  txn: DbWalletTxn;
   quizTitle?: string;
 }) {
   const isEarning = txn.type === "creator_earning";
@@ -562,7 +590,7 @@ function ActivityRow({
           }`}
         >
           {isEarning ? "+" : "−"}
-          {formatNaira(Math.abs(txn.amount))}
+          {formatNaira(Math.abs(Number(txn.amount)))}
         </p>
       </div>
     </div>

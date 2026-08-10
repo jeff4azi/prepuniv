@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import type { UserRole } from "../mock";
+import type { UserRole } from "../context/AuthContext";
 import { Avatar } from "./Avatar";
 import { Badge } from "./Badge";
 import { AccountSheet, AccountPopover } from "./AccountMenu";

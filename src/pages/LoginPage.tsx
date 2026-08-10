@@ -10,13 +10,12 @@ import {
   validatePassword,
 } from "../components/Form";
 import { useAuth } from "../context/AuthContext";
-import { profiles } from "../mock";
 
 const RESEND_COOLDOWN = 60;
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { logInAsUser } = useAuth();
+  const { logIn, resendSignup } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -62,40 +61,40 @@ export function LoginPage() {
     e.preventDefault();
     if (!validateAll()) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 600));
 
-    const matched = profiles.find(
-      (p) => p.email.toLowerCase() === email.trim().toLowerCase(),
-    );
+    const { error, emailNotConfirmed } = await logIn({
+      email: email.trim(),
+      password,
+    });
 
-    if (!matched) {
-      setErrors({ email: "No account found with that email address." });
+    if (emailNotConfirmed) {
+      setUnconfirmedId(email.trim());
+      setUnconfirmedEmail(email.trim());
+      setCooldown(RESEND_COOLDOWN);
       setLoading(false);
       return;
     }
 
-    // Gate: unconfirmed email
-    if (matched.email_confirmed === false) {
-      setUnconfirmedId(matched.id);
-      setUnconfirmedEmail(matched.email);
-      setCooldown(RESEND_COOLDOWN); // reset cooldown at the moment we show the screen
+    if (error) {
+      setErrors({ form: error.message });
       setLoading(false);
       return;
     }
 
-    logInAsUser(matched.id);
     navigate("/home", { replace: true });
     setLoading(false);
   }
 
   async function handleResend() {
-    if (resending || cooldown > 0) return;
+    if (resending || cooldown > 0 || !unconfirmedEmail) return;
     setResending(true);
     setResent(false);
-    await new Promise((r) => setTimeout(r, 800));
+    const { error } = await resendSignup(unconfirmedEmail);
     setResending(false);
-    setResent(true);
-    setCooldown(RESEND_COOLDOWN);
+    if (!error) {
+      setResent(true);
+      setCooldown(RESEND_COOLDOWN);
+    }
   }
 
   const liveErrors = touched.email || touched.password ? runValidation() : {};
@@ -106,7 +105,6 @@ export function LoginPage() {
 
   // ── Unconfirmed email inline state ────────────────────────────────────────
   if (unconfirmedId) {
-    const devToken = `mock-token-${unconfirmedId}`;
     return (
       <AuthShell
         crossLink={{
@@ -168,17 +166,6 @@ export function LoginPage() {
             >
               Try a different account
             </button>
-
-            {/* Dev shortcut */}
-            <Link
-              to={`/confirm-email?token=${devToken}`}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border text-xs font-heading font-semibold text-muted hover:text-text-soft hover:border-border/80 transition-colors"
-            >
-              <span className="text-[10px] uppercase tracking-wider opacity-60">
-                [DEV]
-              </span>
-              Skip to confirmation page →
-            </Link>
           </div>
         </AuthCard>
       </AuthShell>
@@ -244,6 +231,13 @@ export function LoginPage() {
               error={finalErrors.password ?? undefined}
             />
           </div>
+
+          {errors.form && (
+            <p className="text-xs text-danger flex items-center gap-1.5 px-1">
+              <span className="w-1 h-1 rounded-full bg-danger inline-block shrink-0" />
+              {errors.form}
+            </p>
+          )}
 
           <Button
             fullWidth

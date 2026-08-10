@@ -11,10 +11,9 @@ import {
   validatePasswordMatch,
   validateFullName,
 } from "../components/Form";
-import { UniversitySelect } from "../components/UniversitySelect";
+import { UniversitySelect, type University } from "../components/UniversitySelect";
 import { useAuth } from "../context/AuthContext";
-import { universities } from "../mock";
-import type { Profile } from "../mock";
+import { supabase } from "../lib/supabase";
 
 interface SignupErrors {
   full_name?: string | null;
@@ -22,12 +21,14 @@ interface SignupErrors {
   password?: string | null;
   confirm?: string | null;
   university?: string | null;
+  form?: string | null;
 }
 
 const RESEND_COOLDOWN = 60;
+const PENDING_UNI_KEY = "prepuniv:pending_university_id";
 
 export function SignupPage() {
-  const { signUp } = useAuth();
+  const { signUp, resendSignup, isLoggedIn, updateProfilePatch } = useAuth();
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -37,13 +38,34 @@ export function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<SignupErrors>({});
+  const [universities, setUniversities] = useState<University[]>([]);
 
-  // Post-submit "check your email" state
-  const [newProfile, setNewProfile] = useState<Profile | null>(null);
+  const [signupEmail, setSignupEmail] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
-  // Start disabled — user must wait before they can resend
   const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("universities")
+        .select("id, name, abbreviation, state")
+        .order("name");
+      if (cancelled || !data) return;
+      setUniversities(data as University[]);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const pending = window.localStorage.getItem(PENDING_UNI_KEY);
+    if (!pending) return;
+    window.localStorage.removeItem(PENDING_UNI_KEY);
+    void updateProfilePatch({ university_id: pending } as any);
+    setUniversityId(pending);
+  }, [isLoggedIn, updateProfilePatch]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -76,32 +98,57 @@ export function SignupPage() {
       return;
 
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 650));
-    const profile = signUp({
+    window.localStorage.setItem(PENDING_UNI_KEY, universityId);
+    const { error, needsConfirmation } = await signUp({
       full_name: fullName.trim(),
       email: email.trim(),
-      university_id: universityId,
+      password,
     });
+
+    if (error) {
+      window.localStorage.removeItem(PENDING_UNI_KEY);
+      setLoading(false);
+      setErrors({
+        ...errs,
+        form: error.message,
+      });
+      return;
+    }
+
+    if (!needsConfirmation) {
+      const { error: patchErr } = await updateProfilePatch({
+        university_id: universityId,
+      } as any);
+      if (patchErr) {
+        console.warn("university_id patch failed:", patchErr);
+      }
+      window.localStorage.removeItem(PENDING_UNI_KEY);
+    }
+
     setLoading(false);
-    setCooldown(RESEND_COOLDOWN); // reset cooldown at the moment of signup
-    setNewProfile(profile);
+
+    if (needsConfirmation) {
+      setCooldown(RESEND_COOLDOWN);
+      setSignupEmail(email.trim());
+    }
   }
 
   async function handleResend() {
-    if (resending || cooldown > 0) return;
+    if (resending || cooldown > 0 || !signupEmail) return;
     setResending(true);
     setResent(false);
-    await new Promise((r) => setTimeout(r, 800));
+    const { error } = await resendSignup(signupEmail);
     setResending(false);
-    setResent(true);
-    setCooldown(RESEND_COOLDOWN);
+    if (!error) {
+      setResent(true);
+      setCooldown(RESEND_COOLDOWN);
+    }
   }
 
   const live = submitted ? runValidation() : {};
 
   // ── "Check your email" screen ─────────────────────────────────────────────
-  if (newProfile) {
-    const devToken = `mock-token-${newProfile.id}`;
+  if (signupEmail) {
     return (
       <AuthShell
         crossLink={{
@@ -114,10 +161,9 @@ export function SignupPage() {
           tag="Almost there"
           tagTone="primary"
           title="Check your email"
-          subtitle={`We sent a confirmation link to ${newProfile.email}`}
+          subtitle={`We sent a confirmation link to ${signupEmail}`}
         >
           <div className="space-y-5">
-            {/* Icon + email pill */}
             <div className="flex flex-col items-center text-center py-2 gap-4">
               <div className="h-20 w-20 rounded-3xl bg-primary/10 text-primary flex items-center justify-center shadow-soft ring-1 ring-primary/20">
                 <Mail className="w-10 h-10" strokeWidth={1.8} />
@@ -125,7 +171,7 @@ export function SignupPage() {
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface/60 text-text-soft text-sm border border-border/60">
                 <Mail className="w-4 h-4 text-muted" strokeWidth={2} />
                 <span className="font-medium truncate max-w-[260px]">
-                  {newProfile.email}
+                  {signupEmail}
                 </span>
               </div>
             </div>
@@ -135,7 +181,6 @@ export function SignupPage() {
               it? Check spam, or resend below.
             </p>
 
-            {/* Resend */}
             <div className="space-y-2">
               {resent && (
                 <p className="text-xs text-success font-heading font-medium flex items-center justify-center gap-1.5">
@@ -158,19 +203,6 @@ export function SignupPage() {
                     ? "Resend again"
                     : "Resend Email"}
               </Button>
-            </div>
-
-            {/* Dev shortcut */}
-            <div className="pt-1">
-              <Link
-                to={`/confirm-email?token=${devToken}`}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border text-xs font-heading font-semibold text-muted hover:text-text-soft hover:border-border/80 transition-colors"
-              >
-                <span className="text-[10px] uppercase tracking-wider opacity-60">
-                  [DEV]
-                </span>
-                Skip to confirmation page →
-              </Link>
             </div>
           </div>
         </AuthCard>

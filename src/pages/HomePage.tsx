@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Plus,
@@ -19,17 +19,9 @@ import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Avatar } from "../components/Avatar";
-import { QuizCard, formatNaira, formatDate } from "../components/QuizCard";
+import { QuizCard, formatNaira } from "../components/QuizCard";
 import { useAuth } from "../context/AuthContext";
-import {
-  quizzes as allQuizzes,
-  courses as allCourses,
-  profiles as allProfiles,
-  quizAttempts as allAttempts,
-  walletTransactions as allWalletTxns,
-  type Quiz,
-  type QuizAttempt,
-} from "../mock";
+import { supabase, type DbQuiz, type DbCourse, type DbProfile, type DbQuizAttempt } from "../lib/supabase";
 
 function greetingByTime() {
   const h = new Date().getHours();
@@ -42,31 +34,96 @@ function firstName(full: string) {
   return full.split(" ")[0] ?? full;
 }
 
-function computeWalletBalance(userId: string) {
-  return allWalletTxns
-    .filter((t) => t.user_id === userId && t.status === "success")
-    .reduce((sum, t) => sum + t.amount, 0);
-}
-
-function attemptDateKey(a: QuizAttempt) {
-  return (a.completed_at ?? a.started_at).valueOf
-    ? new Date(a.completed_at ?? a.started_at).getTime()
-    : 0;
+function attemptDateKey(a: DbQuizAttempt) {
+  const ts = a.completed_at ?? a.started_at;
+  return ts ? new Date(ts).getTime() : 0;
 }
 
 export function HomePage() {
   const {
     currentUser,
     purchasedQuizIds,
-    walletBalance: cachedBalance,
+    walletBalance,
     hasPurchasedQuiz,
   } = useAuth();
 
-  const walletBalance = useMemo(
-    () => computeWalletBalance(currentUser.id),
-    [currentUser.id],
-  );
-  const balanceToShow = walletBalance !== 0 ? walletBalance : cachedBalance;
+  const [loading, setLoading] = useState(true);
+  const [allQuizzes, setAllQuizzes] = useState<DbQuiz[]>([]);
+  const [allCourses, setAllCourses] = useState<DbCourse[]>([]);
+  const [allProfiles, setAllProfiles] = useState<DbProfile[]>([]);
+  const [allAttempts, setAllAttempts] = useState<DbQuizAttempt[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    let cancelled = false;
+
+    async function loadAll() {
+      if (!currentUser.id) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const quizQuery = supabase
+          .from("quizzes")
+          .select("*");
+        if (currentUser.role !== "admin") {
+          quizQuery
+            .eq("is_published", true)
+            .eq("unpublished_by_admin", false);
+          if (currentUser.university_id) {
+            quizQuery.eq("university_id", currentUser.university_id);
+          }
+        }
+
+        const courseQuery = supabase
+          .from("courses")
+          .select("*");
+        if (currentUser.role !== "admin" && currentUser.university_id) {
+          courseQuery.eq("university_id", currentUser.university_id);
+        }
+
+        const profilesQuery = supabase
+          .from("profiles")
+          .select("id, full_name, role, is_approved_creator, created_at");
+
+        const attemptsQuery = supabase
+          .from("quiz_attempts")
+          .select("*")
+          .eq("user_id", currentUser.id)
+          .order("started_at", { ascending: false });
+
+        const [quizRes, courseRes, profileRes, attemptRes] = await Promise.all([
+          quizQuery,
+          courseQuery,
+          profilesQuery,
+          attemptsQuery,
+        ]);
+
+        if (cancelled) return;
+
+        if (quizRes.error) console.warn("Home quizzes fetch:", quizRes.error.message);
+        if (courseRes.error) console.warn("Home courses fetch:", courseRes.error.message);
+        if (profileRes.error) console.warn("Home profiles fetch:", profileRes.error.message);
+        if (attemptRes.error) console.warn("Home attempts fetch:", attemptRes.error.message);
+
+        setAllQuizzes(quizRes.data ?? []);
+        setAllCourses(courseRes.data ?? []);
+        setAllProfiles(profileRes.data ?? []);
+        setAllAttempts(attemptRes.data ?? []);
+      } catch (e) {
+        if (!cancelled) console.warn("Home page data fetch failed:", e);
+      } finally {
+        if (mounted && !cancelled) setLoading(false);
+      }
+    }
+
+    void loadAll();
+
+    return () => {
+      mounted = false;
+      cancelled = true;
+    };
+  }, [currentUser.id, currentUser.role, currentUser.university_id]);
 
   const greeting = greetingByTime();
   const userFirst = firstName(currentUser.full_name);
@@ -79,25 +136,26 @@ export function HomePage() {
   const coursesById = useMemo(() => {
     const m = new Map(allCourses.map((c) => [c.id, c]));
     return m;
-  }, []);
+  }, [allCourses]);
   const profilesById = useMemo(() => {
     const m = new Map(allProfiles.map((p) => [p.id, p]));
     return m;
-  }, []);
+  }, [allProfiles]);
   const quizzesById = useMemo(() => {
     const m = new Map(allQuizzes.map((q) => [q.id, q]));
     return m;
-  }, []);
+  }, [allQuizzes]);
 
   const publishedQuizzes = useMemo(
     () =>
       allQuizzes.filter(
         (q) =>
           q.is_published &&
+          !q.unpublished_by_admin &&
           (currentUser.role === "admin" ||
             q.university_id === currentUser.university_id),
       ),
-    [currentUser.university_id, currentUser.role],
+    [allQuizzes, currentUser.university_id, currentUser.role],
   );
 
   const userAttempts = useMemo(() => {
@@ -108,12 +166,12 @@ export function HomePage() {
           new Date(b.completed_at ?? b.started_at).getTime() -
           new Date(a.completed_at ?? a.started_at).getTime(),
       );
-  }, [currentUser.id]);
+  }, [allAttempts, currentUser.id]);
 
   const recentAttempts = userAttempts.slice(0, 5);
 
-  const purchasedQuizzes: Quiz[] = useMemo(() => {
-    const out: Quiz[] = [];
+  const purchasedQuizzes: DbQuiz[] = useMemo(() => {
+    const out: DbQuiz[] = [];
     for (const id of purchasedQuizIds) {
       const q = quizzesById.get(id);
       if (q) out.push(q);
@@ -143,9 +201,9 @@ export function HomePage() {
   const stats = useMemo(() => {
     const total = userAttempts.length;
     const avg = total
-      ? Math.round(userAttempts.reduce((s, a) => s + a.score, 0) / total)
+      ? Math.round(userAttempts.reduce((s, a) => s + (a.score ?? 0), 0) / total)
       : 0;
-    const best = total ? Math.max(...userAttempts.map((a) => a.score)) : 0;
+    const best = total ? Math.max(...userAttempts.map((a) => a.score ?? 0)) : 0;
     const streak = computeStreak(userAttempts);
     return { total, avg, best, streak };
   }, [userAttempts]);
@@ -210,7 +268,7 @@ export function HomePage() {
                     Wallet balance
                   </Badge>
                   <p className="mt-3 font-heading font-bold text-[34px] sm:text-4xl leading-none tracking-tight">
-                    {formatNaira(balanceToShow)}
+                    {formatNaira(walletBalance)}
                   </p>
                   <p className="mt-1.5 text-[13px] text-cream/75">
                     Ready to spend on any PrepUniv quiz. Pay once, and it's
@@ -367,8 +425,6 @@ export function HomePage() {
             {recentAttempts.map((attempt) => {
               const quiz = quizzesById.get(attempt.quiz_id);
               if (!quiz) return null;
-              const retakeId =
-                "atmp_" + Math.random().toString(36).slice(2, 10);
               return (
                 <QuizCard
                   key={attempt.id}
@@ -635,7 +691,7 @@ function EmptyState({
   );
 }
 
-function computeStreak(attempts: QuizAttempt[]) {
+function computeStreak(attempts: DbQuizAttempt[]) {
   if (!attempts.length) return 0;
   const days = new Set(
     attempts.map((a) => {

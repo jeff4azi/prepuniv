@@ -1,16 +1,17 @@
 /**
  * ConfirmEmailPage — /confirm-email
  *
- * Simulates what happens when a user clicks the link in their confirmation email.
- * Reads ?token= from the URL — any non-empty value is treated as valid in mock mode.
+ * Handles what happens when a user clicks the link in their confirmation email.
+ * Supabase client detects the confirmation token from the URL automatically
+ * (detectSessionInUrl: true) and the AuthContext picks up the resulting session.
  *
  * States:
- *   verifying  — spinner on mount (~1 s delay)
- *   success    — mark confirmed, log in, redirect to /home
- *   invalid    — bad/missing token; show resend form
+ *   verifying  — spinner on mount (brief delay for URL token detection)
+ *   success    — session confirmed with email_confirmed=true, redirect to /home
+ *   invalid    — no valid session; show resend form
  */
 import { useEffect, useState, type FormEvent } from "react";
-import { useSearchParams, useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   CheckCircle2,
   Loader2,
@@ -23,13 +24,11 @@ import { AuthShell, AuthCard } from "../components/AuthShell";
 import { Button } from "../components/Button";
 import { TextInput, validateEmail } from "../components/Form";
 import { useAuth } from "../context/AuthContext";
-import { profiles } from "../mock";
-
-// ─── Resend widget (shared by invalid-token state) ────────────────────────────
 
 const RESEND_COOLDOWN = 60;
 
 function ResendForm() {
+  const { resendSignup } = useAuth();
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -50,8 +49,12 @@ function ResendForm() {
     setSubmitted(true);
     if (err) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
+    const { error: resendError } = await resendSignup(email.trim());
     setLoading(false);
+    if (resendError) {
+      setError(resendError.message);
+      return;
+    }
     setResent(true);
     setCooldown(RESEND_COOLDOWN);
   }
@@ -73,7 +76,7 @@ function ResendForm() {
         error={submitted ? (error ?? undefined) : undefined}
       />
       {resent && (
-        <p className="text-xs text-success font-heading font-medium flex items-center gap-1.5">
+        <p className="text-xs text-success font-heading font-medium flex items-center justify-center gap-1.5">
           <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
           Email resent — check your inbox and spam folder.
         </p>
@@ -99,39 +102,40 @@ function ResendForm() {
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
-
 type PageState = "verifying" | "success" | "invalid";
 
 export function ConfirmEmailPage() {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { confirmEmail } = useAuth();
+  const { isLoggedIn, currentUser } = useAuth();
 
-  const token = searchParams.get("token") ?? "";
   const [state, setState] = useState<PageState>("verifying");
   const [autoRedirectCount, setAutoRedirectCount] = useState(5);
 
-  // Extract userId from token — format: mock-token-{userId}
-  const userId = token.startsWith("mock-token-")
-    ? token.slice("mock-token-".length)
-    : null;
-
   useEffect(() => {
-    // Simulate server-side token verification
+    let mounted = true;
     const t = setTimeout(() => {
-      if (token && userId) {
+      if (!mounted) return;
+      if (isLoggedIn && currentUser.email_confirmed) {
         setState("success");
-        confirmEmail(userId);
+      } else if (isLoggedIn && !currentUser.email_confirmed) {
+        setState("verifying");
       } else {
         setState("invalid");
       }
-    }, 1100);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    }, 1500);
 
-  // Auto-redirect countdown on success
+    return () => {
+      mounted = false;
+      clearTimeout(t);
+    };
+  }, [isLoggedIn, currentUser.email_confirmed]);
+
+  useEffect(() => {
+    if (state === "verifying" && isLoggedIn && currentUser.email_confirmed) {
+      setState("success");
+    }
+  }, [state, isLoggedIn, currentUser.email_confirmed]);
+
   useEffect(() => {
     if (state !== "success") return;
     if (autoRedirectCount <= 0) {
@@ -142,7 +146,6 @@ export function ConfirmEmailPage() {
     return () => clearTimeout(t);
   }, [state, autoRedirectCount, navigate]);
 
-  // ── Verifying ──────────────────────────────────────────────────────────────
   if (state === "verifying") {
     return (
       <AuthShell>
@@ -165,9 +168,7 @@ export function ConfirmEmailPage() {
     );
   }
 
-  // ── Success ────────────────────────────────────────────────────────────────
   if (state === "success") {
-    const profile = userId ? profiles.find((p) => p.id === userId) : null;
     return (
       <AuthShell>
         <AuthCard
@@ -181,11 +182,11 @@ export function ConfirmEmailPage() {
               <div className="h-20 w-20 rounded-3xl bg-success-bg text-success flex items-center justify-center mb-4 shadow-soft ring-1 ring-success/20">
                 <CheckCircle2 className="w-10 h-10" strokeWidth={2} />
               </div>
-              {profile && (
+              {currentUser.email && (
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface/60 text-text-soft text-sm border border-border/60">
                   <Mail className="w-4 h-4 text-muted" strokeWidth={2} />
                   <span className="font-medium truncate max-w-[260px]">
-                    {profile.email}
+                    {currentUser.email}
                   </span>
                 </div>
               )}
@@ -208,7 +209,6 @@ export function ConfirmEmailPage() {
     );
   }
 
-  // ── Invalid token ──────────────────────────────────────────────────────────
   return (
     <AuthShell
       crossLink={{ label: "Know your password?", to: "/login", cta: "Log in" }}

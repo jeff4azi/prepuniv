@@ -13,16 +13,16 @@ import { Button } from "./Button";
 import { Avatar } from "./Avatar";
 import { Toast, useToast } from "./Toast";
 import { ShareActionsMenu } from "./ShareActions";
-import type { Quiz, Course, Profile, QuizAttempt } from "../mock";
+import type { DbQuiz, DbCourse, DbProfile, DbQuizAttempt } from "../lib/supabase";
 
 type QuizCardVariant = "purchased" | "locked" | "attempted";
 
 export interface QuizCardProps {
-  quiz: Quiz;
-  course?: Course;
-  creator?: Profile;
+  quiz: DbQuiz;
+  course?: DbCourse;
+  creator?: DbProfile;
   variant?: QuizCardVariant;
-  attempt?: QuizAttempt;
+  attempt?: DbQuizAttempt;
   className?: string;
   /** Pass true when already on the creator's own profile page to avoid a
    *  self-referencing link loop. The creator row still renders, just not
@@ -89,8 +89,8 @@ export function QuizCard({
   })();
   const shareTitle = `${course?.code ?? "Quiz"} · ${quiz.title}`;
   const shareText = creator
-    ? `Take this ${course?.title ?? "quiz"} by ${creator.full_name} on PrepUniv — ${quiz.question_count} questions.`
-    : `Take this ${course?.title ?? "quiz"} on PrepUniv — ${quiz.question_count} questions.`;
+    ? `Take this ${course?.name ?? "quiz"} by ${creator.full_name} on PrepUniv — ${quiz.question_count ?? 0} questions.`
+    : `Take this ${course?.name ?? "quiz"} on PrepUniv — ${quiz.question_count ?? 0} questions.`;
 
   const ctaRow = (() => {
     if (variant === "purchased") {
@@ -157,7 +157,7 @@ export function QuizCard({
       );
     }
     if (variant === "attempted" && attempt) {
-      const score = attempt.score;
+      const score = attempt.score ?? 0;
       const color =
         score >= 80 ? "success" : score >= 60 ? "primary" : "warning";
       const variantBadge = color as "success" | "primary" | "warning";
@@ -216,9 +216,9 @@ export function QuizCard({
             <div className="flex items-center gap-1.5 flex-wrap mb-2">
               <Badge variant="secondary" size="sm">
                 <Target className="w-3 h-3" />
-                {course ? course.code : "Quiz"}
+                {course ? course.code ?? "Quiz" : "Quiz"}
               </Badge>
-              {course && (
+              {course && course.subject_area && (
                 <span className="text-[10px] font-heading font-medium text-muted">
                   {course.subject_area}
                 </span>
@@ -233,7 +233,7 @@ export function QuizCard({
 
         <div className="flex items-center gap-2 text-xs text-text-soft">
           <FileQuestion className="w-4 h-4 text-muted" />
-          <span>{quiz.question_count.toLocaleString()} questions</span>
+          <span>{(quiz.question_count ?? 0).toLocaleString()} questions</span>
           {variant === "attempted" && attempt?.completed_at && (
             <>
               <span className="h-1 w-1 rounded-full bg-muted/60" />
@@ -244,7 +244,7 @@ export function QuizCard({
         </div>
 
         {variant === "attempted" && attempt && (
-          <ScoreStrip score={attempt.score} />
+          <ScoreStrip score={attempt.score ?? 0} />
         )}
 
         {variant !== "attempted" && (
@@ -256,7 +256,7 @@ export function QuizCard({
                   variant === "purchased"
                     ? "100%"
                     : String(
-                        Math.min(100, 25 + ((quiz.question_count * 7) % 60)),
+                        Math.min(100, 25 + (((quiz.question_count ?? 0) * 7) % 60)),
                       ) + "%",
               }}
             />

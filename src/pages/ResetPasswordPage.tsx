@@ -8,12 +8,14 @@ import {
   validatePassword,
   validatePasswordMatch,
 } from '../components/Form';
+import { useAuth } from '../context/AuthContext';
 
 export function ResetPasswordPage() {
+  const { updatePassword } = useAuth();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ password?: string | null; confirm?: string | null }>({});
+  const [errors, setErrors] = useState<{ password?: string | null; confirm?: string | null; submit?: string | null }>({});
   const [touched, setTouched] = useState<{ password: boolean; confirm: boolean }>({
     password: false,
     confirm: false,
@@ -38,8 +40,13 @@ export function ResetPasswordPage() {
     e.preventDefault();
     if (!validateAll()) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 650));
+    setErrors((prev) => ({ ...prev, submit: null }));
+    const result = await updatePassword(password);
     setLoading(false);
+    if (result.error) {
+      setErrors((prev) => ({ ...prev, submit: result.error.message }));
+      return;
+    }
     setSuccess(true);
   }
 
@@ -65,13 +72,13 @@ export function ResetPasswordPage() {
       >
         {!success ? (
           <form onSubmit={handleSubmit} noValidate className="space-y-4 sm:space-y-[18px]">
-            <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-warning-bg/50 border border-warning/15">
-              <div className="h-10 w-10 rounded-xl bg-cream text-warning flex items-center justify-center shrink-0">
+            <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-primary/5 border border-primary/15">
+              <div className="h-10 w-10 rounded-xl bg-cream text-primary flex items-center justify-center shrink-0">
                 <Lock className="w-5 h-5" strokeWidth={2.1} />
               </div>
               <p className="text-xs sm:text-[13px] text-text-soft leading-relaxed">
-                This is a simulated password-reset page. No real email link was opened —
-                we're just validating the flow so you can preview the UX.
+                Choose a strong password that you don&apos;t use anywhere else.
+                We&apos;ll use this to secure your account going forward.
               </p>
             </div>
 
@@ -98,6 +105,13 @@ export function ResetPasswordPage() {
               error={finalErrors.confirm ?? undefined}
             />
 
+            {errors.submit && (
+              <p className="text-xs text-danger flex items-center gap-1.5 px-1">
+                <span className="w-1 h-1 rounded-full bg-danger inline-block shrink-0" />
+                {errors.submit}
+              </p>
+            )}
+
             <Button fullWidth size="lg" isLoading={loading} type="submit" className="h-12 mt-1">
               Reset password
               {!loading && <ArrowRight className="w-[18px] h-[18px]" />}
@@ -121,7 +135,7 @@ export function ResetPasswordPage() {
               </h3>
               <p className="text-sm text-text-soft max-w-sm leading-relaxed">
                 Use it the next time you log in. If this wasn't you, please reach out to{' '}
-                <a href="#" className="font-semibold text-primary hover:underline">
+                <a href="mailto:support@prepuniv.com" className="font-semibold text-primary hover:underline">
                   support@prepuniv.com
                 </a>{' '}
                 immediately.
@@ -141,6 +155,7 @@ export function ResetPasswordPage() {
                   setPassword('');
                   setConfirm('');
                   setTouched({ password: false, confirm: false });
+                  setErrors({});
                 }}
                 className="w-full text-sm font-semibold text-text-soft hover:text-primary transition-colors pt-1"
               >

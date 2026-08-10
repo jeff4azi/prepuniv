@@ -26,30 +26,73 @@ import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
-import {
-  walletTransactions as allWalletTxns,
-  payoutRequests as basePayoutRequests,
-  addPayoutRequest,
-  MINIMUM_PAYOUT_THRESHOLD,
-  PAYOUT_FREQUENCY_CAP_MS,
-  NIGERIAN_BANKS,
-  mockVerifyAccount,
-  getBankName,
-  maskAccountNumber,
-  type PayoutRequest,
-  type PayoutRequestStatus,
-} from "../mock";
+import { supabase, type DbPayoutRequest } from "../lib/supabase";
+import { apiFetch } from "../lib/api";
 import { formatNaira } from "./CreatorDashboardPage";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const MINIMUM_PAYOUT_THRESHOLD = 200000;
+const PAYOUT_FREQUENCY_CAP_MS = 7 * 24 * 60 * 60 * 1000;
 
-function computeEarningsBalance(userId: string): number {
-  return allWalletTxns
+type PayoutRequestStatus = DbPayoutRequest["status"];
+type PayoutRequest = DbPayoutRequest;
+
+interface Bank {
+  code: string;
+  name: string;
+}
+
+const NIGERIAN_BANKS: Bank[] = [
+  { code: "044", name: "Access Bank" },
+  { code: "023", name: "Citibank Nigeria" },
+  { code: "050", name: "EcoBank Nigeria" },
+  { code: "070", name: "Fidelity Bank" },
+  { code: "011", name: "First Bank of Nigeria" },
+  { code: "214", name: "First City Monument Bank (FCMB)" },
+  { code: "058", name: "GTBank (Guaranty Trust)" },
+  { code: "030", name: "Heritage Bank" },
+  { code: "082", name: "Keystone Bank" },
+  { code: "999992", name: "OPay" },
+  { code: "50211", name: "Kuda Bank" },
+  { code: "076", name: "Polaris Bank" },
+  { code: "039", name: "Stanbic IBTC Bank" },
+  { code: "232", name: "Sterling Bank" },
+  { code: "033", name: "United Bank for Africa (UBA)" },
+  { code: "035", name: "Wema Bank" },
+  { code: "057", name: "Zenith Bank" },
+];
+
+function getBankName(code: string): string {
+  return NIGERIAN_BANKS.find((b) => b.code === code)?.name ?? code;
+}
+
+function maskAccountNumber(acct: string): string {
+  if (acct.length <= 4) return acct;
+  return "•••• •••• " + acct.slice(-4);
+}
+
+async function mockVerifyAccount(
+  accountNumber: string,
+  _bankCode: string,
+  ownerFullName: string,
+): Promise<{ success: true; accountName: string } | { success: false }> {
+  await new Promise((r) => setTimeout(r, 1100));
+  const allSame = accountNumber.split("").every((c) => c === accountNumber[0]);
+  if (allSame) return { success: false };
+  const parts = ownerFullName.trim().toUpperCase().split(/\s+/);
+  const accountName =
+    parts.length >= 2
+      ? `${parts[parts.length - 1]} ${parts[0]}${parts.length > 2 ? " " + parts.slice(1, -1).join(" ") : ""}`
+      : ownerFullName.toUpperCase();
+  return { success: true, accountName };
+}
+
+function computeEarningsBalance(userId: string, walletTxns: { user_id: string | null; type: string; status: string; amount: number }[]): number {
+  return walletTxns
     .filter(
       (t) =>
         t.user_id === userId &&
         (t.type === "creator_earning" || t.type === "payout") &&
-        t.status === "success",
+        t.status === "completed",
     )
     .reduce((sum, t) => sum + t.amount, 0);
 }
@@ -66,8 +109,6 @@ function addMs(iso: string, ms: number): Date {
   return new Date(new Date(iso).getTime() + ms);
 }
 
-// ─── Status badge config ──────────────────────────────────────────────────────
-
 const STATUS_CONFIG: Record<
   PayoutRequestStatus,
   {
@@ -83,25 +124,32 @@ const STATUS_CONFIG: Record<
   failed: { label: "Transfer failed", variant: "danger", icon: AlertCircle },
 };
 
-// ─── Main page ────────────────────────────────────────────────────────────────
-
 export function CreatorPayoutsPage() {
-  const { currentUser, updateBankDetails, resolvedAccountName } = useAuth();
+  const { currentUser, updateBankDetails, resolvedAccountName, walletTxns, refreshProfile } = useAuth();
 
   const earningsBalance = useMemo(
-    () => computeEarningsBalance(currentUser.id),
-    [currentUser.id],
+    () => computeEarningsBalance(currentUser.id, walletTxns),
+    [currentUser.id, walletTxns],
   );
 
-  const [payoutList, setPayoutList] = useState<PayoutRequest[]>(() =>
-    basePayoutRequests
-      .filter((p) => p.creator_id === currentUser.id)
-      .sort(
-        (a, b) =>
-          new Date(b.requested_at).getTime() -
-          new Date(a.requested_at).getTime(),
-      ),
-  );
+  const [payoutList, setPayoutList] = useState<PayoutRequest[]>([]);
+  const [loadingPayouts, setLoadingPayouts] = useState(true);
+
+  const loadPayoutRequests = useCallback(async () => {
+    if (!currentUser.id) return;
+    setLoadingPayouts(true);
+    const { data } = await supabase
+      .from("payout_requests")
+      .select("*")
+      .eq("creator_id", currentUser.id)
+      .order("requested_at", { ascending: false });
+    setPayoutList((data as PayoutRequest[]) ?? []);
+    setLoadingPayouts(false);
+  }, [currentUser.id]);
+
+  useEffect(() => {
+    void loadPayoutRequests();
+  }, [loadPayoutRequests]);
 
   const [bankSheetOpen, setBankSheetOpen] = useState(false);
   const [payoutSheetOpen, setPayoutSheetOpen] = useState(false);
@@ -140,13 +188,23 @@ export function CreatorPayoutsPage() {
     accountNumber: string,
     resolvedName: string,
   ) {
-    updateBankDetails(bankCode, accountNumber, resolvedName);
-    setBankSheetOpen(false);
-    showToast({
-      message: hasBankDetails
-        ? "Bank account updated successfully."
-        : "Bank account added. You can now request payouts.",
-      variant: "success",
+    updateBankDetails({
+      bank_code: bankCode,
+      bank_account_number: accountNumber,
+      bank_name: getBankName(bankCode),
+      bank_account_name: resolvedName,
+    }).then(({ error }) => {
+      if (error) {
+        showToast({ message: "Failed to update bank details.", variant: "danger" });
+        return;
+      }
+      setBankSheetOpen(false);
+      showToast({
+        message: hasBankDetails
+          ? "Bank account updated successfully."
+          : "Bank account added. You can now request payouts.",
+        variant: "success",
+      });
     });
   }
 
@@ -158,19 +216,27 @@ export function CreatorPayoutsPage() {
     )
       return;
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 800));
-    const newReq: PayoutRequest = {
-      id: "pr_new_" + Math.random().toString(36).slice(2, 9),
-      creator_id: currentUser.id,
-      amount: requestedAmountKobo,
-      status: "pending",
-      requested_at: new Date().toISOString(),
-      bank_account_number: currentUser.bank_account_number ?? "",
-      bank_code: currentUser.bank_code ?? "",
-    };
-    addPayoutRequest(newReq);
-    setPayoutList((prev) => [newReq, ...prev]);
+    const { data, error } = await apiFetch<{ payout_request: PayoutRequest }>(
+      "/api/creator/payout-request",
+      {
+        method: "POST",
+        body: { amount: requestedAmountKobo },
+      },
+    );
     setSubmitting(false);
+    if (error) {
+      showToast({
+        message: error || "Failed to submit payout request.",
+        variant: "danger",
+      });
+      return;
+    }
+    if (data?.payout_request) {
+      setPayoutList((prev) => [data.payout_request, ...prev]);
+    } else {
+      await loadPayoutRequests();
+    }
+    await refreshProfile();
     setPayoutSheetOpen(false);
     showToast({
       message: `Payout request for ${formatNaira(requestedAmountKobo)} submitted — our team will review within 2 business days.`,
@@ -193,7 +259,6 @@ export function CreatorPayoutsPage() {
 
       <PageContainer className="!max-w-[900px]">
         <div className="space-y-6 lg:space-y-7">
-          {/* ── Header ──────────────────────────────────────────── */}
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Badge variant="secondary" size="sm" dot>
@@ -209,7 +274,6 @@ export function CreatorPayoutsPage() {
             </p>
           </div>
 
-          {/* ── Earnings balance card ────────────────────────────── */}
           <Card
             padded={false}
             className="relative overflow-hidden bg-secondary text-cream border-secondary/40"
@@ -247,7 +311,6 @@ export function CreatorPayoutsPage() {
             </div>
           </Card>
 
-          {/* ── Bank account card ────────────────────────────────── */}
           <BankAccountCard
             bankCode={currentUser.bank_code}
             accountNumber={currentUser.bank_account_number}
@@ -256,7 +319,6 @@ export function CreatorPayoutsPage() {
             onEdit={() => setBankSheetOpen(true)}
           />
 
-          {/* ── Eligibility status ───────────────────────────────── */}
           <EligibilityCard
             earningsBalance={earningsBalance}
             meetsThreshold={meetsThreshold}
@@ -270,7 +332,6 @@ export function CreatorPayoutsPage() {
             onAddBank={() => setBankSheetOpen(true)}
           />
 
-          {/* ── History ──────────────────────────────────────────── */}
           <div>
             <div className="mb-3">
               <h2 className="font-heading font-semibold text-lg text-text">
@@ -279,6 +340,7 @@ export function CreatorPayoutsPage() {
               <p className="text-sm text-text-soft mt-0.5">
                 {payoutList.length} past request
                 {payoutList.length !== 1 ? "s" : ""}
+                {loadingPayouts && " — loading…"}
               </p>
             </div>
 
@@ -309,7 +371,6 @@ export function CreatorPayoutsPage() {
         </div>
       </PageContainer>
 
-      {/* ── Bank account setup sheet ──────────────────────────────── */}
       {bankSheetOpen &&
         createPortal(
           <BankAccountSetupSheet
@@ -322,7 +383,6 @@ export function CreatorPayoutsPage() {
           document.body,
         )}
 
-      {/* ── Payout request sheet ─────────────────────────────────── */}
       {payoutSheetOpen &&
         createPortal(
           <PayoutRequestSheet
@@ -339,8 +399,6 @@ export function CreatorPayoutsPage() {
     </>
   );
 }
-
-// ─── BankAccountCard ──────────────────────────────────────────────────────────
 
 function BankAccountCard({
   bankCode,
@@ -392,7 +450,6 @@ function BankAccountCard({
 
   const bankName = getBankName(bankCode);
   const masked = maskAccountNumber(accountNumber);
-  // Bank initial for the avatar
   const bankInitial = bankName.charAt(0).toUpperCase();
 
   return (
@@ -414,7 +471,6 @@ function BankAccountCard({
       </div>
 
       <div className="flex items-center gap-3.5">
-        {/* Bank initial avatar */}
         <div className="h-12 w-12 rounded-2xl bg-secondary/12 text-secondary flex items-center justify-center shrink-0 font-heading font-bold text-lg shadow-card ring-1 ring-border/40">
           {bankInitial}
         </div>
@@ -441,8 +497,6 @@ function BankAccountCard({
     </Card>
   );
 }
-
-// ─── EligibilityCard ──────────────────────────────────────────────────────────
 
 function EligibilityCard({
   earningsBalance,
@@ -601,8 +655,6 @@ function EligibilityCard({
   );
 }
 
-// ─── PayoutRow ────────────────────────────────────────────────────────────────
-
 function PayoutRow({ request }: { request: PayoutRequest }) {
   const cfg = STATUS_CONFIG[request.status];
   const StatusIcon = cfg.icon;
@@ -643,19 +695,6 @@ function PayoutRow({ request }: { request: PayoutRequest }) {
               />
               <p className="text-[12px] text-danger leading-relaxed flex-1">
                 {request.notes}
-                {request.status === "failed" && (
-                  <>
-                    {" "}
-                    <button
-                      className="underline font-semibold hover:opacity-80"
-                      onClick={() => {
-                        /* handled via bank edit button on main page */
-                      }}
-                    >
-                      Update your bank account above.
-                    </button>
-                  </>
-                )}
               </p>
             </div>
           )}
@@ -664,11 +703,9 @@ function PayoutRow({ request }: { request: PayoutRequest }) {
   );
 }
 
-// ─── PayoutRequestSheet ───────────────────────────────────────────────────────
-
 type PayoutStep = "amount" | "confirm";
 
-const PAYOUT_PRESETS_KOBO = [200000, 500000, 1000000, 2500000]; // ₦2k / ₦5k / ₦10k / ₦25k
+const PAYOUT_PRESETS_KOBO = [200000, 500000, 1000000, 2500000];
 
 function PayoutRequestSheet({
   maxEarningsKobo,
@@ -691,7 +728,6 @@ function PayoutRequestSheet({
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState("");
 
-  // Reset internal state whenever sheet (re)opens
   useEffect(() => {
     setStep("amount");
     setSelectedPreset(null);
@@ -713,9 +749,8 @@ function PayoutRequestSheet({
     };
   }, [onClose, submitting, step]);
 
-  // Convert kobo <-> naira for display
   const maxNaira = maxEarningsKobo / 100;
-  const minNaira = MINIMUM_PAYOUT_THRESHOLD / 100; // = 2000
+  const minNaira = MINIMUM_PAYOUT_THRESHOLD / 100;
 
   const customKobo = Number(customAmount) * 100;
   const selectedKobo: number =
@@ -725,7 +760,6 @@ function PayoutRequestSheet({
   const withinMax = selectedKobo > 0 && selectedKobo <= maxEarningsKobo;
   const validSelection = meetsMin && withinMax;
 
-  // When moving to confirm, always re-validate
   function handleContinue() {
     if (!validSelection) return;
     setStep("confirm");
@@ -757,10 +791,8 @@ function PayoutRequestSheet({
           )}
         </div>
         <div className="px-5 sm:px-6 lg:px-7 pb-6 lg:pb-7 space-y-4">
-          {/* ── STEP 1: Choose amount ───────────────────────────── */}
           {step === "amount" && (
             <div className="space-y-5">
-              {/* Balance banner */}
               <div className="rounded-2xl bg-secondary/10 border border-secondary/15 p-4 flex items-center gap-3.5">
                 <div className="h-10 w-10 rounded-2xl bg-secondary/12 text-secondary flex items-center justify-center shrink-0">
                   <Banknote className="w-5 h-5" strokeWidth={2} />
@@ -775,7 +807,6 @@ function PayoutRequestSheet({
                 </div>
               </div>
 
-              {/* Preset chips */}
               <div>
                 <p className="text-[11px] font-heading font-semibold uppercase tracking-[0.16em] text-muted mb-2.5">
                   Quick amounts
@@ -822,7 +853,6 @@ function PayoutRequestSheet({
                 )}
               </div>
 
-              {/* Custom amount input */}
               <div>
                 <p className="text-[11px] font-heading font-semibold uppercase tracking-[0.16em] text-muted mb-2.5">
                   Or enter custom amount
@@ -853,7 +883,6 @@ function PayoutRequestSheet({
                 </div>
               </div>
 
-              {/* Validation hints */}
               <div className="space-y-2">
                 {!withinMax && selectedKobo > 0 ? (
                   <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-2xl bg-danger-bg/40 border border-danger/20">
@@ -939,10 +968,8 @@ function PayoutRequestSheet({
             </div>
           )}
 
-          {/* ── STEP 2: Confirm + submit ────────────────────────── */}
           {step === "confirm" && (
             <div className="space-y-4">
-              {/* Amount to withdraw */}
               <div className="rounded-2xl bg-surface/50 border border-border/50 p-4 flex items-center gap-3.5">
                 <div className="h-10 w-10 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
                   <Banknote className="w-5 h-5" strokeWidth={2} />
@@ -957,7 +984,6 @@ function PayoutRequestSheet({
                 </div>
               </div>
 
-              {/* Destination account */}
               <div className="rounded-2xl bg-surface/50 border border-border/50 p-4 space-y-1.5">
                 <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted">
                   Transfer to
@@ -988,7 +1014,6 @@ function PayoutRequestSheet({
                 )}
               </div>
 
-              {/* Remaining balance */}
               <div className="rounded-2xl bg-primary/8 border border-primary/15 p-4 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <Info
@@ -1038,8 +1063,6 @@ function PayoutRequestSheet({
   );
 }
 
-// ─── BankAccountSetupSheet ────────────────────────────────────────────────────
-
 type SetupStep = "entry" | "verifying" | "confirm";
 
 function BankAccountSetupSheet({
@@ -1074,7 +1097,6 @@ function BankAccountSetupSheet({
   const [resolvedName, setResolvedName] = useState("");
   const bankDropRef = useRef<HTMLDivElement>(null);
 
-  // Close on Escape
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -1089,7 +1111,6 @@ function BankAccountSetupSheet({
     };
   }, [onClose, step]);
 
-  // Close bank dropdown on outside click
   useEffect(() => {
     if (!bankDropOpen) return;
     const h = (e: MouseEvent) => {
@@ -1161,16 +1182,13 @@ function BankAccountSetupSheet({
         onClick={step === "verifying" ? undefined : onClose}
       />
       <div className="absolute left-0 right-0 bottom-0 lg:left-1/2 lg:-translate-x-1/2 lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2 lg:max-w-[480px] lg:w-[92%] lg:rounded-3xl rounded-t-3xl bg-cream shadow-elevated safe-bottom flex flex-col max-h-[90dvh]">
-        {/* Drag pill */}
         <div className="lg:hidden pt-2 pb-1 flex justify-center shrink-0">
           <div className="h-1 w-10 rounded-full bg-border" />
         </div>
 
-        {/* Header */}
         <div className="px-5 sm:px-6 lg:px-7 pt-3 lg:pt-5 pb-3 flex items-center justify-between shrink-0">
           <div>
             <p className="font-heading font-bold text-lg text-text">{title}</p>
-            {/* Step indicators */}
             <div className="flex items-center gap-1.5 mt-1">
               {(["entry", "verifying", "confirm"] as SetupStep[]).map(
                 (s, i) => (
@@ -1198,9 +1216,7 @@ function BankAccountSetupSheet({
           )}
         </div>
 
-        {/* Body */}
         <div className="px-5 sm:px-6 lg:px-7 pb-6 lg:pb-7 overflow-y-auto flex-1">
-          {/* ── Step 1: Entry ──────────────────────────────────── */}
           {step === "entry" && (
             <div className="space-y-4">
               <p className="text-sm text-text-soft leading-relaxed">
@@ -1208,7 +1224,6 @@ function BankAccountSetupSheet({
                 saving.
               </p>
 
-              {/* Verify error */}
               {verifyError && (
                 <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-2xl bg-danger-bg/40 border border-danger/25">
                   <AlertCircle
@@ -1221,7 +1236,6 @@ function BankAccountSetupSheet({
                 </div>
               )}
 
-              {/* Bank selector (searchable) */}
               <div>
                 <label className="block mb-1.5 text-xs sm:text-[13px] font-heading font-semibold text-text-soft tracking-tight">
                   Bank
@@ -1241,7 +1255,6 @@ function BankAccountSetupSheet({
                   </button>
                   {bankDropOpen && (
                     <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 bg-cream border border-border/60 rounded-2xl shadow-elevated overflow-hidden">
-                      {/* Search */}
                       <div className="px-3 pt-3 pb-2 border-b border-border/40">
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
@@ -1284,7 +1297,6 @@ function BankAccountSetupSheet({
                 </div>
               </div>
 
-              {/* Account number */}
               <div>
                 <label className="block mb-1.5 text-xs sm:text-[13px] font-heading font-semibold text-text-soft tracking-tight">
                   Account number (NUBAN)
@@ -1323,7 +1335,6 @@ function BankAccountSetupSheet({
             </div>
           )}
 
-          {/* ── Step 2: Verifying ──────────────────────────────── */}
           {step === "verifying" && (
             <div className="py-10 flex flex-col items-center text-center">
               <div className="relative h-16 w-16 mb-5 flex items-center justify-center">
@@ -1352,10 +1363,8 @@ function BankAccountSetupSheet({
             </div>
           )}
 
-          {/* ── Step 3: Confirm ────────────────────────────────── */}
           {step === "confirm" && (
             <div className="space-y-5">
-              {/* Trust moment — resolved name large and prominent */}
               <div className="flex flex-col items-center text-center py-4">
                 <div className="h-16 w-16 rounded-3xl bg-success/10 text-success flex items-center justify-center mb-4 shadow-card ring-1 ring-success/20">
                   <Shield className="w-8 h-8" strokeWidth={2} />
@@ -1372,7 +1381,6 @@ function BankAccountSetupSheet({
                 </p>
               </div>
 
-              {/* Account summary */}
               <div className="rounded-2xl bg-surface/50 border border-border/50 p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[12px] text-muted font-heading font-medium">
@@ -1406,7 +1414,7 @@ function BankAccountSetupSheet({
                   className="w-full h-11 rounded-2xl bg-success text-cream text-sm font-heading font-semibold flex items-center justify-center gap-2 hover:bg-success/90 transition-colors active:scale-[0.98]"
                 >
                   <CheckCircle2 className="w-4 h-4" strokeWidth={2.2} />
-                  Confirm &amp; save
+                  Confirm & save
                 </button>
                 <button
                   onClick={() => {

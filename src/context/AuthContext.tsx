@@ -7,269 +7,443 @@ import {
   useEffect,
   type ReactNode,
 } from "react";
-import {
-  profiles,
-  purchasedQuizIdsByUser,
-  walletTransactions as baseWalletTransactions,
-  confirmEmail as mockConfirmEmail,
-  acceptCreatorAgreement as mockAcceptAgreement,
-  type Profile,
-  type UserRole,
-  type WalletTransaction,
-} from "../mock";
+import type { Session, AuthError, User } from "@supabase/supabase-js";
+import { supabase, type DbProfile, type DbCourse, type DbQuiz, type DbQuizAttempt, type DbWalletTxn } from "../lib/supabase";
 
-interface SessionUser extends Profile {}
+export type UserRole = "user" | "creator" | "admin";
 
-function computeWalletBalance(userId: string, extraTxns: WalletTransaction[]) {
-  const fromTxns = [...baseWalletTransactions, ...extraTxns]
-    .filter((t) => t.user_id === userId && t.status === "success")
-    .reduce((sum, t) => sum + t.amount, 0);
-  return fromTxns;
+/**
+ * Extended user shape that pages expect. Combines the DB profile
+ * (which has role, university_id, bank details) with the session.user
+ * info (email, email_confirmed_at) — so the rest of the app can read
+ * a single `currentUser` object just like the old mock context.
+ */
+export interface CurrentUser {
+  id: string;
+  full_name: string;
+  email: string;
+  role: UserRole;
+  is_approved_creator: boolean;
+  is_suspended: boolean;
+  university_id: string;
+  email_confirmed: boolean;
+  agreement_accepted_at?: string;
+  bank_account_number?: string;
+  bank_code?: string;
+  bank_name?: string;
+  bank_account_name?: string;
+  joined_at?: string;
+}
+
+export interface Profile extends DbProfile {}
+
+interface BankDetails {
+  bank_code: string;
+  bank_account_number: string;
+  bank_name?: string;
+  bank_account_name?: string;
 }
 
 interface AuthContextValue {
-  currentUser: Profile;
-  currentRole: UserRole;
-  setCurrentRole: (role: UserRole) => void;
+  session: Session | null;
+  sessionUser: User | null;
+  profile: Profile | null;
+  currentUser: CurrentUser;
+  isLoading: boolean;
+
+  isLoggedIn: boolean;
+  isAdmin: boolean;
+  isApprovedCreator: boolean;
+
   walletBalance: number;
+  walletTxns: DbWalletTxn[];
   purchasedQuizIds: string[];
   hasPurchasedQuiz: (quizId: string) => boolean;
-  extraTransactions: WalletTransaction[];
-  addWalletTransaction: (txn: WalletTransaction) => void;
-  purchaseQuiz: (quizId: string, price: number) => Promise<boolean>;
-  updateBankDetails: (
-    bankCode: string,
-    accountNumber: string,
-    resolvedName: string,
-  ) => void;
-  resolvedAccountName: string | undefined;
 
-  sessionUser: SessionUser | null;
-  isLoggedIn: boolean;
-  logInAsUser: (userId: string) => void;
-  logInAsRole: (role: UserRole) => void;
-  signUp: (data: {
+  signUp: (args: {
     full_name: string;
     email: string;
-    university_id: string;
-  }) => SessionUser;
-  logOut: () => void;
-  confirmEmail: (userId: string) => void;
-  acceptAgreement: () => void;
+    password: string;
+  }) => Promise<{ error: AuthError | null; needsConfirmation: boolean }>;
+
+  logIn: (args: {
+    email: string;
+    password: string;
+  }) => Promise<{ error: AuthError | null; emailNotConfirmed: boolean }>;
+
+  logOut: () => Promise<void>;
+
+  resendSignup: (email: string) => Promise<{ error: AuthError | null }>;
+
+  resetPasswordRequest: (email: string) => Promise<{ error: AuthError | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>;
+
+  refreshProfile: () => Promise<void>;
+  updateProfilePatch: (patch: Partial<Profile>) => Promise<{ error: Error | null }>;
+
+  acceptCreatorAgreement: () => Promise<{ error: Error | null }>;
+  updateBankDetails: (d: BankDetails) => Promise<{ error: Error | null }>;
+  resolvedAccountName: string | undefined;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const ROLE_TO_PROFILE_ID: Record<UserRole, string> = {
-  user: "user_001",
-  creator: "creator_001",
-  admin: "admin_001",
+const origin =
+  typeof window !== "undefined" && window.location.origin
+    ? window.location.origin
+    : "";
+
+/**
+ * Fallback currentUser used when there is no session. Pages guarded by
+ * RequireAuth will never see this, but destructuring assignments at the
+ * top of unguarded pages need a stable shape.
+ */
+const GUEST_USER: CurrentUser = {
+  id: "",
+  full_name: "Guest",
+  email: "",
+  role: "user",
+  is_approved_creator: false,
+  is_suspended: false,
+  university_id: "",
+  email_confirmed: false,
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [currentRole, setCurrentRoleState] = useState<UserRole>("user");
-  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
-  const [extraProfiles, setExtraProfiles] = useState<Profile[]>([]);
-  const [extraTransactions, setExtraTransactions] = useState<
-    WalletTransaction[]
-  >([]);
-  const [sessionPurchasedIds, setSessionPurchasedIds] = useState<string[]>([]);
-  // Per-user bank detail overrides — persists within the session
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [initialLoad, setInitialLoad] = useState(true);
+
+  const [walletTxns, setWalletTxns] = useState<DbWalletTxn[]>([]);
+  const [userBalance, setUserBalance] = useState<number>(0);
   const [bankOverrides, setBankOverrides] = useState<
-    Record<
-      string,
-      {
-        bank_code: string;
-        bank_account_number: string;
-        resolved_account_name?: string;
-      }
-    >
+    Record<string, BankDetails & { resolved_account_name?: string }>
   >({});
 
-  const allProfiles = useMemo(
-    () => [...extraProfiles, ...profiles],
-    [extraProfiles],
-  );
+  const sessionUser = session?.user ?? null;
 
-  const currentUser = useMemo(() => {
-    let base: Profile;
-    if (sessionUserId) {
-      const match = allProfiles.find((p) => p.id === sessionUserId);
-      base =
-        match ??
-        allProfiles.find((p) => p.id === ROLE_TO_PROFILE_ID[currentRole]) ??
-        profiles[0];
-    } else {
-      base =
-        allProfiles.find((p) => p.id === ROLE_TO_PROFILE_ID[currentRole]) ??
-        profiles[0];
+  /* ---------------------- Fetch profile once authenticated ---------------------- */
+
+  const fetchProfile = useCallback(async (userId: string) => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error || !data) {
+      console.warn("profile fetch failed:", error?.message);
+      setProfile(null);
+      return;
     }
-    // Apply any in-session bank overrides
-    const override = bankOverrides[base.id];
-    if (override) {
-      return {
-        ...base,
-        bank_code: override.bank_code,
-        bank_account_number: override.bank_account_number,
-      };
+    setProfile(data as Profile);
+  }, []);
+
+  /* ----------------- Wallet balance + purchased quiz ids loader ----------------- */
+
+  const loadWalletData = useCallback(async (userId: string) => {
+    const [txnResult, balanceResult] = await Promise.all([
+      supabase
+        .from("wallet_transactions")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("user_balances")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle(),
+    ]);
+    setWalletTxns(txnResult.data ?? []);
+    setUserBalance(Number(balanceResult.data?.balance ?? 0));
+  }, []);
+
+  /* ----------------------- Derived: currentUser (old mock API shape) ----------------------- */
+
+  const currentUser: CurrentUser = useMemo(() => {
+    if (!sessionUser || !profile) return GUEST_USER;
+    return {
+      id: profile.id,
+      full_name: profile.full_name,
+      email: sessionUser.email ?? "",
+      role: profile.role as UserRole,
+      is_approved_creator: !!profile.is_approved_creator,
+      is_suspended: !!profile.is_suspended,
+      university_id: profile.university_id ?? "",
+      email_confirmed: !!sessionUser.email_confirmed_at,
+      agreement_accepted_at: profile.agreement_accepted_at ?? undefined,
+      bank_account_number: profile.bank_account_number ?? undefined,
+      bank_code: profile.bank_code ?? undefined,
+      bank_name: profile.bank_name ?? undefined,
+      bank_account_name: profile.bank_account_name ?? undefined,
+      joined_at: profile.created_at,
+    };
+  }, [sessionUser, profile]);
+
+  const purchasedQuizIds = useMemo<string[]>(() => {
+    const ids = new Set<string>();
+    for (const t of walletTxns) {
+      if (
+        t.type === "quiz_payment" &&
+        t.status === "completed" &&
+        t.related_quiz_id
+      ) {
+        ids.add(t.related_quiz_id);
+      }
     }
-    return base;
-  }, [sessionUserId, currentRole, allProfiles, bankOverrides]);
-
-  useEffect(() => {
-    setExtraTransactions([]);
-    setSessionPurchasedIds([]);
-  }, [currentUser.id]);
-
-  const walletBalance = useMemo(
-    () => computeWalletBalance(currentUser.id, extraTransactions),
-    [currentUser.id, extraTransactions],
-  );
-
-  const purchasedQuizIds = useMemo(() => {
-    const base = purchasedQuizIdsByUser[currentUser.id] ?? [];
-    const merged = [...base, ...sessionPurchasedIds];
-    return [...new Set(merged)];
-  }, [currentUser.id, sessionPurchasedIds]);
+    return Array.from(ids);
+  }, [walletTxns]);
 
   const hasPurchasedQuiz = useCallback(
     (quizId: string) => purchasedQuizIds.includes(quizId),
     [purchasedQuizIds],
   );
 
-  const addWalletTransaction = useCallback((txn: WalletTransaction) => {
-    setExtraTransactions((prev) => [txn, ...prev]);
-  }, []);
+  /* ---------------------- Session listener (the primary driver) ---------------------- */
 
-  const purchaseQuiz = useCallback(
-    async (quizId: string, price: number): Promise<boolean> => {
-      const balance = computeWalletBalance(currentUser.id, extraTransactions);
-      if (balance < price) return false;
+  useEffect(() => {
+    let mounted = true;
+    let activeUserId: string | null = null;
 
-      const txn: WalletTransaction = {
-        id: "txn_new_" + Math.random().toString(36).slice(2, 9),
-        user_id: currentUser.id,
-        amount: -price,
-        type: "purchase",
-        reference: "QUIZ-PAY-" + quizId.replace("quiz_", "").toUpperCase(),
-        related_quiz_id: quizId,
-        status: "success",
-        created_at: new Date().toISOString(),
-      };
-      setExtraTransactions((prev) => [txn, ...prev]);
-      setSessionPurchasedIds((prev) => [...prev, quizId]);
-      return true;
-    },
-    [currentUser.id, extraTransactions],
-  );
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (!mounted) return;
+      setSession(s);
+      const uid = s?.user?.id ?? null;
+      activeUserId = uid;
+      if (uid) {
+        Promise.all([fetchProfile(uid), loadWalletData(uid)]).finally(() =>
+          setInitialLoad(false),
+        );
+      } else {
+        setProfile(null);
+        setWalletTxns([]);
+        setUserBalance(0);
+        setInitialLoad(false);
+      }
+    });
 
-  const setCurrentRole = useCallback((role: UserRole) => {
-    setCurrentRoleState(role);
-    setSessionUserId(null);
-  }, []);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, s) => {
+      if (!mounted) return;
+      setSession(s);
+      const uid = s?.user?.id ?? null;
+      activeUserId = uid;
+      if (uid) {
+        await Promise.all([fetchProfile(uid), loadWalletData(uid)]);
+      } else {
+        setProfile(null);
+        setWalletTxns([]);
+        setUserBalance(0);
+      }
+    });
 
-  const logInAsUser = useCallback((userId: string) => {
-    setSessionUserId(userId);
-  }, []);
+    /**
+     * Real-time listener for wallet_transactions on the current user —
+     * so top-up webhooks and quiz payments reflect instantly without
+     * a full reload.
+     */
+    const channelName = `wallet-${activeUserId ?? "guest"}`;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-  const logInAsRole = useCallback((role: UserRole) => {
-    setSessionUserId(null);
-    setCurrentRoleState(role);
-    const match = profiles.find((p) => p.id === ROLE_TO_PROFILE_ID[role]);
-    if (match) {
-      setSessionUserId(match.id);
+    if (activeUserId) {
+      channel = supabase
+        .channel(channelName)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "wallet_transactions",
+            filter: `user_id=eq.${activeUserId}`,
+          },
+          () => {
+            void loadWalletData(activeUserId!);
+          },
+        )
+        .subscribe();
     }
-  }, []);
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+      if (channel) void supabase.removeChannel(channel);
+    };
+  }, [fetchProfile, loadWalletData]);
+
+  /* ----------------------------- Public auth actions ----------------------------- */
+
+  const refreshProfile = useCallback(async () => {
+    if (session?.user) {
+      await fetchProfile(session.user.id);
+      await loadWalletData(session.user.id);
+    }
+  }, [session, fetchProfile, loadWalletData]);
 
   const signUp = useCallback(
-    (data: { full_name: string; email: string; university_id: string }) => {
-      const id = "user_new_" + Math.random().toString(36).slice(2, 9);
-      const newProfile: Profile = {
-        id,
-        full_name: data.full_name,
-        email: data.email,
-        email_confirmed: false,
-        role: "user",
-        is_approved_creator: false,
-        university_id: data.university_id,
-      };
-      setExtraProfiles((prev) => [...prev, newProfile]);
-      // Do NOT set sessionUserId here — user must confirm email first
-      return newProfile;
+    async (args: { full_name: string; email: string; password: string }) => {
+      const { error } = await supabase.auth.signUp({
+        email: args.email,
+        password: args.password,
+        options: {
+          data: { full_name: args.full_name },
+          emailRedirectTo: `${origin}/confirm-email`,
+        },
+      });
+      return { error, needsConfirmation: true };
     },
     [],
   );
 
-  const confirmEmail = useCallback((userId: string) => {
-    setExtraProfiles((prev) =>
-      prev.map((p) => (p.id === userId ? { ...p, email_confirmed: true } : p)),
-    );
-    mockConfirmEmail(userId);
-    setSessionUserId(userId);
-  }, []);
-
-  const acceptAgreement = useCallback(() => {
-    if (!sessionUserId) return;
-    const ts = new Date().toISOString();
-    setExtraProfiles((prev) =>
-      prev.map((p) =>
-        p.id === sessionUserId ? { ...p, agreement_accepted_at: ts } : p,
-      ),
-    );
-    mockAcceptAgreement(sessionUserId);
-  }, [sessionUserId]);
-
-  const logOut = useCallback(() => {
-    setSessionUserId(null);
-  }, []);
-
-  const updateBankDetails = useCallback(
-    (bankCode: string, accountNumber: string, resolvedName: string) => {
-      setBankOverrides((prev) => ({
-        ...prev,
-        [currentUser.id]: {
-          bank_code: bankCode,
-          bank_account_number: accountNumber,
-          resolved_account_name: resolvedName,
-        },
-      }));
+  const logIn = useCallback(
+    async (args: { email: string; password: string }) => {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: args.email,
+        password: args.password,
+      });
+      const emailNotConfirmed =
+        !!error &&
+        (error.message.toLowerCase().includes("email not confirmed") ||
+          error?.code === "email_not_confirmed");
+      return { error, emailNotConfirmed: !!emailNotConfirmed };
     },
-    [currentUser.id],
+    [],
   );
 
-  const resolvedAccountName =
-    bankOverrides[currentUser.id]?.resolved_account_name;
+  const logOut = useCallback(async () => {
+    await supabase.auth.signOut();
+  }, []);
 
-  const value: AuthContextValue = {
-    currentUser,
-    currentRole: currentUser.role,
-    setCurrentRole,
-    walletBalance,
-    purchasedQuizIds,
-    hasPurchasedQuiz,
-    extraTransactions,
-    addWalletTransaction,
-    purchaseQuiz,
-    updateBankDetails,
-    resolvedAccountName,
+  const resendSignup = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+    });
+    return { error };
+  }, []);
 
-    sessionUser: sessionUserId ? currentUser : null,
-    isLoggedIn: !!sessionUserId,
-    logInAsUser,
-    logInAsRole,
-    signUp,
-    logOut,
-    confirmEmail,
-    acceptAgreement,
-  };
+  const resetPasswordRequest = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${origin}/reset-password`,
+    });
+    return { error };
+  }, []);
+
+  const updatePassword = useCallback(async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    return { error };
+  }, []);
+
+  const updateProfilePatch = useCallback(
+    async (patch: Partial<Profile>) => {
+      if (!session?.user) return { error: new Error("Not logged in") };
+      const { error } = await supabase
+        .from("profiles")
+        .update(patch)
+        .eq("id", session.user.id);
+      if (!error) await fetchProfile(session.user.id);
+      return { error };
+    },
+    [session, fetchProfile],
+  );
+
+  const acceptCreatorAgreement = useCallback(async () => {
+    return updateProfilePatch({
+      agreement_accepted_at: new Date().toISOString(),
+    } as Partial<Profile>);
+  }, [updateProfilePatch]);
+
+  const updateBankDetails = useCallback(
+    async (d: BankDetails) => {
+      if (!session?.user) return { error: new Error("Not logged in") };
+      setBankOverrides((prev) => ({
+        ...prev,
+        [session.user!.id]: {
+          ...d,
+          resolved_account_name: d.bank_account_name,
+        },
+      }));
+      return updateProfilePatch({
+        bank_code: d.bank_code,
+        bank_account_number: d.bank_account_number,
+        bank_name: d.bank_name ?? null,
+        bank_account_name: d.bank_account_name ?? null,
+      } as Partial<Profile>);
+    },
+    [session, updateProfilePatch],
+  );
+
+  /* ----------------------------- Memoized value ----------------------------- */
+
+  const value: AuthContextValue = useMemo(
+    () => ({
+      session,
+      sessionUser,
+      profile,
+      currentUser,
+      isLoading: initialLoad,
+      isLoggedIn: !!session?.user && !!profile,
+      isAdmin: profile?.role === "admin",
+      isApprovedCreator: !!profile?.is_approved_creator,
+
+      walletBalance: userBalance,
+      walletTxns,
+      purchasedQuizIds,
+      hasPurchasedQuiz,
+
+      signUp,
+      logIn,
+      logOut,
+      resendSignup,
+      resetPasswordRequest,
+      updatePassword,
+
+      refreshProfile,
+      updateProfilePatch,
+      acceptCreatorAgreement,
+      updateBankDetails,
+      resolvedAccountName:
+        profile?.bank_account_name ??
+        (session?.user
+          ? bankOverrides[session.user.id]?.resolved_account_name
+          : undefined),
+    }),
+    [
+      session,
+      sessionUser,
+      profile,
+      currentUser,
+      initialLoad,
+      userBalance,
+      walletTxns,
+      purchasedQuizIds,
+      hasPurchasedQuiz,
+      signUp,
+      logIn,
+      logOut,
+      resendSignup,
+      resetPasswordRequest,
+      updatePassword,
+      refreshProfile,
+      updateProfilePatch,
+      acceptCreatorAgreement,
+      updateBankDetails,
+      bankOverrides,
+    ],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 }
+
+/**
+ * Convenience re-export of the Supabase DB-shape types so page files
+ * don't have to import from two places.
+ */
+export type { DbCourse, DbQuiz, DbQuizAttempt, DbWalletTxn };

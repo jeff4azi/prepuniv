@@ -10,7 +10,13 @@
 import { useEffect, useRef, useState } from "react";
 import { GraduationCap, Check, ChevronDown } from "lucide-react";
 import { FieldWrapper } from "./Form";
-import type { University } from "../mock/universities";
+
+export interface University {
+  id: string;
+  name: string;
+  abbreviation: string;
+  state: string;
+}
 
 interface UniversitySelectProps {
   /** All available universities to show */

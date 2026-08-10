@@ -19,30 +19,21 @@ import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { formatNaira, formatDate } from '../components/QuizCard';
-import { useAuth } from '../context/AuthContext';
-import {
-  walletTransactions as baseWalletTxns,
-  quizzes as allQuizzes,
-  type WalletTransaction,
-} from '../mock';
+import { useAuth, type DbWalletTxn, type DbQuiz } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
+import { apiFetch } from '../lib/api';
 
 type FilterKey = 'all' | 'topups' | 'payments';
 type TopUpStep = 'amount' | 'processing' | 'success';
 
 const PRESET_AMOUNTS_KOBO = [50000, 100000, 200000, 500000];
 
-function computeWalletBalance(userId: string, extraTxns: WalletTransaction[]) {
-  return [...baseWalletTxns, ...extraTxns]
-    .filter((t) => t.user_id === userId && t.status === 'success')
-    .reduce((sum, t) => sum + t.amount, 0);
+function isTopupTxn(t: DbWalletTxn) {
+  return t.type === 'topup';
 }
 
-function isTopupTxn(t: WalletTransaction) {
-  return t.type === 'deposit' || t.type === 'refund';
-}
-
-function isPaymentTxn(t: WalletTransaction) {
-  return t.type === 'purchase';
+function isPaymentTxn(t: DbWalletTxn) {
+  return t.type === 'quiz_payment';
 }
 
 function sameMonth(iso: string, refDate: Date) {
@@ -61,26 +52,48 @@ function monthHeaderLabel(iso: string, now: Date) {
   return d.toLocaleDateString('en-NG', { month: 'long', year: 'numeric' });
 }
 
+function kobo(nairaAmount: number): number {
+  return Math.round(nairaAmount * 100);
+}
+
 export function WalletPage() {
-  const { currentUser } = useAuth();
-  const [extraTxns, setExtraTxns] = useState<WalletTransaction[]>([]);
+  const { currentUser, walletBalance, walletTxns, refreshProfile } = useAuth();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [topUpStep, setTopUpStep] = useState<TopUpStep>('amount');
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [filter, setFilter] = useState<FilterKey>('all');
   const [successAmount, setSuccessAmount] = useState(0);
+  const [topupError, setTopupError] = useState<string | null>(null);
+  const [quizzesById, setQuizzesById] = useState<Map<string, DbQuiz>>(new Map());
 
-  const walletBalance = useMemo(
-    () => computeWalletBalance(currentUser.id, extraTxns),
-    [currentUser.id, extraTxns],
-  );
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const quizIds = new Set<string>();
+      for (const t of walletTxns) {
+        if (t.related_quiz_id) quizIds.add(t.related_quiz_id);
+      }
+      if (quizIds.size === 0) return;
+      const { data } = await supabase
+        .from('quizzes')
+        .select('*')
+        .in('id', Array.from(quizIds));
+      if (cancelled || !data) return;
+      const m = new Map<string, DbQuiz>();
+      for (const q of data) m.set(q.id, q as DbQuiz);
+      setQuizzesById(m);
+    })();
+    return () => { cancelled = true; };
+  }, [walletTxns]);
+
+  const walletBalanceKobo = kobo(walletBalance);
 
   const allRelevantTxns = useMemo(() => {
-    return [...extraTxns, ...baseWalletTxns]
-      .filter((t) => t.user_id === currentUser.id && (isTopupTxn(t) || isPaymentTxn(t)))
+    return walletTxns
+      .filter((t) => isTopupTxn(t) || isPaymentTxn(t))
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [currentUser.id, extraTxns]);
+  }, [walletTxns]);
 
   const filteredTxns = useMemo(() => {
     if (filter === 'topups') return allRelevantTxns.filter(isTopupTxn);
@@ -90,7 +103,7 @@ export function WalletPage() {
 
   const groups = useMemo(() => {
     const now = new Date();
-    const out: { label: string; items: WalletTransaction[] }[] = [];
+    const out: { label: string; items: DbWalletTxn[] }[] = [];
     for (const t of filteredTxns) {
       const label = monthHeaderLabel(t.created_at, now);
       const last = out[out.length - 1];
@@ -100,12 +113,8 @@ export function WalletPage() {
     return out;
   }, [filteredTxns]);
 
-  const quizzesById = useMemo(() => {
-    const m = new Map(allQuizzes.map((q) => [q.id, q]));
-    return m;
-  }, []);
-
   const selectedAmountKobo = selectedPreset ?? Number(customAmount) * 100;
+  const selectedAmountNaira = selectedAmountKobo / 100;
   const canContinue = selectedAmountKobo >= 10000;
 
   const openSheet = () => {
@@ -113,6 +122,7 @@ export function WalletPage() {
     setSelectedPreset(null);
     setCustomAmount('');
     setSuccessAmount(0);
+    setTopupError(null);
     setSheetOpen(true);
   };
 
@@ -120,27 +130,50 @@ export function WalletPage() {
     setSheetOpen(false);
   };
 
-  const handleContinue = () => {
+  const pollForCompletion = async (txRef: string, maxPolls = 20) => {
+    for (let i = 0; i < maxPolls; i++) {
+      await new Promise((r) => setTimeout(r, 1500));
+      await refreshProfile();
+      const found = walletTxns.find((t) => t.reference === txRef);
+      if (found && found.status === 'completed') return true;
+    }
+    await refreshProfile();
+    return true;
+  };
+
+  const handleContinue = async () => {
     if (!canContinue) return;
-    const amount = selectedAmountKobo;
+    setTopupError(null);
     setTopUpStep('processing');
-    window.setTimeout(() => {
-      const newTxn: WalletTransaction = {
-        id: 'txn_new_' + Math.random().toString(36).slice(2, 9),
-        user_id: currentUser.id,
-        amount: amount,
-        type: 'deposit',
-        reference: 'FLW-PAY-SIM-' + Math.random().toString(36).slice(2, 8).toUpperCase(),
-        status: 'success',
-        created_at: new Date().toISOString(),
-      };
-      setExtraTxns((prev) => [newTxn, ...prev]);
-      setSuccessAmount(amount);
+
+    const { data, error } = await apiFetch<{ payment_link: string; tx_ref: string }>(
+      '/api/wallet/topup/initiate',
+      {
+        method: 'POST',
+        body: { amount: selectedAmountNaira },
+      },
+    );
+
+    if (error || !data) {
+      setTopupError(error ?? 'Failed to initiate top-up');
+      setTopUpStep('amount');
+      return;
+    }
+
+    const { payment_link, tx_ref } = data;
+    const isMock = payment_link.includes('mock_payment=1');
+
+    if (isMock) {
+      await pollForCompletion(tx_ref, 15);
+      setSuccessAmount(selectedAmountKobo);
       setTopUpStep('success');
-    }, 1400);
+    } else {
+      window.location.href = payment_link;
+    }
   };
 
   const handleSuccessClose = () => {
+    void refreshProfile();
     closeSheet();
   };
 
@@ -183,7 +216,7 @@ export function WalletPage() {
                   Wallet balance
                 </Badge>
                 <p className="mt-3 font-heading font-bold text-[38px] sm:text-[44px] lg:text-[48px] leading-none tracking-tight">
-                  {formatNaira(walletBalance)}
+                  {formatNaira(walletBalanceKobo)}
                 </p>
                 <p className="mt-2 text-[13px] text-cream/80 max-w-md leading-relaxed">
                   Ready to spend on any PrepUniv quiz. Pay once, and it's yours to retake forever.
@@ -203,8 +236,8 @@ export function WalletPage() {
                 label="Inflow"
                 value={formatNaira(
                   allRelevantTxns
-                    .filter((t) => isTopupTxn(t) && t.status === 'success' && sameMonth(t.created_at, new Date()))
-                    .reduce((s, t) => s + t.amount, 0),
+                    .filter((t) => isTopupTxn(t) && t.status === 'completed' && sameMonth(t.created_at, new Date()))
+                    .reduce((s, t) => s + kobo(t.amount), 0),
                 )}
                 icon={<ArrowUpRight className="w-4 h-4" />}
                 tone="pos"
@@ -214,8 +247,8 @@ export function WalletPage() {
                 value={formatNaira(
                   Math.abs(
                     allRelevantTxns
-                      .filter((t) => isPaymentTxn(t) && t.status === 'success' && sameMonth(t.created_at, new Date()))
-                      .reduce((s, t) => s + t.amount, 0),
+                      .filter((t) => isPaymentTxn(t) && t.status === 'completed' && sameMonth(t.created_at, new Date()))
+                      .reduce((s, t) => s + kobo(t.amount), 0),
                   ),
                 )}
                 icon={<Receipt className="w-4 h-4" />}
@@ -470,10 +503,11 @@ export function WalletPage() {
                   </div>
                 </div>
 
-                <p className="text-[11px] text-muted/80 text-center font-medium flex items-center justify-center gap-1.5">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-muted/50" />
-                  Simulated payment — no real charge
-                </p>
+                {topupError && (
+                  <div className="rounded-2xl bg-danger-bg border border-danger/20 p-3 text-xs text-danger font-heading">
+                    {topupError}
+                  </div>
+                )}
 
                 <div className="pt-1">
                   <Button
@@ -540,13 +574,13 @@ export function WalletPage() {
                   <div className="px-4 py-3 flex items-center justify-between">
                     <span className="text-sm text-text-soft">New balance</span>
                     <span className="font-heading font-bold text-[15px] text-text">
-                      {formatNaira(walletBalance)}
+                      {formatNaira(kobo(walletBalance))}
                     </span>
                   </div>
                   <div className="px-4 py-3 flex items-center justify-between">
                     <span className="text-sm text-text-soft">Reference</span>
                     <span className="font-mono text-[12px] text-text font-semibold">
-                      {extraTxns[0]?.reference ?? '—'}
+                      {walletTxns[0]?.reference ?? '—'}
                     </span>
                   </div>
                 </div>
@@ -609,13 +643,13 @@ function MiniStat({
   );
 }
 
-function TxnRow({ txn, quizTitle }: { txn: WalletTransaction; quizTitle?: string }) {
+function TxnRow({ txn, quizTitle }: { txn: DbWalletTxn; quizTitle?: string }) {
   const topup = isTopupTxn(txn);
-  const amountNaira = Math.abs(txn.amount);
+  const amountKobo = kobo(Math.abs(txn.amount));
   const positive = txn.amount > 0;
 
   const desc = topup ? 'Wallet Top-up' : quizTitle ?? 'Quiz payment';
-  const sub = topup ? 'Reference: ' + txn.reference : 'Purchased from marketplace';
+  const sub = topup ? 'Reference: ' + (txn.reference ?? '—') : 'Purchased from marketplace';
 
   const statusBadge =
     txn.status === 'pending' ? (
@@ -663,9 +697,9 @@ function TxnRow({ txn, quizTitle }: { txn: WalletTransaction; quizTitle?: string
           }`}
         >
           {positive ? '+' : '−'}
-          {formatNaira(amountNaira)}
+          {formatNaira(amountKobo)}
         </p>
-        {txn.status === 'success' && (
+        {txn.status === 'completed' && (
           <p className="mt-1 text-[11px] font-heading font-medium text-muted">
             {topup ? 'Completed' : 'Paid'}
           </p>

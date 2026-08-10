@@ -24,11 +24,7 @@ import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { useAuth } from "../context/AuthContext";
-import {
-  quizzes as baseQuizzes,
-  courses as allCourses,
-  type Quiz,
-} from "../mock";
+import { supabase, type DbQuiz, type DbCourse } from "../lib/supabase";
 import { formatNaira } from "./CreatorDashboardPage";
 import { Toast, useToast } from "../components/Toast";
 import {
@@ -36,20 +32,13 @@ import {
   ShareActionsMenu,
 } from "../components/ShareActions";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type SortKey = "newest" | "attempts" | "revenue" | "price";
 type StatusFilter = "all" | "published" | "draft";
 
-interface MutableQuiz extends Quiz {
-  is_published: boolean;
-}
+interface MutableQuiz extends DbQuiz {}
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Creator's 65% revenue share */
-function creatorRevenue(q: Quiz) {
-  return Math.round(q.attempt_count * q.price * 0.65);
+function creatorRevenue(q: DbQuiz) {
+  return Math.round(Number(q.attempt_count || 0) * Number(q.price) * 0.65);
 }
 
 function formatShortDate(iso: string) {
@@ -74,19 +63,14 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "price", label: "Price" },
 ];
 
-// ─── Main page ────────────────────────────────────────────────────────────────
-
 export function CreatorQuizzesPage() {
   const { currentUser } = useAuth();
   const creatorId = currentUser.id;
   const [toast, showToast, dismissToast] = useToast();
 
-  // Local mutable quiz list so publish/unpublish updates reflect live
-  const [quizList, setQuizList] = useState<MutableQuiz[]>(() =>
-    baseQuizzes
-      .filter((q) => q.creator_id === creatorId)
-      .map((q) => ({ ...q })),
-  );
+  const [quizList, setQuizList] = useState<MutableQuiz[]>([]);
+  const [allCourses, setAllCourses] = useState<DbCourse[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -95,24 +79,46 @@ export function CreatorQuizzesPage() {
   const [sortOpen, setSortOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
 
-  // Confirm dialog state
   const [confirmQuiz, setConfirmQuiz] = useState<MutableQuiz | null>(null);
 
-  // Courses that this creator actually uses
+  useEffect(() => {
+    if (!currentUser.is_approved_creator) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const [qRes, cRes] = await Promise.all([
+        supabase
+          .from("quizzes")
+          .select("*")
+          .eq("creator_id", creatorId)
+          .order("created_at", { ascending: false }),
+        supabase.from("courses").select("*").order("name", { ascending: true }),
+      ]);
+      if (cancelled) return;
+      setQuizList(qRes.data ?? []);
+      setAllCourses(cRes.data ?? []);
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [creatorId, currentUser.is_approved_creator]);
+
   const creatorCourseIds = useMemo(
     () => [...new Set(quizList.map((q) => q.course_id))],
     [quizList],
   );
   const coursesById = useMemo(
     () => new Map(allCourses.map((c) => [c.id, c])),
-    [],
+    [allCourses],
   );
   const creatorCourses = useMemo(
     () => allCourses.filter((c) => creatorCourseIds.includes(c.id)),
-    [creatorCourseIds],
+    [allCourses, creatorCourseIds],
   );
 
-  // Close sort dropdown on outside click
   useEffect(() => {
     if (!sortOpen) return;
     const handler = (e: MouseEvent) => {
@@ -124,7 +130,6 @@ export function CreatorQuizzesPage() {
     return () => document.removeEventListener("mousedown", handler);
   }, [sortOpen]);
 
-  // Filtered + sorted list
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = quizList.slice();
@@ -142,9 +147,11 @@ export function CreatorQuizzesPage() {
         return (
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
-      if (sortKey === "attempts") return b.attempt_count - a.attempt_count;
+      if (sortKey === "attempts")
+        return Number(b.attempt_count || 0) - Number(a.attempt_count || 0);
       if (sortKey === "revenue") return creatorRevenue(b) - creatorRevenue(a);
-      if (sortKey === "price") return b.price - a.price;
+      if (sortKey === "price")
+        return Number(b.price) - Number(a.price);
       return 0;
     });
     return list;
@@ -152,21 +159,38 @@ export function CreatorQuizzesPage() {
 
   const publishedCount = quizList.filter((q) => q.is_published).length;
 
-  // Publish/unpublish toggle
   function handleTogglePublish(quiz: MutableQuiz) {
     setConfirmQuiz(quiz);
   }
-  function confirmToggle() {
+
+  async function confirmToggle() {
     if (!confirmQuiz) return;
-    setQuizList((prev) =>
-      prev.map((q) =>
-        q.id === confirmQuiz.id ? { ...q, is_published: !q.is_published } : q,
-      ),
-    );
+    const newState = !confirmQuiz.is_published;
+    const { error } = await supabase
+      .from("quizzes")
+      .update({ is_published: newState })
+      .eq("id", confirmQuiz.id);
+    if (!error) {
+      setQuizList((prev) =>
+        prev.map((q) =>
+          q.id === confirmQuiz.id ? { ...q, is_published: newState } : q,
+        ),
+      );
+      showToast({
+        message: newState
+          ? `Quiz "${confirmQuiz.title}" is now live.`
+          : `Quiz "${confirmQuiz.title}" has been unpublished.`,
+        variant: "success",
+      });
+    } else {
+      showToast({
+        message: "Failed to update quiz status. Please try again.",
+        variant: "error",
+      });
+    }
     setConfirmQuiz(null);
   }
 
-  // Gate after all hooks
   if (!currentUser.is_approved_creator) {
     return <Navigate to="/creator/apply" replace />;
   }
@@ -184,7 +208,6 @@ export function CreatorQuizzesPage() {
     <>
       <PageContainer className="!max-w-[1200px]">
         <div className="space-y-6 lg:space-y-7">
-          {/* ── Header ─────────────────────────────────────────────────── */}
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -201,7 +224,6 @@ export function CreatorQuizzesPage() {
                 {publishedCount} published
               </p>
             </div>
-            {/* Desktop CTA */}
             <div className="hidden sm:block shrink-0">
               <Link to="/creator/quizzes/new">
                 <Button variant="primary" size="md">
@@ -212,11 +234,8 @@ export function CreatorQuizzesPage() {
             </div>
           </div>
 
-          {/* ── Filter / search bar ─────────────────────────────────────── */}
           <div className="flex flex-col gap-3">
-            {/* Row 1: search + sort */}
             <div className="flex gap-2.5">
-              {/* Search */}
               <div className="relative flex-1 min-w-0">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
                 <input
@@ -236,7 +255,6 @@ export function CreatorQuizzesPage() {
                 )}
               </div>
 
-              {/* Sort dropdown */}
               <div className="relative shrink-0" ref={sortRef}>
                 <button
                   onClick={() => setSortOpen((v) => !v)}
@@ -251,7 +269,9 @@ export function CreatorQuizzesPage() {
                   </span>
                   <span className="sm:hidden">Sort</span>
                   <ChevronDown
-                    className={`w-4 h-4 transition-transform ${sortOpen ? "rotate-180" : ""}`}
+                    className={`w-4 h-4 transition-transform ${
+                      sortOpen ? "rotate-180" : ""
+                    }`}
                   />
                 </button>
                 {sortOpen && (
@@ -277,9 +297,7 @@ export function CreatorQuizzesPage() {
               </div>
             </div>
 
-            {/* Row 2: status + course chips */}
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Status chips */}
               {(["all", "published", "draft"] as StatusFilter[]).map((s) => (
                 <button
                   key={s}
@@ -304,7 +322,6 @@ export function CreatorQuizzesPage() {
 
               <span className="h-5 w-px bg-border/50 mx-0.5" />
 
-              {/* Course chips */}
               <button
                 onClick={() => setCourseFilter("all")}
                 className={`h-8 px-3 rounded-xl text-[12px] font-heading font-semibold transition-all duration-150 border ${
@@ -343,9 +360,18 @@ export function CreatorQuizzesPage() {
             </div>
           </div>
 
-          {/* ── Content: empty / table / cards ─────────────────────────── */}
-          {quizList.length === 0 ? (
-            /* Zero quizzes ever created */
+          {loading ? (
+            <Card padded={false} className="overflow-hidden">
+              <div className="divide-y divide-border/40">
+                {[0, 1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-20 px-5 py-3.5 bg-surface/30 animate-pulse"
+                  />
+                ))}
+              </div>
+            </Card>
+          ) : quizList.length === 0 ? (
             <Card padded className="py-12 lg:py-16">
               <div className="flex flex-col items-center text-center">
                 <div className="h-20 w-20 rounded-3xl bg-secondary/10 text-secondary flex items-center justify-center mb-5 shadow-card">
@@ -367,7 +393,6 @@ export function CreatorQuizzesPage() {
               </div>
             </Card>
           ) : filtered.length === 0 ? (
-            /* Filters returned nothing */
             <Card padded className="py-10">
               <div className="flex flex-col items-center text-center">
                 <div className="h-14 w-14 rounded-2xl bg-surface/80 text-muted flex items-center justify-center mb-4 shadow-card ring-1 ring-border/50">
@@ -390,7 +415,6 @@ export function CreatorQuizzesPage() {
             </Card>
           ) : (
             <>
-              {/* ── Desktop table ─────────────────────────────────────── */}
               <div className="hidden lg:block">
                 <Card padded={false} className="overflow-hidden">
                   <QuizTable
@@ -402,7 +426,6 @@ export function CreatorQuizzesPage() {
                 </Card>
               </div>
 
-              {/* ── Mobile cards ──────────────────────────────────────── */}
               <div className="lg:hidden space-y-3">
                 {filtered.map((quiz) => (
                   <QuizMobileCard
@@ -410,7 +433,9 @@ export function CreatorQuizzesPage() {
                     quiz={quiz}
                     course={coursesById.get(quiz.course_id)?.code}
                     shareUrl={publicQuizUrl(quiz.id)}
-                    shareTitle={`${coursesById.get(quiz.course_id)?.code ?? "Quiz"} · ${quiz.title}`}
+                    shareTitle={`${
+                      coursesById.get(quiz.course_id)?.code ?? "Quiz"
+                    } · ${quiz.title}`}
                     onTogglePublish={handleTogglePublish}
                     showToast={showToast}
                   />
@@ -419,7 +444,6 @@ export function CreatorQuizzesPage() {
             </>
           )}
 
-          {/* Mobile Create CTA */}
           <div className="sm:hidden">
             <Link to="/creator/quizzes/new">
               <Button variant="primary" size="lg" fullWidth>
@@ -433,7 +457,6 @@ export function CreatorQuizzesPage() {
 
       {toast && <Toast toast={toast} onClose={dismissToast} />}
 
-      {/* ── Publish/unpublish confirm dialog ─────────────────────────────── */}
       {confirmQuiz && (
         <PublishConfirmDialog
           quiz={confirmQuiz}
@@ -445,8 +468,6 @@ export function CreatorQuizzesPage() {
   );
 }
 
-// ─── Desktop Table ────────────────────────────────────────────────────────────
-
 function QuizTable({
   quizzes,
   coursesById,
@@ -454,10 +475,7 @@ function QuizTable({
   onShowToast,
 }: {
   quizzes: MutableQuiz[];
-  coursesById: Map<
-    string,
-    { id: string; code: string; is_computational: boolean }
-  >;
+  coursesById: Map<string, DbCourse>;
   onTogglePublish: (q: MutableQuiz) => void;
   onShowToast: (t: {
     message: string;
@@ -487,7 +505,9 @@ function QuizTable({
             quiz={quiz}
             courseCode={coursesById.get(quiz.course_id)?.code}
             shareUrl={publicQuizUrl(quiz.id)}
-            shareTitle={`${coursesById.get(quiz.course_id)?.code ?? "Quiz"} · ${quiz.title}`}
+            shareTitle={`${
+              coursesById.get(quiz.course_id)?.code ?? "Quiz"
+            } · ${quiz.title}`}
             onTogglePublish={onTogglePublish}
             showToast={onShowToast}
           />
@@ -517,7 +537,6 @@ function QuizTableRow({
 }) {
   return (
     <tr className="hover:bg-surface/20 transition-colors group">
-      {/* Title + course */}
       <td className="pl-5 pr-3 py-3.5">
         <div className="flex items-start gap-2.5 min-w-0">
           <div
@@ -531,21 +550,19 @@ function QuizTableRow({
             </p>
             {courseCode && (
               <p className="mt-0.5 text-[12px] text-muted font-medium">
-                {courseCode} · {quiz.question_count}q
+                {courseCode} · {quiz.question_count ?? 0}q
               </p>
             )}
           </div>
         </div>
       </td>
 
-      {/* Price */}
       <td className="px-4 py-3.5">
         <span className="font-heading font-semibold text-[13px] text-text">
-          {formatNaira(quiz.price)}
+          {formatNaira(Number(quiz.price))}
         </span>
       </td>
 
-      {/* Status */}
       <td className="px-4 py-3.5">
         <Badge
           variant={quiz.is_published ? "success" : "warning"}
@@ -556,14 +573,12 @@ function QuizTableRow({
         </Badge>
       </td>
 
-      {/* Attempts */}
       <td className="px-4 py-3.5 text-right">
         <span className="font-heading font-semibold text-[13px] text-text">
-          {quiz.attempt_count.toLocaleString("en-NG")}
+          {Number(quiz.attempt_count || 0).toLocaleString("en-NG")}
         </span>
       </td>
 
-      {/* Revenue (65% share) */}
       <td className="px-4 py-3.5 text-right">
         <span className="font-heading font-bold text-[13px] text-success">
           {formatNaira(creatorRevenue(quiz))}
@@ -571,14 +586,12 @@ function QuizTableRow({
         <p className="text-[10px] text-muted font-medium">65% share</p>
       </td>
 
-      {/* Created date */}
       <td className="px-4 py-3.5">
         <span className="text-[12px] text-text-soft font-medium">
           {formatShortDate(quiz.created_at)}
         </span>
       </td>
 
-      {/* Actions */}
       <td className="pl-2 pr-5 py-3.5">
         <div className="flex items-center justify-end gap-1.5">
           <Link to={`/creator/quizzes/${quiz.id}/edit`}>
@@ -593,7 +606,6 @@ function QuizTableRow({
               Analytics
             </button>
           </Link>
-          {/* Single unified ··· menu */}
           <QuizRowMenu
             quiz={quiz}
             shareUrl={shareUrl}
@@ -606,8 +618,6 @@ function QuizTableRow({
     </tr>
   );
 }
-
-// ─── Unified ··· menu for desktop table rows ──────────────────────────────────
 
 function QuizRowMenu({
   quiz,
@@ -682,7 +692,6 @@ function QuizRowMenu({
             }}
             className="min-w-52 rounded-2xl bg-cream shadow-elevated ring-1 ring-border/40 p-1.5 animate-in fade-in zoom-in-95 duration-120"
           >
-            {/* ── Share section ── */}
             {canShare && (
               <button
                 type="button"
@@ -757,7 +766,6 @@ function QuizRowMenu({
 
             <div className="h-px my-1 bg-border/40 -mx-1" />
 
-            {/* ── Publish / Unpublish ── */}
             <button
               type="button"
               role="menuitem"
@@ -824,8 +832,6 @@ function QuizRowMenu({
   );
 }
 
-// ─── Mobile Card ──────────────────────────────────────────────────────────────
-
 function QuizMobileCard({
   quiz,
   course,
@@ -847,7 +853,6 @@ function QuizMobileCard({
   return (
     <Card padded={false} className="overflow-hidden">
       <div className="p-4">
-        {/* Top row: status badge + price */}
         <div className="flex items-start justify-between gap-3 mb-2.5">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge
@@ -864,27 +869,25 @@ function QuizMobileCard({
             )}
           </div>
           <span className="font-heading font-bold text-[14px] text-text shrink-0">
-            {formatNaira(quiz.price)}
+            {formatNaira(Number(quiz.price))}
           </span>
         </div>
 
-        {/* Title */}
         <h3 className="font-heading font-semibold text-[15px] text-text leading-snug mb-1">
           {quiz.title}
         </h3>
         <p className="text-xs text-muted mb-3">
-          {quiz.question_count} questions · Created{" "}
+          {quiz.question_count ?? 0} questions · Created{" "}
           {formatShortDate(quiz.created_at)}
         </p>
 
-        {/* Stats row */}
         <div className="grid grid-cols-2 gap-2 mb-3.5">
           <div className="rounded-xl bg-surface/50 border border-border/40 px-3 py-2">
             <p className="text-[10px] font-heading font-semibold uppercase tracking-wider text-muted mb-0.5">
               Attempts
             </p>
             <p className="font-heading font-bold text-[15px] text-text leading-none">
-              {quiz.attempt_count.toLocaleString("en-NG")}
+              {Number(quiz.attempt_count || 0).toLocaleString("en-NG")}
             </p>
           </div>
           <div className="rounded-xl bg-surface/50 border border-border/40 px-3 py-2">
@@ -897,7 +900,6 @@ function QuizMobileCard({
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-2">
           <Link to={`/creator/quizzes/${quiz.id}/edit`} className="flex-1">
             <button className="w-full h-9 rounded-xl text-[12px] font-heading font-semibold bg-surface/60 border border-border/50 text-text hover:bg-surface transition-colors flex items-center justify-center gap-1.5">
@@ -941,8 +943,6 @@ function QuizMobileCard({
   );
 }
 
-// ─── Publish Confirm Dialog ───────────────────────────────────────────────────
-
 function PublishConfirmDialog({
   quiz,
   onConfirm,
@@ -954,7 +954,6 @@ function PublishConfirmDialog({
 }) {
   const isPublished = quiz.is_published;
 
-  // Trap focus / close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onCancel();
@@ -969,15 +968,12 @@ function PublishConfirmDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 sm:p-6">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-text/40 backdrop-blur-sm"
         onClick={onCancel}
       />
 
-      {/* Dialog */}
       <div className="relative z-10 w-full sm:max-w-md bg-cream rounded-3xl shadow-elevated p-6 sm:p-7">
-        {/* Icon */}
         <div
           className={`h-12 w-12 rounded-2xl flex items-center justify-center mb-4 ${
             isPublished
