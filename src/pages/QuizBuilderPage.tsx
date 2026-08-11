@@ -41,16 +41,9 @@ import { FieldSelect } from "../components/CustomSelect";
 import { Toast, useToast } from "../components/Toast";
 import { MathText } from "../components/MathText";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 import {
-  quizzes as allQuizzes,
-  questions as allQuestions,
-  courses as allCourses,
-  addQuiz,
-  updateQuiz,
-  appendQuestionsForQuiz,
-  replaceQuestionsForQuiz,
   findCoursesByQuery,
-  getOrCreateCourse,
   type Quiz,
   type Question,
   type QuestionType,
@@ -113,43 +106,129 @@ export function QuizBuilderPage() {
   // Gate (all hooks must run first)
   const isApproved = currentUser.is_approved_creator;
 
-  // Load existing quiz data for edit mode
-  const existingQuiz = useMemo(
-    () => (editId ? allQuizzes.find((q) => q.id === editId) : undefined),
-    [editId],
-  );
-  const existingQuestions = useMemo(
-    () => (editId ? allQuestions.filter((q) => q.quiz_id === editId) : []),
-    [editId],
-  );
+  // ── Remote data loading for edit mode ──
+  const [loadingEdit, setLoadingEdit] = useState(isEdit);
+  const [existingQuiz, setExistingQuiz] = useState<Quiz | undefined>(undefined);
+  const [existingQuestions, setExistingQuestions] = useState<Question[]>([]);
 
-  // ── Quiz details state ──
-  const [details, setDetails] = useState<QuizDetails>(() => {
-    const existingCourse = existingQuiz
-      ? allCourses.find((c) => c.id === existingQuiz.course_id)
-      : undefined;
-    const existingMinutes = existingQuiz?.time_limit_seconds
-      ? String(Math.round(existingQuiz.time_limit_seconds / 60))
-      : "";
-    // Strip the "{CODE} — " prefix from stored titles so creators only see the
-    // friendly quiz title in the editor. The prefix is re-added on save.
-    const codePrefixToStrip = existingCourse ? `${existingCourse.code} — ` : "";
-    const rawTitle = existingQuiz?.title ?? "";
-    const editorTitle =
-      codePrefixToStrip && rawTitle.startsWith(codePrefixToStrip)
-        ? rawTitle.slice(codePrefixToStrip.length)
-        : rawTitle;
-    return {
-      title: editorTitle,
-      course_code: existingCourse?.code ?? "",
-      course_title: existingCourse?.title ?? "",
-      subject_area: existingCourse?.subject_area ?? "",
-      level: existingCourse ? String(existingCourse.level) : "",
-      price_naira: existingQuiz ? String(koboToNaira(existingQuiz.price)) : "",
-      description: existingQuiz?.description ?? "",
-      time_limit_minutes: existingMinutes,
+  useEffect(() => {
+    if (!isEdit || !editId) return;
+    let cancelled = false;
+    async function load() {
+      setLoadingEdit(true);
+      const [{ data: qzData }, { data: qsData }] = await Promise.all([
+        supabase.from("quizzes").select("*").eq("id", editId).maybeSingle(),
+        supabase
+          .from("questions")
+          .select("*")
+          .eq("quiz_id", editId)
+          .order("order_index", { ascending: true }),
+      ]);
+      if (cancelled) return;
+      if (qzData) {
+        const quiz: Quiz = {
+          id: qzData.id,
+          creator_id: qzData.creator_id,
+          course_id: qzData.course_id,
+          university_id: qzData.university_id ?? "",
+          title: qzData.title,
+          description: qzData.description ?? "",
+          price: Number(qzData.price),
+          is_published: !!qzData.is_published,
+          unpublished_by_admin: !!qzData.unpublished_by_admin,
+          question_count: qzData.question_count ?? 0,
+          attempt_count: qzData.attempt_count ?? 0,
+          created_at: qzData.created_at,
+          time_limit_seconds: qzData.time_limit_seconds ?? undefined,
+        };
+        setExistingQuiz(quiz);
+      }
+      if (qsData) {
+        const qs: Question[] = qsData.map((r) => ({
+          id: r.id,
+          quiz_id: r.quiz_id,
+          type: r.type as "mcq" | "fill_blank",
+          question_text: r.question_text,
+          options: Array.isArray(r.options)
+            ? (r.options as string[])
+            : typeof r.options === "string"
+              ? (JSON.parse(r.options) as string[])
+              : undefined,
+          correct_answer:
+            typeof r.correct_answer === "string"
+              ? r.correct_answer
+              : JSON.stringify(r.correct_answer),
+        }));
+        setExistingQuestions(qs);
+      }
+      setLoadingEdit(false);
+    }
+    void load();
+    return () => {
+      cancelled = true;
     };
+  }, [isEdit, editId]);
+
+  // ── Quiz details state — initialised once edit data arrives ──
+  const [detailsReady, setDetailsReady] = useState(!isEdit);
+  const [details, setDetails] = useState<QuizDetails>({
+    title: "",
+    course_code: "",
+    course_title: "",
+    subject_area: "",
+    level: "",
+    price_naira: "",
+    description: "",
+    time_limit_minutes: "",
   });
+
+  // Hydrate form once remote data loads
+  useEffect(() => {
+    if (!isEdit || loadingEdit || detailsReady) return;
+    if (!existingQuiz) {
+      setDetailsReady(true);
+      return;
+    }
+
+    // Fetch the course row to populate code/title fields
+    async function hydrate() {
+      const { data: courseRow } = await supabase
+        .from("courses")
+        .select("*")
+        .eq("id", existingQuiz!.course_id)
+        .maybeSingle();
+
+      const courseCode = courseRow?.code ?? courseRow?.name ?? "";
+      const courseTitle = courseRow?.name ?? "";
+      const subjectArea = courseRow?.subject_area ?? "";
+      const level = courseRow?.level ? String(courseRow.level) : "";
+
+      const codePrefixToStrip = courseCode ? `${courseCode} — ` : "";
+      const rawTitle = existingQuiz!.title;
+      const editorTitle =
+        codePrefixToStrip && rawTitle.startsWith(codePrefixToStrip)
+          ? rawTitle.slice(codePrefixToStrip.length)
+          : rawTitle;
+
+      const existingMinutes = existingQuiz!.time_limit_seconds
+        ? String(Math.round(existingQuiz!.time_limit_seconds / 60))
+        : "";
+
+      setDetails({
+        title: editorTitle,
+        course_code: courseCode,
+        course_title: courseTitle,
+        subject_area: subjectArea,
+        level,
+        price_naira: String(koboToNaira(existingQuiz!.price)),
+        description: existingQuiz!.description ?? "",
+        time_limit_minutes: existingMinutes,
+      });
+      setDetailsReady(true);
+    }
+    void hydrate();
+  }, [isEdit, loadingEdit, existingQuiz, detailsReady]);
+
   const [detailErrors, setDetailErrors] = useState<Partial<QuizDetails>>({});
 
   // ── Course autocomplete state (attached to Course Code field only) ──
@@ -201,20 +280,27 @@ export function QuizBuilderPage() {
   }, [courseCodeAcOpen]);
 
   // ── Questions state ──
-  const [draftQuestions, setDraftQuestions] = useState<DraftQuestion[]>(() =>
-    existingQuestions.map((q) => ({
-      localId: makeLocalId(),
-      id: q.id,
-      type: q.type,
-      question_text: q.question_text,
-      options: q.options ?? ["", "", "", ""],
-      correct_answer: q.correct_answer,
-      correct_answers:
-        q.type === "fill_blank"
-          ? q.correct_answer.split("|").filter(Boolean)
-          : [],
-    })),
-  );
+  const [draftQuestions, setDraftQuestions] = useState<DraftQuestion[]>([]);
+
+  // Hydrate draft questions once remote data loads
+  useEffect(() => {
+    if (!isEdit || loadingEdit) return;
+    setDraftQuestions(
+      existingQuestions.map((q) => ({
+        localId: makeLocalId(),
+        id: q.id,
+        type: q.type,
+        question_text: q.question_text,
+        options: q.options ?? ["", "", "", ""],
+        correct_answer: q.correct_answer,
+        correct_answers:
+          q.type === "fill_blank"
+            ? q.correct_answer.split("|").filter(Boolean)
+            : [],
+      })),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit, loadingEdit]);
 
   // ── Question editor state ──
   const [editorMode, setEditorMode] = useState<EditorMode>("none");
@@ -260,6 +346,18 @@ export function QuizBuilderPage() {
     priceNaira > 200;
 
   if (!isApproved) return <Navigate to="/creator/apply" replace />;
+
+  // Show loading spinner while fetching edit data
+  if (isEdit && (loadingEdit || !detailsReady)) {
+    return (
+      <PageContainer>
+        <div className="flex items-center justify-center py-32 gap-3 text-muted">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span className="text-sm font-heading">Loading quiz…</span>
+        </div>
+      </PageContainer>
+    );
+  }
 
   // ─── Question editor helpers ──────────────────────────────────────────────
 
@@ -383,72 +481,153 @@ export function QuizBuilderPage() {
     if (!formValid) return;
     setSaving(true);
 
-    await new Promise((r) => setTimeout(r, 600));
+    try {
+      const now = new Date().toISOString();
+      const levelNum = (parseInt(details.level, 10) || 100) as
+        | 100
+        | 200
+        | 300
+        | 400;
+      const courseCode = details.course_code
+        .trim()
+        .toUpperCase()
+        .replace(/\s+/g, " ");
+      const courseTitle = details.course_title.trim() || courseCode;
+      const prefix = courseCode.split(" ")[0] ?? "";
+      const subjectArea =
+        details.subject_area.trim() ||
+        (prefix
+          ? (COURSE_PREFIX_SUBJECT_AREA[prefix] ?? "General Studies")
+          : "General Studies");
+      const isComputational = ["MTH", "STA", "PHY", "CHM", "CSC"].includes(
+        prefix,
+      );
+      const universityId = currentUser.university_id || "uni_001";
 
-    const quizId =
-      isEdit && editId
-        ? editId
-        : "quiz_" + Math.random().toString(36).slice(2, 9);
-    const now = new Date().toISOString();
+      // ── 1. Upsert course ──────────────────────────────────────────────────
+      // Find existing course by code + university first
+      const { data: existingCourseRow } = await supabase
+        .from("courses")
+        .select("id")
+        .eq("code", courseCode)
+        .eq("university_id", universityId)
+        .maybeSingle();
 
-    const levelNum = (parseInt(details.level, 10) || 100) as
-      | 100
-      | 200
-      | 300
-      | 400;
-    const matchedCourse = getOrCreateCourse({
-      code: details.course_code,
-      title: details.course_title,
-      subject_area: details.subject_area,
-      level: levelNum,
-      university_id: currentUser.university_id ?? "uni_001",
-      mergeTitleOnMatch: true,
-    });
-    // Bump course autocomplete re-render so new courses instantly show up in
-    // suggestions for the next search within the same session.
-    setCourseAcVersion((v) => v + 1);
+      let courseId: string;
+      if (existingCourseRow) {
+        courseId = existingCourseRow.id;
+        // Update title/subject if provided
+        await supabase
+          .from("courses")
+          .update({
+            name: courseTitle,
+            subject_area: subjectArea,
+            level: levelNum,
+          })
+          .eq("id", courseId);
+      } else {
+        const { data: newCourse, error: courseErr } = await supabase
+          .from("courses")
+          .insert({
+            name: courseTitle,
+            code: courseCode,
+            subject_area: subjectArea,
+            level: levelNum,
+            is_computational: isComputational,
+            university_id: universityId,
+          })
+          .select("id")
+          .single();
+        if (courseErr || !newCourse) {
+          throw new Error(courseErr?.message ?? "Failed to create course.");
+        }
+        courseId = newCourse.id;
+      }
 
-    const savedQuiz: Quiz = {
-      id: quizId,
-      creator_id: currentUser.id,
-      course_id: matchedCourse.id,
-      university_id: currentUser.university_id ?? "uni_001",
-      title: `${matchedCourse.code} — ${details.title.trim()}`,
-      description: details.description.trim(),
-      price: nairaToKobo(priceNaira),
-      is_published: existingQuiz?.is_published ?? true,
-      question_count: draftQuestions.length,
-      attempt_count: existingQuiz?.attempt_count ?? 0,
-      created_at: existingQuiz?.created_at ?? now,
-      time_limit_seconds: details.time_limit_minutes.trim()
+      // ── 2. Upsert quiz ────────────────────────────────────────────────────
+      const quizTitle = `${courseCode} — ${details.title.trim()}`;
+      const timeLimitSeconds = details.time_limit_minutes.trim()
         ? Math.round(parseFloat(details.time_limit_minutes) * 60)
-        : undefined,
-    };
+        : null;
 
-    const savedQuestions: Question[] = draftQuestions.map((dq, i) => ({
-      id: dq.id ?? `${quizId}_q${String(i + 1).padStart(2, "0")}`,
-      quiz_id: quizId,
-      type: dq.type,
-      question_text: dq.question_text,
-      options: dq.type === "mcq" ? dq.options : undefined,
-      correct_answer: dq.correct_answer,
-    }));
+      const quizPayload = {
+        creator_id: currentUser.id,
+        course_id: courseId,
+        university_id: universityId,
+        title: quizTitle,
+        description: details.description.trim() || null,
+        price: nairaToKobo(priceNaira),
+        is_published: existingQuiz?.is_published ?? true,
+        unpublished_by_admin: existingQuiz?.unpublished_by_admin ?? false,
+        question_count: draftQuestions.length,
+        time_limit_seconds: timeLimitSeconds,
+        updated_at: now,
+      };
 
-    if (isEdit) {
-      updateQuiz(savedQuiz);
-      replaceQuestionsForQuiz(quizId, savedQuestions);
-    } else {
-      addQuiz(savedQuiz);
-      appendQuestionsForQuiz(savedQuestions);
+      let quizId: string;
+      if (isEdit && editId) {
+        const { error: updateErr } = await supabase
+          .from("quizzes")
+          .update(quizPayload)
+          .eq("id", editId);
+        if (updateErr) throw new Error(updateErr.message);
+        quizId = editId;
+      } else {
+        const { data: newQuiz, error: insertErr } = await supabase
+          .from("quizzes")
+          .insert({ ...quizPayload, created_at: now })
+          .select("id")
+          .single();
+        if (insertErr || !newQuiz) {
+          throw new Error(insertErr?.message ?? "Failed to create quiz.");
+        }
+        quizId = newQuiz.id;
+      }
+
+      // ── 3. Replace questions ──────────────────────────────────────────────
+      // Delete all existing questions for this quiz, then re-insert.
+      // Simple and safe — avoids complex diff logic.
+      if (isEdit) {
+        const { error: delErr } = await supabase
+          .from("questions")
+          .delete()
+          .eq("quiz_id", quizId);
+        if (delErr) throw new Error(delErr.message);
+      }
+
+      const questionsPayload = draftQuestions.map((dq, i) => ({
+        quiz_id: quizId,
+        type: dq.type,
+        question_text: dq.question_text,
+        options: dq.type === "mcq" ? dq.options : null,
+        correct_answer: dq.correct_answer,
+        order_index: i + 1,
+      }));
+
+      if (questionsPayload.length > 0) {
+        const { error: qInsertErr } = await supabase
+          .from("questions")
+          .insert(questionsPayload);
+        if (qInsertErr) throw new Error(qInsertErr.message);
+      }
+
+      showToast({
+        message: isEdit
+          ? "Quiz updated successfully."
+          : "Quiz created and published.",
+      });
+      setTimeout(() => navigate("/creator/quizzes"), 900);
+    } catch (err) {
+      showToast({
+        message:
+          err instanceof Error
+            ? err.message
+            : "Something went wrong. Please try again.",
+        variant: "danger",
+      });
+    } finally {
+      setSaving(false);
     }
-
-    setSaving(false);
-    showToast({
-      message: isEdit
-        ? "Quiz updated successfully."
-        : "Quiz created and published.",
-    });
-    setTimeout(() => navigate("/creator/quizzes"), 900);
   }
 
   // ─── Append questions from AI import ─────────────────────────────────────

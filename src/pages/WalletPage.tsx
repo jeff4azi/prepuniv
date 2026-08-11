@@ -133,6 +133,8 @@ export function WalletPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
     let cancelled = false;
     (async () => {
       const quizIds = new Set<string>();
@@ -264,11 +266,13 @@ export function WalletPage() {
     <>
       <PageContainer className="!max-w-[1100px]">
         <div className="space-y-6 lg:space-y-7">
-
           {/* === REDIRECT-BACK VERIFICATION BANNER === */}
           {verifyState === "verifying" && (
             <div className="flex items-center gap-3 p-4 rounded-2xl bg-primary/8 border border-primary/20">
-              <Loader2 className="w-5 h-5 text-primary shrink-0 animate-spin" strokeWidth={2.2} />
+              <Loader2
+                className="w-5 h-5 text-primary shrink-0 animate-spin"
+                strokeWidth={2.2}
+              />
               <div>
                 <p className="font-heading font-semibold text-sm text-text leading-tight">
                   Confirming your payment…
@@ -282,15 +286,22 @@ export function WalletPage() {
 
           {verifyState === "success" && (
             <div className="flex items-center gap-3 p-4 rounded-2xl bg-success-bg border border-success/25">
-              <CheckCircle2 className="w-5 h-5 text-success shrink-0" strokeWidth={2.2} />
+              <CheckCircle2
+                className="w-5 h-5 text-success shrink-0"
+                strokeWidth={2.2}
+              />
               <div className="flex-1 min-w-0">
                 <p className="font-heading font-semibold text-sm text-text leading-tight">
                   Top-up confirmed!
                 </p>
                 <p className="mt-0.5 text-xs text-text-soft">
-                  Your wallet has been credited. Your new balance is shown below.
+                  Your wallet has been credited. Your new balance is shown
+                  below.
                   {redirectTxRef && (
-                    <> · <span className="font-mono">{redirectTxRef}</span></>
+                    <>
+                      {" "}
+                      · <span className="font-mono">{redirectTxRef}</span>
+                    </>
                   )}
                 </p>
               </div>
@@ -306,14 +317,18 @@ export function WalletPage() {
 
           {verifyState === "pending" && (
             <div className="flex items-start gap-3 p-4 rounded-2xl bg-warning-bg border border-warning/25">
-              <Info className="w-5 h-5 text-warning shrink-0 mt-0.5" strokeWidth={2} />
+              <Info
+                className="w-5 h-5 text-warning shrink-0 mt-0.5"
+                strokeWidth={2}
+              />
               <div className="flex-1 min-w-0">
                 <p className="font-heading font-semibold text-sm text-text leading-tight">
                   Payment is being processed
                 </p>
                 <p className="mt-0.5 text-xs text-text-soft">
-                  We haven't received confirmation yet. Your balance will update automatically once
-                  Flutterwave confirms the payment — usually within a minute.
+                  We haven't received confirmation yet. Your balance will update
+                  automatically once Flutterwave confirms the payment — usually
+                  within a minute.
                 </p>
               </div>
               <button
@@ -328,14 +343,17 @@ export function WalletPage() {
 
           {verifyState === "failed" && (
             <div className="flex items-start gap-3 p-4 rounded-2xl bg-danger-bg border border-danger/25">
-              <Info className="w-5 h-5 text-danger shrink-0 mt-0.5" strokeWidth={2} />
+              <Info
+                className="w-5 h-5 text-danger shrink-0 mt-0.5"
+                strokeWidth={2}
+              />
               <div className="flex-1 min-w-0">
                 <p className="font-heading font-semibold text-sm text-text leading-tight">
                   Payment failed
                 </p>
                 <p className="mt-0.5 text-xs text-text-soft">
-                  Flutterwave reported that this payment did not go through. No funds were deducted.
-                  Please try again.
+                  Flutterwave reported that this payment did not go through. No
+                  funds were deducted. Please try again.
                 </p>
               </div>
               <button
