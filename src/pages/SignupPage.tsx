@@ -11,7 +11,10 @@ import {
   validatePasswordMatch,
   validateFullName,
 } from "../components/Form";
-import { UniversitySelect, type University } from "../components/UniversitySelect";
+import {
+  UniversitySelect,
+  type University,
+} from "../components/UniversitySelect";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 
@@ -55,7 +58,9 @@ export function SignupPage() {
       if (cancelled || !data) return;
       setUniversities(data as University[]);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -227,11 +232,21 @@ export function SignupPage() {
         footer={
           <span>
             By signing up you agree to our{" "}
-            <a href="#" className="font-semibold text-primary hover:underline">
+            <a
+              href="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-primary hover:underline"
+            >
               Terms
             </a>{" "}
             and{" "}
-            <a href="#" className="font-semibold text-primary hover:underline">
+            <a
+              href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-primary hover:underline"
+            >
               Privacy Policy
             </a>
             .
