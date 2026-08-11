@@ -7,7 +7,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
-import { RequireAuth } from "./lib/routeGuard";
+import { RequireAuth, IfLoggedOut } from "./lib/routeGuard";
 import { Sidebar, TopBar, BottomNav } from "./components/Navigation";
 import { AccountSheet } from "./components/AccountMenu";
 import { TermsPage } from "./pages/TermsPage";
@@ -97,58 +97,216 @@ function AppShell() {
         <main className="flex-1 w-full pb-24 lg:pb-0">
           <PageTransition>
             <Routes>
-              <Route path="/home" element={<RequireAuth><HomePage /></RequireAuth>} />
-              <Route path="/browse" element={<RequireAuth><BrowsePage /></RequireAuth>} />
-              <Route path="/library" element={<RequireAuth><LibraryPage /></RequireAuth>} />
-              <Route path="/wallet" element={<RequireAuth><WalletPage /></RequireAuth>} />
-              <Route path="/history" element={<RequireAuth><HistoryPage /></RequireAuth>} />
-              <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+              <Route
+                path="/home"
+                element={
+                  <RequireAuth>
+                    <HomePage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/browse"
+                element={
+                  <RequireAuth>
+                    <BrowsePage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/library"
+                element={
+                  <RequireAuth>
+                    <LibraryPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/wallet"
+                element={
+                  <RequireAuth>
+                    <WalletPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/history"
+                element={
+                  <RequireAuth>
+                    <HistoryPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <RequireAuth>
+                    <SettingsPage />
+                  </RequireAuth>
+                }
+              />
 
-              <Route path="/quiz/:id" element={<RequireAuth><QuizDetailPage /></RequireAuth>} />
+              <Route
+                path="/quiz/:id"
+                element={
+                  <RequireAuth>
+                    <QuizDetailPage />
+                  </RequireAuth>
+                }
+              />
               <Route
                 path="/quiz/:id/leaderboard"
-                element={<RequireAuth><LeaderboardPage /></RequireAuth>}
+                element={
+                  <RequireAuth>
+                    <LeaderboardPage />
+                  </RequireAuth>
+                }
               />
               <Route
                 path="/profile/creator/:id"
-                element={<RequireAuth><CreatorProfilePage /></RequireAuth>}
+                element={
+                  <RequireAuth>
+                    <CreatorProfilePage />
+                  </RequireAuth>
+                }
               />
 
-              <Route path="/creator" element={<RequireAuth role="approvedCreator"><CreatorDashboardPage /></RequireAuth>} />
-              <Route path="/creator/apply" element={<RequireAuth><CreatorApplyPage /></RequireAuth>} />
+              <Route
+                path="/creator"
+                element={
+                  <RequireAuth role="approvedCreator">
+                    <CreatorDashboardPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/creator/apply"
+                element={
+                  <RequireAuth>
+                    <CreatorApplyPage />
+                  </RequireAuth>
+                }
+              />
               <Route
                 path="/creator/agreement"
-                element={<RequireAuth role="approvedCreator"><CreatorAgreementPage /></RequireAuth>}
+                element={
+                  <RequireAuth role="approvedCreator">
+                    <CreatorAgreementPage />
+                  </RequireAuth>
+                }
               />
-              <Route path="/creator/quizzes" element={<RequireAuth role="approvedCreator"><CreatorQuizzesPage /></RequireAuth>} />
+              <Route
+                path="/creator/quizzes"
+                element={
+                  <RequireAuth role="approvedCreator">
+                    <CreatorQuizzesPage />
+                  </RequireAuth>
+                }
+              />
               <Route
                 path="/creator/quizzes/new"
-                element={<RequireAuth role="approvedCreator"><CreatorQuizzesNewPage /></RequireAuth>}
+                element={
+                  <RequireAuth role="approvedCreator">
+                    <CreatorQuizzesNewPage />
+                  </RequireAuth>
+                }
               />
               <Route
                 path="/creator/quizzes/:id/edit"
-                element={<RequireAuth role="approvedCreator"><CreatorQuizEditPage /></RequireAuth>}
+                element={
+                  <RequireAuth role="approvedCreator">
+                    <CreatorQuizEditPage />
+                  </RequireAuth>
+                }
               />
               <Route
                 path="/creator/quizzes/:id/analytics"
-                element={<RequireAuth role="approvedCreator"><CreatorQuizAnalyticsPage /></RequireAuth>}
+                element={
+                  <RequireAuth role="approvedCreator">
+                    <CreatorQuizAnalyticsPage />
+                  </RequireAuth>
+                }
               />
-              <Route path="/creator/payouts" element={<RequireAuth role="approvedCreator"><CreatorPayoutsPage /></RequireAuth>} />
-              <Route path="/creator/reports" element={<RequireAuth role="approvedCreator"><CreatorReportsPage /></RequireAuth>} />
+              <Route
+                path="/creator/payouts"
+                element={
+                  <RequireAuth role="approvedCreator">
+                    <CreatorPayoutsPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/creator/reports"
+                element={
+                  <RequireAuth role="approvedCreator">
+                    <CreatorReportsPage />
+                  </RequireAuth>
+                }
+              />
 
-              <Route path="/admin" element={<RequireAuth role="admin"><AdminDashboardPage /></RequireAuth>} />
+              <Route
+                path="/admin"
+                element={
+                  <RequireAuth role="admin">
+                    <AdminDashboardPage />
+                  </RequireAuth>
+                }
+              />
               <Route
                 path="/admin/applications"
-                element={<RequireAuth role="admin"><AdminApplicationsPage /></RequireAuth>}
+                element={
+                  <RequireAuth role="admin">
+                    <AdminApplicationsPage />
+                  </RequireAuth>
+                }
               />
-              <Route path="/admin/payouts" element={<RequireAuth role="admin"><AdminPayoutsPage /></RequireAuth>} />
-              <Route path="/admin/reports" element={<RequireAuth role="admin"><AdminReportsPage /></RequireAuth>} />
-              <Route path="/admin/users" element={<RequireAuth role="admin"><AdminUsersPage /></RequireAuth>} />
-              <Route path="/admin/courses" element={<RequireAuth role="admin"><AdminCoursesPage /></RequireAuth>} />
-              <Route path="/admin/quizzes" element={<RequireAuth role="admin"><AdminQuizzesPage /></RequireAuth>} />
+              <Route
+                path="/admin/payouts"
+                element={
+                  <RequireAuth role="admin">
+                    <AdminPayoutsPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/admin/reports"
+                element={
+                  <RequireAuth role="admin">
+                    <AdminReportsPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/admin/users"
+                element={
+                  <RequireAuth role="admin">
+                    <AdminUsersPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/admin/courses"
+                element={
+                  <RequireAuth role="admin">
+                    <AdminCoursesPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/admin/quizzes"
+                element={
+                  <RequireAuth role="admin">
+                    <AdminQuizzesPage />
+                  </RequireAuth>
+                }
+              />
               <Route
                 path="/admin/universities"
-                element={<RequireAuth role="admin"><AdminUniversitiesPage /></RequireAuth>}
+                element={
+                  <RequireAuth role="admin">
+                    <AdminUniversitiesPage />
+                  </RequireAuth>
+                }
               />
             </Routes>
           </PageTransition>
@@ -167,8 +325,22 @@ function AppShell() {
 function AttemptShell() {
   return (
     <Routes>
-      <Route path="/attempt/:id" element={<RequireAuth><AttemptPage /></RequireAuth>} />
-      <Route path="/attempt/:id/result" element={<RequireAuth><AttemptResultPage /></RequireAuth>} />
+      <Route
+        path="/attempt/:id"
+        element={
+          <RequireAuth>
+            <AttemptPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/attempt/:id/result"
+        element={
+          <RequireAuth>
+            <AttemptResultPage />
+          </RequireAuth>
+        }
+      />
     </Routes>
   );
 }
@@ -176,9 +348,30 @@ function AttemptShell() {
 function PublicRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
+      <Route
+        path="/"
+        element={
+          <IfLoggedOut fallback="/home">
+            <LandingPage />
+          </IfLoggedOut>
+        }
+      />
+      <Route
+        path="/login"
+        element={
+          <IfLoggedOut>
+            <LoginPage />
+          </IfLoggedOut>
+        }
+      />
+      <Route
+        path="/signup"
+        element={
+          <IfLoggedOut>
+            <SignupPage />
+          </IfLoggedOut>
+        }
+      />
       <Route
         path="/apply-creator"
         element={<Navigate to="/creator/apply" replace />}

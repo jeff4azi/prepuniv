@@ -15,11 +15,7 @@ interface RequireAuthProps {
  *   <RequireAuth role="admin"><AdminPage /></RequireAuth> → must be admin
  *   <RequireAuth role="approvedCreator"><CreatorXPage /></RequireAuth>
  */
-export function RequireAuth({
-  children,
-  role,
-  redirectTo,
-}: RequireAuthProps) {
+export function RequireAuth({ children, role, redirectTo }: RequireAuthProps) {
   const { isLoggedIn, isLoading, isAdmin, isApprovedCreator, profile } =
     useAuth();
   const { pathname } = useLocation();
@@ -54,8 +50,15 @@ export function RequireAuth({
 
 /**
  * Redirect logged-in users AWAY from auth-only pages (e.g. /login, /signup).
+ * Optional `fallback` overrides the default redirect target of "/home".
  */
-export function IfLoggedOut({ children }: { children: ReactNode }) {
+export function IfLoggedOut({
+  children,
+  fallback = "/home",
+}: {
+  children: ReactNode;
+  fallback?: string;
+}) {
   const { isLoggedIn, isLoading } = useAuth();
 
   if (isLoading) {
@@ -66,7 +69,7 @@ export function IfLoggedOut({ children }: { children: ReactNode }) {
     );
   }
 
-  if (isLoggedIn) return <Navigate to="/home" replace />;
+  if (isLoggedIn) return <Navigate to={fallback} replace />;
   return <>{children}</>;
 }
 
@@ -79,10 +82,7 @@ export function useRedirectAfterAuth() {
 /**
  * Small client-side helper: redirect helper for manual use in effects.
  */
-export function useRedirectIf(
-  condition: boolean,
-  destination: string,
-) {
+export function useRedirectIf(condition: boolean, destination: string) {
   useEffect(() => {
     if (condition) window.location.href = destination;
   }, [condition, destination]);
