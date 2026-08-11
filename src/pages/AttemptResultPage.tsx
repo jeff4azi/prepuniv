@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation, useNavigate, useParams, Link } from "react-router-dom";
 import {
   CheckCircle2,
@@ -21,12 +21,13 @@ import { MathText } from "../components/MathText";
 import { ReportModal } from "../components/ReportModal";
 import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
+import type { AttemptResult, Quiz, Course, QuizAttempt } from "../mock/types";
 import {
-  quizzes as allQuizzes,
-  courses as allCourses,
-  attemptResults as seedResults,
-  type AttemptResult,
-} from "../mock";
+  fetchQuiz,
+  fetchCourse,
+  fetchAttemptResult,
+  fetchAttemptById,
+} from "../lib/queries";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -296,33 +297,87 @@ export function AttemptResultPage() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
 
-  // ── Resolve result: route state first, then mock store fallback ────────────
-  const result = useMemo<AttemptResult | null>(() => {
-    const fromState = (location.state as { result?: AttemptResult } | null)
-      ?.result;
-    if (fromState) return fromState;
-
-    // Standalone lookup (page refresh / direct link)
-    const seed = seedResults.find(
-      (r) => r.attempt_id === attemptId && r.user_id === currentUser.id,
-    );
-    return seed ?? null;
-  }, [location.state, attemptId, currentUser.id]);
-
-  // Derive quiz + course for context we don't always have in the result object
-  const quiz = useMemo(
-    () => allQuizzes.find((q) => q.id === result?.quiz_id),
-    [result],
-  );
-  const course = useMemo(
-    () => allCourses.find((c) => c.id === quiz?.course_id),
-    [quiz],
-  );
-
   // ── UI state ───────────────────────────────────────────────────────────────
   const [filter, setFilter] = useState<FilterMode>("all");
   const [showReport, setShowReport] = useState(false);
   const [toast, showToast, dismissToast] = useToast();
+
+  // ── Load state + result data ───────────────────────────────────────────────
+  const [loading, setLoading] = useState(true);
+  const [result, setResult] = useState<AttemptResult | null>(null);
+  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [course, setCourse] = useState<Course | null>(null);
+  // Safety: ensure we're not loading another user's attempt
+  const [wrongOwner, setWrongOwner] = useState(false);
+
+  // Fast-path: attempt result passed via router state (just-completed quiz)
+  const stateResult = useMemo<AttemptResult | null>(() => {
+    return (location.state as { result?: AttemptResult } | null)?.result ?? null;
+  }, [location.state]);
+
+  useEffect(() => {
+    if (!attemptId) {
+      setLoading(false);
+      return;
+    }
+
+    // 1) If route state already has the result for this attempt, trust it and
+    //    only fetch related quiz/course for extra metadata.
+    if (stateResult && stateResult.attempt_id === attemptId) {
+      (async () => {
+        setResult(stateResult);
+        const q = await fetchQuiz(stateResult.quiz_id);
+        setQuiz(q);
+        if (q?.course_id) {
+          const c = await fetchCourse(q.course_id);
+          setCourse(c);
+        }
+        setLoading(false);
+      })();
+      return;
+    }
+
+    // 2) Standalone load (History click / refresh / shared link).
+    //    Load the attempt first to verify ownership before loading answers.
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const attempt: QuizAttempt | null = attemptId
+        ? await fetchAttemptById(attemptId)
+        : null;
+      if (cancelled) return;
+
+      if (!attempt) {
+        setResult(null);
+        setLoading(false);
+        return;
+      }
+      if (attempt.user_id !== currentUser.id) {
+        setWrongOwner(true);
+        setResult(null);
+        setLoading(false);
+        return;
+      }
+
+      const [dbResult, q] = await Promise.all([
+        fetchAttemptResult(attemptId!),
+        fetchQuiz(attempt.quiz_id),
+      ]);
+      if (cancelled) return;
+
+      setResult(dbResult);
+      setQuiz(q);
+      if (q?.course_id) {
+        const c = await fetchCourse(q.course_id);
+        if (!cancelled) setCourse(c);
+      }
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attemptId, currentUser.id, stateResult?.attempt_id]);
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const answers = result?.answers ?? [];
@@ -334,6 +389,48 @@ export function AttemptResultPage() {
     if (filter === "incorrect") return answers.filter((a) => !a.is_correct);
     return answers;
   }, [answers, filter]);
+
+  // ── Loading skeleton ───────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <PageContainer className="max-w-170!">
+        <Card padded={false} className="overflow-hidden mb-4">
+          <div className="px-5 pt-6 pb-6 space-y-4 animate-pulse">
+            <div className="flex items-center gap-6">
+              <div className="h-37 w-37 rounded-3xl bg-surface" />
+              <div className="flex-1 space-y-3">
+                <div className="h-6 w-32 rounded-lg bg-surface" />
+                <div className="h-5 w-64 rounded-lg bg-surface/60" />
+                <div className="h-4 w-56 rounded-lg bg-surface/60" />
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 border-t border-border/40">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className={`py-4 flex flex-col items-center gap-2 ${
+                  i < 2 ? "border-r border-border/40" : ""
+                }`}
+              >
+                <div className="h-5 w-5 rounded-lg bg-surface" />
+                <div className="h-6 w-6 rounded-lg bg-surface" />
+                <div className="h-3 w-16 rounded-md bg-surface/60" />
+              </div>
+            ))}
+          </div>
+        </Card>
+        <Card className="space-y-3 animate-pulse">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-14 rounded-2xl bg-surface"
+            />
+          ))}
+        </Card>
+      </PageContainer>
+    );
+  }
 
   // ── No-result fallback ─────────────────────────────────────────────────────
   if (!result) {
@@ -347,8 +444,9 @@ export function AttemptResultPage() {
             Result not found
           </h2>
           <p className="text-sm text-text-soft max-w-xs leading-relaxed">
-            This result may have expired or belongs to a different account. Head
-            back to browse and start a fresh attempt.
+            {wrongOwner
+              ? "This result belongs to a different account. Please sign in with the account that took the attempt."
+              : "This result may have expired or belongs to a different account. Head back to browse and start a fresh attempt."}
           </p>
           <div className="flex gap-3">
             <Button variant="outline" onClick={() => navigate(-1)}>

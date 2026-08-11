@@ -11,8 +11,9 @@ import {
 } from "lucide-react";
 import { Button } from "../components/Button";
 import { MathText } from "../components/MathText";
-import { quizzes as allQuizzes, questions as allQuestions } from "../mock";
-import type { Question, AttemptResult } from "../mock";
+import type { Question, AttemptResult, Quiz } from "../mock/types";
+import { fetchQuiz, fetchQuestions } from "../lib/queries";
+import { useAuth } from "../context/AuthContext";
 
 // ─── Route state shape (from QuizDetailPage) ─────────────────────────────────
 interface AttemptLocationState {
@@ -35,11 +36,25 @@ interface ShuffledQuestion extends Question {
   shuffledOptions: string[];
 }
 
-function buildShuffledQuestions(quizId: string): ShuffledQuestion[] {
-  const raw = allQuestions.filter((q) => q.quiz_id === quizId);
-  return shuffle(raw).map((q) => ({
+function buildShuffledQuestions(raw: Question[]): ShuffledQuestion[] {
+  const a = [...raw];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a.map((q) => ({
     ...q,
-    shuffledOptions: q.type === "mcq" && q.options ? shuffle(q.options) : [],
+    shuffledOptions:
+      q.type === "mcq" && q.options && q.options.length
+        ? (() => {
+            const opts = [...q.options];
+            for (let i = opts.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [opts[i], opts[j]] = [opts[j], opts[i]];
+            }
+            return opts;
+          })()
+        : [],
   }));
 }
 
@@ -275,8 +290,45 @@ export function AttemptPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const state = (location.state ?? {}) as AttemptLocationState;
+  const { authToken } = useAuth();
 
-  const quiz = allQuizzes.find((q) => q.id === state.quizId);
+  // ── Load quiz + questions from Supabase on mount ───────────────────────────
+  const [loading, setLoading] = useState(true);
+  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!state.quizId) {
+      setError("Missing quiz id. Please restart this attempt.");
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const [q, qs] = await Promise.all([
+        fetchQuiz(state.quizId!),
+        fetchQuestions(state.quizId!),
+      ]);
+      if (cancelled) return;
+      if (!q) {
+        setError("Quiz not found. It may have been removed.");
+        setLoading(false);
+        return;
+      }
+      setQuiz(q);
+      // Shuffle + initialise the session only after questions load
+      sessionRef.current = {
+        questions: buildShuffledQuestions(qs),
+        startedAt: new Date().toISOString(),
+      };
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.quizId]);
 
   const isTimed = (state.isTimed ?? false) && !!quiz?.time_limit_seconds;
   const isOverall = isTimed;
@@ -286,13 +338,6 @@ export function AttemptPage() {
     questions: ShuffledQuestion[];
     startedAt: string;
   } | null>(null);
-
-  if (!sessionRef.current && quiz) {
-    sessionRef.current = {
-      questions: buildShuffledQuestions(quiz.id),
-      startedAt: new Date().toISOString(),
-    };
-  }
 
   const questions = sessionRef.current?.questions ?? [];
   const total = questions.length;
@@ -333,9 +378,11 @@ export function AttemptPage() {
   // ── Grading + navigation to result ────────────────────────────────────────
   // Use a ref so timer effects always call the latest version without
   // needing to be in their dependency arrays (avoids stale closures).
-  const handleFinalSubmitRef = useRef<() => void>(() => {});
+  const handleFinalSubmitRef = useRef<() => Promise<void>>(async () => {});
 
-  const handleFinalSubmit = useCallback(() => {
+  const handleFinalSubmit = useCallback(async () => {
+    if (!attemptId || !quiz) return;
+
     const completedAt = new Date().toISOString();
     const startedAt = sessionRef.current?.startedAt ?? completedAt;
 
@@ -356,6 +403,46 @@ export function AttemptPage() {
     const correctCount = gradedAnswers.filter((a) => a.is_correct).length;
     const score = t > 0 ? Math.round((correctCount / t) * 100) : 0;
 
+    // ── Persist to backend BEFORE navigating so History sees the score ─────
+    setSaving(true);
+    try {
+      const timeTakenMs = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+      const timeTakenSeconds = Math.max(0, Math.round(timeTakenMs / 1000));
+
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL ?? ""}/api/attempt/${attemptId}/complete`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: authToken ? `Bearer ${authToken}` : "",
+          },
+          body: JSON.stringify({
+            score,
+            started_at: startedAt,
+            completed_at: completedAt,
+            time_taken_seconds: timeTakenSeconds,
+            answers: gradedAnswers.map((a) => ({
+              question_id: a.question_id,
+              given: a.given,
+              correct: a.correct,
+              is_correct: a.is_correct,
+            })),
+          }),
+        },
+      );
+      if (!res.ok) {
+        // Log but don't block navigation — user still needs to see their result
+        // eslint-disable-next-line no-console
+        console.warn("Persisting attempt returned", res.status);
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("Persisting attempt failed:", e);
+    } finally {
+      setSaving(false);
+    }
+
     const result: AttemptResult = {
       attempt_id: attemptId ?? "atmp_unknown",
       quiz_id: quiz?.id ?? "",
@@ -369,7 +456,7 @@ export function AttemptPage() {
     };
 
     navigate(`/attempt/${attemptId}/result`, { state: { result } });
-  }, [answers, quiz, isTimed, attemptId, navigate]);
+  }, [answers, quiz, isTimed, attemptId, navigate, authToken]);
 
   // Keep ref in sync so timer effects always have latest
   handleFinalSubmitRef.current = handleFinalSubmit;
@@ -380,10 +467,15 @@ export function AttemptPage() {
   const overallExpiredRef = useRef(false);
 
   useEffect(() => {
+    // Reset timer when the quiz loads (we didn't know overallTotal at mount)
+    if (overallTotal > 0) setOverallSecs(overallTotal);
+  }, [overallTotal]);
+
+  useEffect(() => {
     if (!isOverall || overallExpiredRef.current) return;
     if (overallSecs <= 0) {
       overallExpiredRef.current = true;
-      handleFinalSubmitRef.current();
+      void handleFinalSubmitRef.current();
       return;
     }
     const t = setTimeout(() => setOverallSecs((s) => s - 1), 1000);
@@ -397,7 +489,7 @@ export function AttemptPage() {
     if (unanswered > 0) {
       setShowSubmitDialog(true);
     } else {
-      handleFinalSubmit();
+      void handleFinalSubmit();
     }
   }
 
@@ -406,6 +498,40 @@ export function AttemptPage() {
   const currentAnswer = answers[currentQ?.id ?? ""] ?? "";
   const answeredCount = Object.values(answers).filter((v) => v.trim()).length;
   const progressPct = total > 0 ? ((displayIdx + 1) / total) * 100 : 0;
+
+  // ── Loading / error fallback ────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="text-center space-y-4 w-full max-w-sm">
+          <div className="h-16 w-16 rounded-3xl bg-surface animate-pulse mx-auto" />
+          <div className="h-5 w-48 rounded-xl bg-surface animate-pulse mx-auto" />
+          <div className="h-4 w-64 rounded-lg bg-surface/60 animate-pulse mx-auto" />
+          <div className="h-64 rounded-3xl bg-surface/50 animate-pulse" />
+        </div>
+      </div>
+    );
+  }
+
+  // ── Error state ──────────────────────────────────────────────────────────
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="text-center space-y-4 max-w-md">
+          <div className="h-16 w-16 rounded-3xl bg-warning-bg flex items-center justify-center mx-auto">
+            <AlertTriangle className="w-8 h-8 text-warning" />
+          </div>
+          <h2 className="font-heading font-bold text-lg text-text">
+            Something went wrong
+          </h2>
+          <p className="text-sm text-text-soft leading-relaxed">{error}</p>
+          <Button variant="outline" onClick={() => navigate("/browse")}>
+            Back to Browse
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // ── No quiz / no questions fallback ──────────────────────────────────────
   if (!quiz || questions.length === 0) {
@@ -448,7 +574,7 @@ export function AttemptPage() {
           onCancel={() => setShowSubmitDialog(false)}
           onSubmit={() => {
             setShowSubmitDialog(false);
-            handleFinalSubmit();
+            void handleFinalSubmit();
           }}
         />
       )}
@@ -598,7 +724,7 @@ export function AttemptPage() {
                 variant="outline"
                 size="md"
                 onClick={() => navigateTo(currentIdx - 1)}
-                disabled={currentIdx === 0}
+                disabled={currentIdx === 0 || saving}
               >
                 <ChevronLeft className="w-4 h-4" />
                 Previous
@@ -608,14 +734,29 @@ export function AttemptPage() {
                   variant="primary"
                   size="md"
                   onClick={() => navigateTo(currentIdx + 1)}
+                  disabled={saving}
                 >
                   Next
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               ) : (
-                <Button variant="primary" size="md" onClick={trySubmit}>
-                  <CheckCircle2 className="w-4 h-4" />
-                  Submit Quiz
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={trySubmit}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <>
+                      <span className="h-3.5 w-3.5 border-2 border-cream/40 border-t-cream rounded-full animate-spin" />
+                      Saving…
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      Submit Quiz
+                    </>
+                  )}
                 </Button>
               )}
             </div>
@@ -630,7 +771,7 @@ export function AttemptPage() {
               size="md"
               className="flex-1"
               onClick={() => navigateTo(currentIdx - 1)}
-              disabled={currentIdx === 0}
+              disabled={currentIdx === 0 || saving}
             >
               <ChevronLeft className="w-4 h-4" />
               Previous
@@ -641,6 +782,7 @@ export function AttemptPage() {
                 size="md"
                 className="flex-1"
                 onClick={() => navigateTo(currentIdx + 1)}
+                disabled={saving}
               >
                 Next
                 <ChevronRight className="w-4 h-4" />
@@ -651,9 +793,19 @@ export function AttemptPage() {
                 size="md"
                 className="flex-1"
                 onClick={trySubmit}
+                disabled={saving}
               >
-                <CheckCircle2 className="w-4 h-4" />
-                Submit Quiz
+                {saving ? (
+                  <>
+                    <span className="h-3.5 w-3.5 border-2 border-cream/40 border-t-cream rounded-full animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    Submit Quiz
+                  </>
+                )}
               </Button>
             )}
           </div>

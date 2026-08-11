@@ -51,6 +51,8 @@ interface AuthContextValue {
   profile: Profile | null;
   currentUser: CurrentUser;
   isLoading: boolean;
+  /** JWT access token from the Supabase session — for authenticated API calls */
+  authToken: string | undefined;
 
   isLoggedIn: boolean;
   isAdmin: boolean;
@@ -404,6 +406,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       currentUser,
       isLoading: initialLoad,
+      authToken: session?.access_token,
       isLoggedIn: !!session?.user && !!profile,
       isAdmin: profile?.role === "admin",
       isApprovedCreator: !!profile?.is_approved_creator,

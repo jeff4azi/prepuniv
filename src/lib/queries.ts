@@ -454,3 +454,52 @@ export async function fetchAllTransactions(): Promise<WalletTransaction[]> {
     .order("created_at", { ascending: false });
   return (data ?? []).map(toWalletTxn);
 }
+
+/** Single attempt by id (with quiz snapshot and user ownership check via query client-side) */
+export async function fetchAttemptById(
+  attemptId: string): Promise<QuizAttempt | null> {
+  const { data } = await supabase
+    .from("quiz_attempts")
+    .select("*")
+    .eq("id", attemptId)
+    .maybeSingle();
+  return data ? toAttempt(data) : null;
+}
+
+/** Full AttemptResult (with answers + quiz metadata) */
+export async function fetchAttemptResult(
+  attemptId: string,
+): Promise<AttemptResult | null> {
+  const attempt = await fetchAttemptById(attemptId);
+  if (!attempt) return null;
+
+  const [quiz, answers] = await Promise.all([
+    fetchQuiz(attempt.quiz_id), fetchAttemptAnswers(attemptId)]);
+  if (!quiz) return null;
+
+  return {
+    attempt_id: attempt.id,
+    quiz_id: attempt.quiz_id,
+    quiz_title: quiz.title,
+    is_timed: attempt.is_timed,
+    score: attempt.score ?? 0,
+    total: answers.length,
+    answers,
+    started_at: attempt.started_at,
+    completed_at: attempt.completed_at,
+  };
+}
+
+/** Profiles for a list of user ids (for leaderboard names) */
+export async function fetchProfilesByIds(
+  userIds: string[],
+): Promise<Map<string, Profile>> {
+  if (!userIds.length) return new Map();
+  const { data } = await supabase
+    .from("profiles")
+    .select("*")
+    .in("id", [...new Set(userIds)]);
+  const map = new Map<string, Profile>();
+  for (const row of data ?? []) map.set(row.id, toProfile(row));
+  return map;
+}

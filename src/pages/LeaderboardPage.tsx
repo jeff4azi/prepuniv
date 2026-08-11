@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Trophy, Users, PlayCircle, Star } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
@@ -7,16 +7,13 @@ import { Badge } from "../components/Badge";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { useAuth } from "../context/AuthContext";
+import type { Quiz, Course, QuizAttempt, Profile } from "../mock/types";
 import {
-  quizzes as allQuizzes,
-  courses as allCourses,
-  quizAttempts as allAttempts,
-} from "../mock";
-import {
-  getMockUserName,
-  formatDisplayName,
-  isCreatorUser,
-} from "../mock/mockUsers";
+  fetchQuiz,
+  fetchCourse,
+  fetchQuizAttempts,
+  fetchProfilesByIds,
+} from "../lib/queries";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -32,6 +29,15 @@ function formatShortDate(iso: string) {
     day: "numeric",
     month: "short",
   });
+}
+
+function formatDisplayName(fullName: string, isCurrentUser: boolean): string {
+  if (isCurrentUser) return fullName;
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  const first = parts[0];
+  const lastInitial = parts[parts.length - 1].charAt(0).toUpperCase() + ".";
+  return `${first} ${lastInitial}`;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -52,7 +58,6 @@ interface LeaderboardEntry {
 
 const MEDAL_CONFIG = [
   {
-    // 1st — warm gold using primary tones
     ring: "ring-2 ring-primary/60",
     bg: "bg-primary/10",
     text: "text-primary",
@@ -61,7 +66,6 @@ const MEDAL_CONFIG = [
     rowBg: "bg-primary/5 border-primary/20",
   },
   {
-    // 2nd — secondary/muted silver-adjacent
     ring: "ring-2 ring-secondary/50",
     bg: "bg-secondary/10",
     text: "text-secondary",
@@ -70,7 +74,6 @@ const MEDAL_CONFIG = [
     rowBg: "bg-secondary/5 border-secondary/15",
   },
   {
-    // 3rd — warm muted bronze-adjacent
     ring: "ring-2 ring-muted/50",
     bg: "bg-muted/10",
     text: "text-muted",
@@ -86,17 +89,43 @@ export function LeaderboardPage() {
   const { id: quizId } = useParams<{ id: string }>();
   const { currentUser } = useAuth();
 
-  const quiz = useMemo(() => allQuizzes.find((q) => q.id === quizId), [quizId]);
-  const course = useMemo(
-    () => allCourses.find((c) => c.id === quiz?.course_id),
-    [quiz],
-  );
+  const [loading, setLoading] = useState(true);
+  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [course, setCourse] = useState<Course | null>(null);
+  const [quizAttempts, setQuizAttempts] = useState<QuizAttempt[]>([]);
+  const [profiles, setProfiles] = useState<Map<string, Profile>>(new Map());
 
-  // All attempts for this quiz
-  const quizAttempts = useMemo(
-    () => allAttempts.filter((a) => a.quiz_id === quizId),
-    [quizId],
-  );
+  useEffect(() => {
+    if (!quizId) return;
+    let cancelled = false;
+    setLoading(true);
+
+    (async () => {
+      const q = await fetchQuiz(quizId);
+      if (cancelled) return;
+      setQuiz(q);
+
+      const [c, attempts] = await Promise.all([
+        q?.course_id ? fetchCourse(q.course_id) : Promise.resolve(null),
+        fetchQuizAttempts(quizId),
+      ]);
+      if (cancelled) return;
+      setCourse(c);
+      setQuizAttempts(attempts);
+
+      const userIds = attempts.map((a) => a.user_id);
+      if (userIds.length) {
+        const profMap = await fetchProfilesByIds(userIds);
+        if (cancelled) return;
+        setProfiles(profMap);
+      }
+      setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [quizId]);
 
   // Best attempt per user — score desc, tiebreak by time asc, then date asc
   const leaderboard = useMemo((): LeaderboardEntry[] => {
@@ -137,8 +166,10 @@ export function LeaderboardPage() {
     });
 
     return sorted.map(([userId, data], idx) => {
-      const fullName = getMockUserName(userId);
+      const profile = profiles.get(userId);
+      const fullName = profile?.full_name ?? "Anonymous User";
       const isCurrentUser = userId === currentUser.id;
+      const isCreator = !!profile?.is_approved_creator || profile?.role === "creator" || profile?.role === "admin";
       return {
         rank: idx + 1,
         userId,
@@ -148,15 +179,27 @@ export function LeaderboardPage() {
         timeTaken: data.timeTaken,
         completedAt: data.completedAt,
         isCurrentUser,
-        isCreator: isCreatorUser(userId),
+        isCreator,
       };
     });
-  }, [quizAttempts, currentUser.id]);
+  }, [quizAttempts, profiles, currentUser.id]);
 
   const currentUserEntry = leaderboard.find((e) => e.isCurrentUser);
   const hasAttempted = !!currentUserEntry;
   const top3 = leaderboard.slice(0, 3);
   const rest = leaderboard.slice(3);
+
+  if (loading) {
+    return (
+      <PageContainer className="!max-w-[720px]">
+        <Card padded className="py-12 text-center space-y-3">
+          <div className="h-12 w-12 rounded-2xl bg-surface animate-pulse mx-auto" />
+          <div className="h-5 w-48 rounded-lg bg-surface animate-pulse mx-auto" />
+          <div className="h-4 w-64 rounded-lg bg-surface/60 animate-pulse mx-auto" />
+        </Card>
+      </PageContainer>
+    );
+  }
 
   if (!quiz) {
     return (
@@ -238,7 +281,7 @@ export function LeaderboardPage() {
             />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-heading font-semibold text-text leading-tight">
-                You haven't attempted this quiz yet
+                You haven&apos;t attempted this quiz yet
               </p>
               <p className="text-[12px] text-text-soft mt-0.5 leading-relaxed">
                 Take it to see your rank — you might be closer to the top than
@@ -281,7 +324,6 @@ export function LeaderboardPage() {
             {/* ── Top 3 podium ─────────────────────────────────────── */}
             {top3.length > 0 && (
               <Card padded={false} className="overflow-hidden">
-                {/* Header */}
                 <div className="px-5 py-4 border-b border-border/40 flex items-center gap-2">
                   <Star className="w-4 h-4 text-primary" strokeWidth={2.2} />
                   <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted">
@@ -327,7 +369,7 @@ export function LeaderboardPage() {
                   strokeWidth={2}
                 />
                 <p className="text-sm text-text-soft">
-                  You're currently ranked{" "}
+                  You&apos;re currently ranked{" "}
                   <span className="font-heading font-bold text-text">
                     #{currentUserEntry.rank}
                   </span>{" "}
@@ -383,21 +425,18 @@ function PodiumRow({
     <div
       className={`flex items-center gap-3 sm:gap-4 px-5 py-3.5 ${entry.isCurrentUser ? "bg-surface/60" : ""}`}
     >
-      {/* Medal */}
       <div
         className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 font-heading font-bold text-[13px] ${medal.badgeBg}`}
       >
         {entry.rank}
       </div>
 
-      {/* Avatar */}
       <Avatar
         name={entry.fullName}
         size="sm"
         className={entry.rank <= 3 ? medal.ring : ""}
       />
 
-      {/* Name + meta */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           {nameNode}
@@ -413,7 +452,6 @@ function PodiumRow({
         </p>
       </div>
 
-      {/* Score */}
       <div className="shrink-0 text-right">
         <p
           className={`font-heading font-bold text-lg leading-none ${medal.text}`}
@@ -447,15 +485,12 @@ function RankRow({ entry }: { entry: LeaderboardEntry }) {
         entry.isCurrentUser ? "bg-surface/50 border-l-2 border-primary" : ""
       }`}
     >
-      {/* Rank number */}
       <span className="text-[13px] font-heading font-bold text-muted w-7 shrink-0 text-center">
         {entry.rank}
       </span>
 
-      {/* Avatar */}
       <Avatar name={entry.fullName} size="xs" />
 
-      {/* Name + badges */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
           {nameNode}
@@ -471,7 +506,6 @@ function RankRow({ entry }: { entry: LeaderboardEntry }) {
         </p>
       </div>
 
-      {/* Score */}
       <div className="shrink-0 text-right">
         <p className="font-heading font-bold text-[14px] text-text leading-none">
           {entry.score}%
