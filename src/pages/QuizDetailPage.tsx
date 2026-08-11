@@ -36,10 +36,6 @@ import { formatNaira } from "../components/QuizCard";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-function fakeAttemptId() {
-  return "atmp_" + Math.random().toString(36).slice(2, 10);
-}
-
 /** Formats seconds into a readable label like "30 min" or "1 hr 30 min" */
 function formatTimeLimitLabel(seconds: number): string {
   const totalMins = Math.round(seconds / 60);
@@ -106,7 +102,7 @@ function ConfirmPaymentBanner({
 export function QuizDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { hasPurchasedQuiz, purchaseQuiz, walletBalance, currentUser } =
+  const { hasPurchasedQuiz, purchaseQuiz, walletBalance, currentUser, startAttempt } =
     useAuth();
 
   // ── mock data look-up ──────────────────────────────────────────────────────
@@ -154,6 +150,7 @@ export function QuizDetailPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [insufficientFunds, setInsufficientFunds] = useState(false);
+  const [startingAttempt, setStartingAttempt] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [toast, showToast, dismissToast] = useToast();
 
@@ -212,7 +209,7 @@ export function QuizDetailPage() {
   const isPurchased = hasPurchasedQuiz(quiz.id);
 
   async function handlePayAndStart() {
-    if (isPurchased) return; // shouldn't happen
+    if (isPurchased) return;
     if (walletBalance < quiz.price) {
       setInsufficientFunds(true);
       setShowConfirm(false);
@@ -223,22 +220,35 @@ export function QuizDetailPage() {
       setShowConfirm(true);
       return;
     }
-    // confirm step
     setIsPaying(true);
     await new Promise((r) => setTimeout(r, 1000));
-    const ok = await purchaseQuiz(quiz.id, quiz.price);
+    const attemptId = await purchaseQuiz(quiz.id, quiz.price);
     setIsPaying(false);
-    if (ok) {
+    if (attemptId) {
       setShowConfirm(false);
-      showToast({ message: "Unlocked! You can now retake this quiz anytime." });
+      navigate(`/attempt/${attemptId}`, {
+        state: { quizId: quiz.id, isTimed: timingChoice === "timed" },
+      });
     }
   }
 
-  function handleStartAttempt() {
-    const attemptId = fakeAttemptId();
-    navigate(`/attempt/${attemptId}`, {
-      state: { quizId: quiz.id, isTimed: timingChoice === "timed" },
-    });
+  async function handleStartAttempt() {
+    setStartingAttempt(true);
+    try {
+      const attemptId = await startAttempt(quiz.id, timingChoice === "timed");
+      if (attemptId) {
+        navigate(`/attempt/${attemptId}`, {
+          state: { quizId: quiz.id, isTimed: timingChoice === "timed" },
+        });
+      } else {
+        showToast({
+          message: "Couldn't start attempt. Please try again.",
+          variant: "danger",
+        });
+      }
+    } finally {
+      setStartingAttempt(false);
+    }
   }
 
   const scoreColor =
@@ -607,8 +617,10 @@ export function QuizDetailPage() {
               size="lg"
               fullWidth
               onClick={handleStartAttempt}
+              isLoading={startingAttempt}
+              disabled={startingAttempt}
             >
-              <PlayCircle className="w-5 h-5" />
+              {!startingAttempt && <PlayCircle className="w-5 h-5" />}
               Start Attempt{" "}
               <span className="font-normal opacity-75 text-sm">
                 ({timingChoice === "timed" ? "Timed" : "Untimed"})
@@ -669,8 +681,10 @@ export function QuizDetailPage() {
               size="lg"
               className="flex-1"
               onClick={handleStartAttempt}
+              isLoading={startingAttempt}
+              disabled={startingAttempt}
             >
-              <PlayCircle className="w-5 h-5" />
+              {!startingAttempt && <PlayCircle className="w-5 h-5" />}
               Start Attempt
               <span className="font-normal opacity-75 text-sm">
                 ({timingChoice === "timed" ? "Timed" : "Untimed"})

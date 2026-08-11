@@ -70,10 +70,6 @@ function computeAttemptStats(
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fakeAttemptId() {
-  return "atmp_" + Math.random().toString(36).slice(2, 10);
-}
-
 function shortCourseName(code: string) {
   return code || "Quiz";
 }
@@ -120,13 +116,22 @@ interface LibraryCardProps {
 
 function LibraryCard({ quiz, course, creator, stats }: LibraryCardProps) {
   const navigate = useNavigate();
+  const { startAttempt } = useAuth();
   const attempted = stats.count > 0;
+  const [starting, setStarting] = useState(false);
 
-  function handleStartAttempt() {
-    const id = fakeAttemptId();
-    navigate(`/attempt/${id}`, {
-      state: { quizId: quiz.id, isTimed: true },
-    });
+  async function handleStartAttempt() {
+    setStarting(true);
+    try {
+      const attemptId = await startAttempt(quiz.id, true);
+      if (attemptId) {
+        navigate(`/attempt/${attemptId}`, {
+          state: { quizId: quiz.id, isTimed: true },
+        });
+      }
+    } finally {
+      setStarting(false);
+    }
   }
 
   return (
@@ -232,8 +237,10 @@ function LibraryCard({ quiz, course, creator, stats }: LibraryCardProps) {
             size="md"
             className="h-11"
             onClick={handleStartAttempt}
+            isLoading={starting}
+            disabled={starting}
           >
-            <RotateCcw className="w-4 h-4" />
+            {!starting && <RotateCcw className="w-4 h-4" />}
             Retake
           </Button>
         ) : (
@@ -243,8 +250,10 @@ function LibraryCard({ quiz, course, creator, stats }: LibraryCardProps) {
             size="md"
             className="h-11"
             onClick={handleStartAttempt}
+            isLoading={starting}
+            disabled={starting}
           >
-            <PlayCircle className="w-4 h-4" />
+            {!starting && <PlayCircle className="w-4 h-4" />}
             Start Attempt
           </Button>
         )}
