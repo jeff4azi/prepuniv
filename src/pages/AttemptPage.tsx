@@ -450,6 +450,7 @@ export function AttemptPage() {
             time_taken_seconds: timeTakenSeconds,
             answers: gradedAnswers.map((a) => ({
               question_id: a.question_id,
+              question_text: a.question_text,
               given: a.given,
               correct: a.correct,
               is_correct: a.is_correct,

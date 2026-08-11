@@ -325,31 +325,37 @@ export async function fetchQuizAttempts(
 export async function fetchAttemptAnswers(
   attemptId: string,
 ): Promise<AttemptAnswer[]> {
-  const { data } = await supabase
+  // Select only columns on attempt_answers — no join to questions.
+  // question_text and correct_answer are stored as snapshots on the row
+  // (saved by the backend at attempt completion time).
+  const { data, error } = await supabase
     .from("attempt_answers")
-    .select("*, questions(question_text, type, options)")
+    .select(
+      "question_id, question_text, answer_given, correct_answer, is_correct",
+    )
     .eq("attempt_id", attemptId);
+
+  if (error) {
+    console.warn("fetchAttemptAnswers error:", error.message);
+    return [];
+  }
   if (!data) return [];
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data as any[]).map((row) => {
-    const correct =
+  return (data as any[]).map((row) => ({
+    question_id: row.question_id,
+    question_text: row.question_text ?? "",
+    type: "mcq" as const, // type not stored; mcq is safe default for display
+    given:
+      typeof row.answer_given === "string"
+        ? row.answer_given
+        : String(row.answer_given ?? ""),
+    correct:
       typeof row.correct_answer === "string"
         ? row.correct_answer
-        : String(row.correct_answer ?? "");
-    return {
-      question_id: row.question_id,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      question_text: (row.questions as any)?.question_text ?? "",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      type: (row.questions as any)?.type ?? "mcq",
-      given:
-        typeof row.answer_given === "string"
-          ? row.answer_given
-          : String(row.answer_given ?? ""),
-      correct,
-      is_correct: !!row.is_correct,
-    };
-  });
+        : String(row.correct_answer ?? ""),
+    is_correct: !!row.is_correct,
+  }));
 }
 
 /** Creator applications */
@@ -457,7 +463,8 @@ export async function fetchAllTransactions(): Promise<WalletTransaction[]> {
 
 /** Single attempt by id (with quiz snapshot and user ownership check via query client-side) */
 export async function fetchAttemptById(
-  attemptId: string): Promise<QuizAttempt | null> {
+  attemptId: string,
+): Promise<QuizAttempt | null> {
   const { data } = await supabase
     .from("quiz_attempts")
     .select("*")
@@ -474,7 +481,9 @@ export async function fetchAttemptResult(
   if (!attempt) return null;
 
   const [quiz, answers] = await Promise.all([
-    fetchQuiz(attempt.quiz_id), fetchAttemptAnswers(attemptId)]);
+    fetchQuiz(attempt.quiz_id),
+    fetchAttemptAnswers(attemptId),
+  ]);
   if (!quiz) return null;
 
   return {
