@@ -490,24 +490,33 @@ export function AttemptPage() {
 
   // ── Overall timer (uses creator-set time_limit_seconds) ───────────────────
   const overallTotal = quiz?.time_limit_seconds ?? 0;
-  const [overallSecs, setOverallSecs] = useState(overallTotal);
+  // null means "not yet initialised" — prevents the timer firing before
+  // the quiz loads and overallTotal is known.
+  const [overallSecs, setOverallSecs] = useState<number | null>(null);
   const overallExpiredRef = useRef(false);
 
   useEffect(() => {
-    // Reset timer when the quiz loads (we didn't know overallTotal at mount)
-    if (overallTotal > 0) setOverallSecs(overallTotal);
-  }, [overallTotal]);
+    // Once quiz loads and we know the time limit, seed the countdown.
+    // Only do this once (when overallSecs is still null).
+    if (overallTotal > 0 && overallSecs === null) {
+      setOverallSecs(overallTotal);
+    }
+  }, [overallTotal, overallSecs]);
 
   useEffect(() => {
-    if (!isOverall || overallExpiredRef.current) return;
+    // Don't tick until the quiz is loaded and the timer is seeded.
+    if (!isOverall || overallSecs === null || overallExpiredRef.current) return;
     if (overallSecs <= 0) {
       overallExpiredRef.current = true;
       void handleFinalSubmitRef.current();
       return;
     }
-    const t = setTimeout(() => setOverallSecs((s) => s - 1), 1000);
+    const t = setTimeout(
+      () => setOverallSecs((s) => (s !== null ? s - 1 : s)),
+      1000,
+    );
     return () => clearTimeout(t);
-  }); // no dep array — runs as a heartbeat, guarded by the ref flag
+  }); // no dep array — heartbeat, guarded by the null + ref flags
 
   function trySubmit() {
     const unanswered = (sessionRef.current?.questions ?? []).filter(
@@ -636,7 +645,7 @@ export function AttemptPage() {
 
             {/* Timer right */}
             <div className="shrink-0">
-              {isOverall && (
+              {isOverall && overallSecs !== null && (
                 <TimerDisplay seconds={overallSecs} total={overallTotal} />
               )}
               {!isTimed && (
