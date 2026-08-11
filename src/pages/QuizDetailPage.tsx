@@ -33,12 +33,9 @@ import {
   quizAttempts as allAttempts,
 } from "../mock";
 import { formatNaira } from "../components/QuizCard";
+import { apiFetch } from "../lib/api";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
-
-function fakeAttemptId() {
-  return "atmp_" + Math.random().toString(36).slice(2, 10);
-}
 
 /** Formats seconds into a readable label like "30 min" or "1 hr 30 min" */
 function formatTimeLimitLabel(seconds: number): string {
@@ -153,6 +150,8 @@ export function QuizDetailPage() {
   );
   const [showConfirm, setShowConfirm] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
   const [insufficientFunds, setInsufficientFunds] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [toast, showToast, dismissToast] = useToast();
@@ -234,10 +233,27 @@ export function QuizDetailPage() {
     }
   }
 
-  function handleStartAttempt() {
-    const attemptId = fakeAttemptId();
-    navigate(`/attempt/${attemptId}`, {
-      state: { quizId: quiz.id, isTimed: timingChoice === "timed" },
+  async function handleStartAttempt() {
+    setStartError(null);
+    setIsStarting(true);
+    const isTimed = timingChoice === "timed";
+    const { data, error } = await apiFetch<{ attempt_id: string }>(
+      `/api/quiz/${quiz.id}/attempt`,
+      {
+        method: "POST",
+        body: {
+          is_timed: isTimed,
+          time_allowed_seconds: isTimed ? quiz.time_limit_seconds : undefined,
+        },
+      },
+    );
+    setIsStarting(false);
+    if (error || !data?.attempt_id) {
+      setStartError(error ?? "Failed to start attempt. Please try again.");
+      return;
+    }
+    navigate(`/attempt/${data.attempt_id}`, {
+      state: { quizId: quiz.id, isTimed },
     });
   }
 
@@ -381,6 +397,16 @@ export function QuizDetailPage() {
                         many times as you like, anytime.
                       </p>
                     </div>
+
+                    {/* start error */}
+                    {startError && (
+                      <div className="flex items-start gap-3 px-4 py-3 rounded-2xl bg-danger-bg border border-danger/20">
+                        <AlertCircle className="w-5 h-5 text-danger shrink-0 mt-0.5" />
+                        <p className="text-sm text-danger leading-snug">
+                          {startError}
+                        </p>
+                      </div>
+                    )}
 
                     {/* best / last attempt stats */}
                     {latestAttempt && (
@@ -606,9 +632,10 @@ export function QuizDetailPage() {
               variant="primary"
               size="lg"
               fullWidth
+              isLoading={isStarting}
               onClick={handleStartAttempt}
             >
-              <PlayCircle className="w-5 h-5" />
+              {!isStarting && <PlayCircle className="w-5 h-5" />}
               Start Attempt{" "}
               <span className="font-normal opacity-75 text-sm">
                 ({timingChoice === "timed" ? "Timed" : "Untimed"})
@@ -668,9 +695,10 @@ export function QuizDetailPage() {
               variant="primary"
               size="lg"
               className="flex-1"
+              isLoading={isStarting}
               onClick={handleStartAttempt}
             >
-              <PlayCircle className="w-5 h-5" />
+              {!isStarting && <PlayCircle className="w-5 h-5" />}
               Start Attempt
               <span className="font-normal opacity-75 text-sm">
                 ({timingChoice === "timed" ? "Timed" : "Untimed"})

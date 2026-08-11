@@ -312,7 +312,9 @@ export function AttemptResultPage() {
 
   // Fast-path: attempt result passed via router state (just-completed quiz)
   const stateResult = useMemo<AttemptResult | null>(() => {
-    return (location.state as { result?: AttemptResult } | null)?.result ?? null;
+    return (
+      (location.state as { result?: AttemptResult } | null)?.result ?? null
+    );
   }, [location.state]);
 
   useEffect(() => {
@@ -422,10 +424,7 @@ export function AttemptResultPage() {
         </Card>
         <Card className="space-y-3 animate-pulse">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-14 rounded-2xl bg-surface"
-            />
+            <div key={i} className="h-14 rounded-2xl bg-surface" />
           ))}
         </Card>
       </PageContainer>
@@ -465,12 +464,9 @@ export function AttemptResultPage() {
   const duration = formatDuration(result.started_at, result.completed_at);
 
   function handleAttemptAgain() {
-    const id = "atmp_" + Math.random().toString(36).slice(2, 10);
-    // Quiz is already purchased — go straight to a new attempt
-    // (reuse same isTimed as the previous attempt)
-    navigate(`/attempt/${id}`, {
-      state: { quizId: result.quiz_id, isTimed: result.is_timed },
-    });
+    // Navigate back to the quiz detail page so a proper backend attempt
+    // is created via the "Start Attempt" flow there.
+    navigate(result.quiz_id ? `/quiz/${result.quiz_id}` : "/browse");
   }
 
   return (

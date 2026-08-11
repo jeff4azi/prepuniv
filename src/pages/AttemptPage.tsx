@@ -295,8 +295,15 @@ export function AttemptPage() {
   // ── Load quiz + questions from Supabase on mount ───────────────────────────
   const [loading, setLoading] = useState(true);
   const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [questions, setQuestions] = useState<ShuffledQuestion[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // ── Session init — tracks startedAt and the stable shuffled question list ──
+  const sessionRef = useRef<{
+    questions: ShuffledQuestion[];
+    startedAt: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!state.quizId) {
@@ -316,12 +323,13 @@ export function AttemptPage() {
         setLoading(false);
         return;
       }
-      setQuiz(q);
-      // Shuffle + initialise the session only after questions load
+      const shuffled = buildShuffledQuestions(qs);
       sessionRef.current = {
-        questions: buildShuffledQuestions(qs),
+        questions: shuffled,
         startedAt: new Date().toISOString(),
       };
+      setQuiz(q);
+      setQuestions(shuffled); // triggers re-render with the loaded questions
       setLoading(false);
     })();
     return () => {
@@ -333,13 +341,6 @@ export function AttemptPage() {
   const isTimed = (state.isTimed ?? false) && !!quiz?.time_limit_seconds;
   const isOverall = isTimed;
 
-  // ── Session init — stable via ref (don't re-shuffle on re-render) ──────────
-  const sessionRef = useRef<{
-    questions: ShuffledQuestion[];
-    startedAt: string;
-  } | null>(null);
-
-  const questions = sessionRef.current?.questions ?? [];
   const total = questions.length;
 
   // ── Answer state: map from question id → user's answer string ─────────────
@@ -406,7 +407,8 @@ export function AttemptPage() {
     // ── Persist to backend BEFORE navigating so History sees the score ─────
     setSaving(true);
     try {
-      const timeTakenMs = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+      const timeTakenMs =
+        new Date(completedAt).getTime() - new Date(startedAt).getTime();
       const timeTakenSeconds = Math.max(0, Math.round(timeTakenMs / 1000));
 
       const res = await fetch(
