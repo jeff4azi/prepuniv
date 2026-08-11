@@ -21,7 +21,13 @@ import { Button } from "../components/Button";
 import { Avatar } from "../components/Avatar";
 import { QuizCard, formatNaira } from "../components/QuizCard";
 import { useAuth } from "../context/AuthContext";
-import { supabase, type DbQuiz, type DbCourse, type DbProfile, type DbQuizAttempt } from "../lib/supabase";
+import {
+  supabase,
+  type DbQuiz,
+  type DbCourse,
+  type DbProfile,
+  type DbQuizAttempt,
+} from "../lib/supabase";
 
 function greetingByTime() {
   const h = new Date().getHours();
@@ -40,12 +46,8 @@ function attemptDateKey(a: DbQuizAttempt) {
 }
 
 export function HomePage() {
-  const {
-    currentUser,
-    purchasedQuizIds,
-    walletBalance,
-    hasPurchasedQuiz,
-  } = useAuth();
+  const { currentUser, purchasedQuizIds, walletBalance, hasPurchasedQuiz } =
+    useAuth();
 
   const [loading, setLoading] = useState(true);
   const [allQuizzes, setAllQuizzes] = useState<DbQuiz[]>([]);
@@ -63,21 +65,15 @@ export function HomePage() {
         return;
       }
       try {
-        const quizQuery = supabase
-          .from("quizzes")
-          .select("*");
+        const quizQuery = supabase.from("quizzes").select("*");
         if (currentUser.role !== "admin") {
-          quizQuery
-            .eq("is_published", true)
-            .eq("unpublished_by_admin", false);
+          quizQuery.eq("is_published", true).eq("unpublished_by_admin", false);
           if (currentUser.university_id) {
             quizQuery.eq("university_id", currentUser.university_id);
           }
         }
 
-        const courseQuery = supabase
-          .from("courses")
-          .select("*");
+        const courseQuery = supabase.from("courses").select("*");
         if (currentUser.role !== "admin" && currentUser.university_id) {
           courseQuery.eq("university_id", currentUser.university_id);
         }
@@ -101,10 +97,14 @@ export function HomePage() {
 
         if (cancelled) return;
 
-        if (quizRes.error) console.warn("Home quizzes fetch:", quizRes.error.message);
-        if (courseRes.error) console.warn("Home courses fetch:", courseRes.error.message);
-        if (profileRes.error) console.warn("Home profiles fetch:", profileRes.error.message);
-        if (attemptRes.error) console.warn("Home attempts fetch:", attemptRes.error.message);
+        if (quizRes.error)
+          console.warn("Home quizzes fetch:", quizRes.error.message);
+        if (courseRes.error)
+          console.warn("Home courses fetch:", courseRes.error.message);
+        if (profileRes.error)
+          console.warn("Home profiles fetch:", profileRes.error.message);
+        if (attemptRes.error)
+          console.warn("Home attempts fetch:", attemptRes.error.message);
 
         setAllQuizzes(quizRes.data ?? []);
         setAllCourses(courseRes.data ?? []);
@@ -187,16 +187,62 @@ export function HomePage() {
   );
 
   const suggestedQuizzes = useMemo(() => {
+    // Only suggest unpurchased, published quizzes
     const unpurchased = publishedQuizzes.filter((q) => !hasPurchasedQuiz(q.id));
-    const sameCourse = unpurchased.filter((q) =>
-      attemptedCourseIds.has(q.course_id),
+    if (!unpurchased.length) return [];
+
+    // Score each quiz by relevance
+    const scored = unpurchased.map((q) => {
+      let score = 0;
+
+      // +30 — same course as a quiz they've already purchased
+      const purchasedCourseIds = new Set(
+        purchasedQuizIds
+          .map((id) => quizzesById.get(id)?.course_id)
+          .filter((id): id is string => !!id),
+      );
+      if (purchasedCourseIds.has(q.course_id)) score += 30;
+
+      // +20 — same course as a quiz they've attempted (but not purchased)
+      if (attemptedCourseIds.has(q.course_id)) score += 20;
+
+      // +10 — quiz has high attempt count (popular = trusted)
+      if ((q.attempt_count ?? 0) >= 500) score += 10;
+      else if ((q.attempt_count ?? 0) >= 100) score += 5;
+
+      // +8 — quiz is affordable given their wallet balance (price in kobo)
+      if (q.price <= walletBalance) score += 8;
+
+      // +5 — recently published (within 60 days) — fresh content
+      const ageMs = Date.now() - new Date(q.created_at ?? 0).getTime();
+      if (ageMs < 60 * 24 * 60 * 60 * 1000) score += 5;
+
+      // -5 — they've already attempted this quiz and scored >=70 (already mastered)
+      const bestAttempt = userAttempts
+        .filter((a) => a.quiz_id === q.id)
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0];
+      if (bestAttempt && (bestAttempt.score ?? 0) >= 70) score -= 5;
+
+      return { quiz: q, score };
+    });
+
+    // Sort by score desc, then by attempt_count desc as tiebreaker
+    scored.sort((a, b) =>
+      b.score !== a.score
+        ? b.score - a.score
+        : (b.quiz.attempt_count ?? 0) - (a.quiz.attempt_count ?? 0),
     );
-    const ordered = [...sameCourse];
-    for (const q of unpurchased) {
-      if (!ordered.find((o) => o.id === q.id)) ordered.push(q);
-    }
-    return ordered.slice(0, 6);
-  }, [publishedQuizzes, attemptedCourseIds, hasPurchasedQuiz]);
+
+    return scored.slice(0, 6).map((s) => s.quiz);
+  }, [
+    publishedQuizzes,
+    hasPurchasedQuiz,
+    purchasedQuizIds,
+    quizzesById,
+    attemptedCourseIds,
+    userAttempts,
+    walletBalance,
+  ]);
 
   const stats = useMemo(() => {
     const total = userAttempts.length;
@@ -372,7 +418,19 @@ export function HomePage() {
               <div className="flex-1">
                 <p className="text-xs text-text-soft leading-relaxed">
                   {suggestedQuizzes[0]
-                    ? "Based on quizzes you already practice — this one fits the pattern."
+                    ? (() => {
+                        const q = suggestedQuizzes[0];
+                        const purchasedCourseIds = new Set(
+                          purchasedQuizIds
+                            .map((id) => quizzesById.get(id)?.course_id)
+                            .filter(Boolean),
+                        );
+                        if (purchasedCourseIds.has(q.course_id))
+                          return "Matches a course you've already purchased — a natural next step.";
+                        if (attemptedCourseIds.has(q.course_id))
+                          return "Same course as a quiz you've attempted — keep building on it.";
+                        return "Popular in your university and within your budget.";
+                      })()
                     : "Browse a little and PrepUniv will start recommending quizzes for you."}
                 </p>
               </div>
@@ -519,7 +577,7 @@ export function HomePage() {
           title="Suggested for you"
           subtitle={
             suggestedQuizzes.length
-              ? "Quizzes you haven't unlocked yet — pay the small fee once and keep them forever."
+              ? "Picked based on your courses, purchase history, and what's popular right now."
               : "Everything in the marketplace is already in your library. Nice work!"
           }
           action={
