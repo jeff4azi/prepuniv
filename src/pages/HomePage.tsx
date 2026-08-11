@@ -168,7 +168,18 @@ export function HomePage() {
       );
   }, [allAttempts, currentUser.id]);
 
-  const recentAttempts = userAttempts.slice(0, 5);
+  const recentAttempts = useMemo(() => {
+    // One entry per quiz — the most recent attempt only
+    const seen = new Set<string>();
+    const deduped: typeof userAttempts = [];
+    for (const a of userAttempts) {
+      if (!seen.has(a.quiz_id)) {
+        seen.add(a.quiz_id);
+        deduped.push(a);
+      }
+    }
+    return deduped.slice(0, 5);
+  }, [userAttempts]);
 
   const purchasedQuizzes: DbQuiz[] = useMemo(() => {
     const out: DbQuiz[] = [];
