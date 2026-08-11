@@ -459,9 +459,14 @@ export function AttemptPage() {
         },
       );
       if (!res.ok) {
-        // Log but don't block navigation — user still needs to see their result
+        let detail = "";
+        try {
+          detail = JSON.stringify(await res.json());
+        } catch {
+          /* ignore */
+        }
         // eslint-disable-next-line no-console
-        console.warn("Persisting attempt returned", res.status);
+        console.warn("Persisting attempt returned", res.status, detail);
       }
     } catch (e) {
       // eslint-disable-next-line no-console
