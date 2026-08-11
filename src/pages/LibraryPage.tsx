@@ -216,6 +216,7 @@ function LibraryCard({ quiz, course, creator, stats }: LibraryCardProps) {
           )}
           <Link
             to={`/quiz/${quiz.id}`}
+            state={{ from: "/library" }}
             className="text-[11px] font-heading font-medium text-muted hover:text-primary transition-colors"
           >
             Details →

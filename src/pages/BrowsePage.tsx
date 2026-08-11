@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Search,
   SlidersHorizontal,
@@ -45,6 +45,7 @@ const SEARCH_DEBOUNCE_MS = 150;
 
 export function BrowsePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { hasPurchasedQuiz, currentUser } = useAuth();
   const userUniversityId = currentUser.university_id || undefined;
 
@@ -221,7 +222,7 @@ export function BrowsePage() {
   function handleCardClick(e: React.MouseEvent, quizId: string) {
     const target = e.target as HTMLElement;
     if (target.closest("a, button")) return;
-    navigate(`/quiz/${quizId}`);
+    navigate(`/quiz/${quizId}`, { state: { from: location.pathname } });
   }
 
   /** Quick-jump to a specific course code via the search bar */

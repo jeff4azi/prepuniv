@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   ArrowRight,
   CheckCircle2,
@@ -13,7 +13,12 @@ import { Button } from "./Button";
 import { Avatar } from "./Avatar";
 import { Toast, useToast } from "./Toast";
 import { ShareActionsMenu } from "./ShareActions";
-import type { DbQuiz, DbCourse, DbProfile, DbQuizAttempt } from "../lib/supabase";
+import type {
+  DbQuiz,
+  DbCourse,
+  DbProfile,
+  DbQuizAttempt,
+} from "../lib/supabase";
 
 type QuizCardVariant = "purchased" | "locked" | "attempted";
 
@@ -74,6 +79,7 @@ export function QuizCard({
   const cardClass =
     "group relative overflow-hidden " + VARIANT_BG[variant] + " " + className;
   const [toast, showToast, dismissToast] = useToast();
+  const { pathname } = useLocation();
 
   // Publicly shareable URL — the /quiz/:id preview page (same for all users)
   const shareUrl = (() => {
@@ -95,7 +101,11 @@ export function QuizCard({
   const ctaRow = (() => {
     if (variant === "purchased") {
       return (
-        <Link to={`/quiz/${quiz.id}`} className="block">
+        <Link
+          to={`/quiz/${quiz.id}`}
+          state={{ from: pathname }}
+          className="block"
+        >
           <Button fullWidth variant="primary" size="md" className="h-11">
             <PlayCircle className="w-4.5 h-4.5" />
             Start attempt
@@ -108,7 +118,7 @@ export function QuizCard({
       if (retakeTo) {
         return (
           <div className="space-y-2">
-            <Link to={retakeTo} className="block">
+            <Link to={retakeTo} state={{ from: pathname }} className="block">
               <Button fullWidth variant="primary" size="md" className="h-11">
                 <PlayCircle className="w-4.5 h-4.5" />
                 Retake
@@ -134,7 +144,11 @@ export function QuizCard({
       );
     }
     return (
-      <Link to={`/quiz/${quiz.id}`} className="block">
+      <Link
+        to={`/quiz/${quiz.id}`}
+        state={{ from: pathname }}
+        className="block"
+      >
         <Button fullWidth variant="outline" size="md" className="h-11">
           <span className="font-heading font-bold text-text">
             {formatNaira(quiz.price)}
@@ -216,7 +230,7 @@ export function QuizCard({
             <div className="flex items-center gap-1.5 flex-wrap mb-2">
               <Badge variant="secondary" size="sm">
                 <Target className="w-3 h-3" />
-                {course ? course.code ?? "Quiz" : "Quiz"}
+                {course ? (course.code ?? "Quiz") : "Quiz"}
               </Badge>
               {course && course.subject_area && (
                 <span className="text-[10px] font-heading font-medium text-muted">
@@ -256,7 +270,10 @@ export function QuizCard({
                   variant === "purchased"
                     ? "100%"
                     : String(
-                        Math.min(100, 25 + (((quiz.question_count ?? 0) * 7) % 60)),
+                        Math.min(
+                          100,
+                          25 + (((quiz.question_count ?? 0) * 7) % 60),
+                        ),
                       ) + "%",
               }}
             />

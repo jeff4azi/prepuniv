@@ -140,6 +140,7 @@ function AttemptRow({ attempt, quizTitle, course }: AttemptRowProps) {
       {/* Right: CTA */}
       <Link
         to={`/attempt/${attempt.id}/result`}
+        state={{ from: "/history" }}
         className="shrink-0 self-start sm:self-auto"
       >
         <Button variant="outline" size="sm" className="h-9 whitespace-nowrap">

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -103,8 +103,33 @@ function ConfirmPaymentBanner({
 export function QuizDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { hasPurchasedQuiz, purchaseQuiz, walletBalance, currentUser } =
     useAuth();
+
+  // Smart back: go back in history if there's a previous entry within the
+  // app, otherwise fall back to /browse (handles direct links & refreshes).
+  function goBack() {
+    if (window.history.state?.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate("/browse");
+    }
+  }
+
+  // Label the back button based on where the user came from.
+  const backLabel = useMemo(() => {
+    const prev = location.state?.from as string | undefined;
+    if (prev?.includes("/library")) return "Library";
+    if (prev?.includes("/history")) return "History";
+    if (prev?.includes("/home")) return "Home";
+    // Referrer-based fallback (works for direct links too)
+    const ref = document.referrer;
+    if (ref.includes("/library")) return "Library";
+    if (ref.includes("/history")) return "History";
+    if (ref.includes("/home")) return "Home";
+    return "Browse";
+  }, [location.state]);
 
   // ── mock data look-up ──────────────────────────────────────────────────────
   const quiz = useMemo(() => allQuizzes.find((q) => q.id === id), [id]);
@@ -169,9 +194,9 @@ export function QuizDetailPage() {
           <p className="text-sm text-text-soft">
             This quiz doesn't exist or has been removed.
           </p>
-          <Button variant="outline" onClick={() => navigate("/browse")}>
+          <Button variant="outline" onClick={goBack}>
             <ArrowLeft className="w-4 h-4" />
-            Back to Browse
+            Go Back
           </Button>
         </div>
       </PageContainer>
@@ -199,9 +224,9 @@ export function QuizDetailPage() {
             This quiz belongs to a different university and isn't available for
             your account.
           </p>
-          <Button variant="outline" onClick={() => navigate("/browse")}>
+          <Button variant="outline" onClick={goBack}>
             <ArrowLeft className="w-4 h-4" />
-            Back to Browse
+            Go Back
           </Button>
         </div>
       </PageContainer>
@@ -298,11 +323,11 @@ export function QuizDetailPage() {
       <PageContainer className="!max-w-[720px]">
         {/* ── Back nav ── */}
         <button
-          onClick={() => navigate("/browse")}
+          onClick={goBack}
           className="inline-flex items-center gap-2 text-sm font-heading font-medium text-text-soft hover:text-text transition-colors mb-6 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-          Back to Browse
+          Back to {backLabel}
         </button>
 
         <div className="space-y-4 pb-44 lg:pb-8">

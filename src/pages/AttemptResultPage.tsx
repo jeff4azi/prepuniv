@@ -463,9 +463,26 @@ export function AttemptResultPage() {
   const band = scoreBand(result.score);
   const duration = formatDuration(result.started_at, result.completed_at);
 
+  // Smart back: if there's browser history within the app use it,
+  // otherwise fall back to the quiz detail page.
+  function goBack() {
+    if (window.history.state?.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate(result.quiz_id ? `/quiz/${result.quiz_id}` : "/browse");
+    }
+  }
+
+  // Label based on where the user came from
+  const backLabel = (() => {
+    const from = (location.state as { from?: string } | null)?.from ?? "";
+    if (from.includes("/history")) return "History";
+    if (from.includes("/library")) return "Library";
+    if (from.includes("/home")) return "Home";
+    return "Quiz";
+  })();
+
   function handleAttemptAgain() {
-    // Navigate back to the quiz detail page so a proper backend attempt
-    // is created via the "Start Attempt" flow there.
     navigate(result.quiz_id ? `/quiz/${result.quiz_id}` : "/browse");
   }
 
@@ -492,13 +509,11 @@ export function AttemptResultPage() {
       <PageContainer className="max-w-170!">
         {/* ── Back link ── */}
         <button
-          onClick={() =>
-            navigate(result.quiz_id ? `/quiz/${result.quiz_id}` : "/browse")
-          }
+          onClick={goBack}
           className="inline-flex items-center gap-2 text-sm font-heading font-medium text-text-soft hover:text-text transition-colors mb-6 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-          Back to quiz
+          Back to {backLabel}
         </button>
 
         <div className="space-y-4 pb-32 lg:pb-8">
@@ -708,12 +723,10 @@ export function AttemptResultPage() {
             variant="outline"
             size="lg"
             className="flex-1"
-            onClick={() =>
-              navigate(result.quiz_id ? `/quiz/${result.quiz_id}` : "/browse")
-            }
+            onClick={goBack}
           >
             <ArrowLeft className="w-5 h-5" />
-            Quiz Details
+            {backLabel}
           </Button>
           <Button
             variant="primary"
@@ -730,12 +743,12 @@ export function AttemptResultPage() {
       {/* ── Desktop floating action (mirrors Quiz Detail pattern) ── */}
       <div className="hidden lg:block fixed bottom-6 right-6 z-30">
         <div className="bg-cream shadow-elevated rounded-3xl border border-border/50 px-5 py-4">
-          <Link
-            to={`/quiz/${result.quiz_id}`}
+          <button
+            onClick={goBack}
             className="text-xs text-text-soft font-heading hover:text-text transition-colors block mb-3"
           >
-            ← Back to quiz details
-          </Link>
+            ← Back to {backLabel}
+          </button>
           <Button variant="primary" size="lg" onClick={handleAttemptAgain}>
             <RotateCcw className="w-5 h-5" />
             Attempt Again
