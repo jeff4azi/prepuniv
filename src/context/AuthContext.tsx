@@ -9,6 +9,7 @@ import {
 } from "react";
 import type { Session, AuthError, User } from "@supabase/supabase-js";
 import { supabase, type DbProfile, type DbCourse, type DbQuiz, type DbQuizAttempt, type DbWalletTxn } from "../lib/supabase";
+import { apiFetch } from "../lib/api";
 
 export type UserRole = "user" | "creator" | "admin";
 
@@ -59,6 +60,7 @@ interface AuthContextValue {
   walletTxns: DbWalletTxn[];
   purchasedQuizIds: string[];
   hasPurchasedQuiz: (quizId: string) => boolean;
+  purchaseQuiz: (quizId: string, priceKobo: number) => Promise<boolean>;
 
   signUp: (args: {
     full_name: string;
@@ -154,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .maybeSingle(),
     ]);
     setWalletTxns(txnResult.data ?? []);
-    setUserBalance(Number(balanceResult.data?.balance ?? 0));
+    setUserBalance(Math.round(Number(balanceResult.data?.balance ?? 0) * 100));
   }, []);
 
   /* ----------------------- Derived: currentUser (old mock API shape) ----------------------- */
@@ -196,6 +198,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hasPurchasedQuiz = useCallback(
     (quizId: string) => purchasedQuizIds.includes(quizId),
     [purchasedQuizIds],
+  );
+
+  const purchaseQuiz = useCallback(
+    async (quizId: string, _priceKobo: number) => {
+      const { data, error, status } = await apiFetch<{ attempt_id: string }>(
+        `/api/quiz/${quizId}/attempt`,
+        { method: "POST", body: { is_timed: false } },
+      );
+      if (error) {
+        console.warn("purchaseQuiz failed:", error, "status:", status);
+        return false;
+      }
+      if (!data) return false;
+      if (session?.user?.id) {
+        await loadWalletData(session.user.id);
+      }
+      return true;
+    },
+    [loadWalletData, session],
   );
 
   /* ---------------------- Session listener (the primary driver) ---------------------- */
@@ -391,6 +412,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       walletTxns,
       purchasedQuizIds,
       hasPurchasedQuiz,
+      purchaseQuiz,
 
       signUp,
       logIn,
@@ -419,6 +441,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       walletTxns,
       purchasedQuizIds,
       hasPurchasedQuiz,
+      purchaseQuiz,
       signUp,
       logIn,
       logOut,

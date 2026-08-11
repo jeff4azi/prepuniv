@@ -205,7 +205,7 @@ export function WalletPage() {
     };
   }, [walletTxns]);
 
-  const walletBalanceKobo = kobo(walletBalance);
+  const walletBalanceKobo = walletBalance;
 
   const allRelevantTxns = useMemo(() => {
     return walletTxns
@@ -846,7 +846,7 @@ export function WalletPage() {
                           New balance
                         </span>
                         <span className="font-heading font-bold text-[15px] text-text">
-                          {formatNaira(kobo(walletBalance))}
+                          {formatNaira(walletBalance)}
                         </span>
                       </div>
                       <div className="px-4 py-3 flex items-center justify-between">

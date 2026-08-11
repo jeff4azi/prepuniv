@@ -87,7 +87,7 @@ async function mockVerifyAccount(
 }
 
 function computeEarningsBalance(userId: string, walletTxns: { user_id: string | null; type: string; status: string; amount: number }[]): number {
-  return walletTxns
+  const naira = walletTxns
     .filter(
       (t) =>
         t.user_id === userId &&
@@ -95,6 +95,7 @@ function computeEarningsBalance(userId: string, walletTxns: { user_id: string | 
         t.status === "completed",
     )
     .reduce((sum, t) => sum + t.amount, 0);
+  return Math.round(naira * 100);
 }
 
 function formatDate(iso: string) {
@@ -216,11 +217,12 @@ export function CreatorPayoutsPage() {
     )
       return;
     setSubmitting(true);
+    const amountNaira = Math.round(requestedAmountKobo / 100);
     const { data, error } = await apiFetch<{ payout_request: PayoutRequest }>(
       "/api/creator/payout-request",
       {
         method: "POST",
-        body: { amount: requestedAmountKobo },
+        body: { amount: amountNaira },
       },
     );
     setSubmitting(false);
@@ -675,7 +677,7 @@ function PayoutRow({ request }: { request: PayoutRequest }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="font-heading font-bold text-[15px] text-text leading-tight">
-            {formatNaira(request.amount)}
+            {formatNaira(Math.round(Number(request.amount) * 100))}
           </p>
           <Badge variant={cfg.variant} size="sm" dot>
             {cfg.label}

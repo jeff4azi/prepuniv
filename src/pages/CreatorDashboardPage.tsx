@@ -112,19 +112,23 @@ export function CreatorDashboardPage() {
 
   const lifetimeEarnings = useMemo(
     () =>
-      creatorTxns
-        .filter((t) => t.type === "creator_earning")
-        .reduce((sum, t) => sum + Number(t.amount), 0),
+      Math.round(
+        creatorTxns
+          .filter((t) => t.type === "creator_earning")
+          .reduce((sum, t) => sum + Number(t.amount), 0) * 100,
+      ),
     [creatorTxns],
   );
 
   const thisMonthEarnings = useMemo(
     () =>
-      creatorTxns
-        .filter(
-          (t) => t.type === "creator_earning" && sameMonth(t.created_at, now),
-        )
-        .reduce((sum, t) => sum + Number(t.amount), 0),
+      Math.round(
+        creatorTxns
+          .filter(
+            (t) => t.type === "creator_earning" && sameMonth(t.created_at, now),
+          )
+          .reduce((sum, t) => sum + Number(t.amount), 0) * 100,
+      ),
     [creatorTxns, now],
   );
 
