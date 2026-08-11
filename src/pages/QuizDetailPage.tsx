@@ -296,7 +296,7 @@ export function QuizDetailPage() {
           Back to Browse
         </button>
 
-        <div className="space-y-4 pb-32 lg:pb-8">
+        <div className="space-y-4 pb-44 lg:pb-8">
           {/* ── Quiz header ── */}
           <Card padded={false}>
             <div className="px-5 pt-5 pb-5 space-y-4">
@@ -625,8 +625,9 @@ export function QuizDetailPage() {
       </PageContainer>
 
       {/* ── Sticky CTA bar (mobile) ── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-background/95 backdrop-blur-xl border-t border-border/50 safe-bottom">
-        <div className="px-4 pt-3 pb-4 max-w-[720px] mx-auto">
+      {/* z-50 puts it above BottomNav (z-40). bottom-14 clears the nav bar height. */}
+      <div className="lg:hidden fixed bottom-14 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50">
+        <div className="px-4 pt-3 pb-3 max-w-[720px] mx-auto">
           {isPurchased ? (
             <Button
               variant="primary"
