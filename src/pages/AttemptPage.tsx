@@ -409,8 +409,13 @@ export function AttemptPage() {
       const timeTakenMs = new Date(completedAt).getTime() - new Date(startedAt).getTime();
       const timeTakenSeconds = Math.max(0, Math.round(timeTakenMs / 1000));
 
+      const host = window.location.hostname;
+      const isProd = host === "prepuniv.vercel.app" || host === "www.prepuniv.vercel.app";
+      const envBase = import.meta.env.VITE_API_BASE_URL ?? "";
+      const apiBase = isProd ? "" : (envBase === "undefined" ? "" : envBase);
+
       const res = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL ?? ""}/api/attempt/${attemptId}/complete`,
+        `${apiBase}/api/attempt/${attemptId}/complete`,
         {
           method: "POST",
           headers: {

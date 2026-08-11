@@ -1,6 +1,19 @@
 import { supabase } from "./supabase";
 
-const API_BASE: string = import.meta.env.VITE_API_BASE_URL ?? "";
+const HOST =
+  typeof window !== "undefined" && window.location.hostname
+    ? window.location.hostname
+    : "";
+
+const IS_PROD_HOST = HOST === "prepuniv.vercel.app" || HOST === "www.prepuniv.vercel.app";
+
+const ENV_BASE: string = import.meta.env.VITE_API_BASE_URL ?? "";
+
+const API_BASE: string = (() => {
+  if (IS_PROD_HOST) return "";
+  if (ENV_BASE === "undefined") return "";
+  return ENV_BASE;
+})();
 
 type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
