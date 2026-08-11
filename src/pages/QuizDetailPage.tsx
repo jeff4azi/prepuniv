@@ -222,14 +222,23 @@ export function QuizDetailPage() {
       setShowConfirm(true);
       return;
     }
-    // confirm step
+    // confirm step — pay and create attempt in one backend call
     setIsPaying(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    const ok = await purchaseQuiz(quiz.id, quiz.price);
+    const isTimed = timingChoice === "timed";
+    const result = await purchaseQuiz(
+      quiz.id,
+      isTimed,
+      quiz.time_limit_seconds ?? undefined,
+    );
     setIsPaying(false);
-    if (ok) {
+    if (result.ok && result.attempt_id) {
       setShowConfirm(false);
-      showToast({ message: "Unlocked! You can now retake this quiz anytime." });
+      navigate(`/attempt/${result.attempt_id}`, {
+        state: { quizId: quiz.id, isTimed },
+      });
+    } else {
+      setStartError("Payment failed. Please try again.");
+      setShowConfirm(false);
     }
   }
 

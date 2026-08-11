@@ -14,6 +14,7 @@ import { MathText } from "../components/MathText";
 import type { Question, AttemptResult, Quiz } from "../mock/types";
 import { fetchQuiz, fetchQuestions } from "../lib/queries";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 // ─── Route state shape (from QuizDetailPage) ─────────────────────────────────
 interface AttemptLocationState {
@@ -306,37 +307,60 @@ export function AttemptPage() {
   } | null>(null);
 
   useEffect(() => {
-    if (!state.quizId) {
-      setError("Missing quiz id. Please restart this attempt.");
-      setLoading(false);
-      return;
-    }
     let cancelled = false;
     (async () => {
+      // Resolve quizId: prefer router state, fall back to DB lookup via attemptId
+      let quizId = state.quizId;
+
+      if (!quizId && attemptId) {
+        // Page was refreshed or navigated to directly — fetch quizId from DB
+        const { data } = await supabase
+          .from("quiz_attempts")
+          .select("quiz_id")
+          .eq("id", attemptId)
+          .maybeSingle();
+        quizId = data?.quiz_id ?? undefined;
+      }
+
+      if (!quizId) {
+        if (!cancelled) {
+          setError("Could not find this attempt. Please start a new one.");
+          setLoading(false);
+        }
+        return;
+      }
+
       const [q, qs] = await Promise.all([
-        fetchQuiz(state.quizId!),
-        fetchQuestions(state.quizId!),
+        fetchQuiz(quizId),
+        fetchQuestions(quizId),
       ]);
       if (cancelled) return;
+
       if (!q) {
         setError("Quiz not found. It may have been removed.");
         setLoading(false);
         return;
       }
+      if (qs.length === 0) {
+        setError("This quiz has no questions yet.");
+        setLoading(false);
+        return;
+      }
+
       const shuffled = buildShuffledQuestions(qs);
       sessionRef.current = {
         questions: shuffled,
         startedAt: new Date().toISOString(),
       };
       setQuiz(q);
-      setQuestions(shuffled); // triggers re-render with the loaded questions
+      setQuestions(shuffled);
       setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.quizId]);
+  }, [attemptId]);
 
   const isTimed = (state.isTimed ?? false) && !!quiz?.time_limit_seconds;
   const isOverall = isTimed;

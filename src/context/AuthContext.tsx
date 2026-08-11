@@ -8,7 +8,14 @@ import {
   type ReactNode,
 } from "react";
 import type { Session, AuthError, User } from "@supabase/supabase-js";
-import { supabase, type DbProfile, type DbCourse, type DbQuiz, type DbQuizAttempt, type DbWalletTxn } from "../lib/supabase";
+import {
+  supabase,
+  type DbProfile,
+  type DbCourse,
+  type DbQuiz,
+  type DbQuizAttempt,
+  type DbWalletTxn,
+} from "../lib/supabase";
 import { apiFetch } from "../lib/api";
 
 export type UserRole = "user" | "creator" | "admin";
@@ -62,7 +69,11 @@ interface AuthContextValue {
   walletTxns: DbWalletTxn[];
   purchasedQuizIds: string[];
   hasPurchasedQuiz: (quizId: string) => boolean;
-  purchaseQuiz: (quizId: string, priceKobo: number) => Promise<boolean>;
+  purchaseQuiz: (
+    quizId: string,
+    isTimed: boolean,
+    timeLimitSeconds?: number,
+  ) => Promise<{ ok: boolean; attempt_id?: string }>;
 
   signUp: (args: {
     full_name: string;
@@ -83,7 +94,9 @@ interface AuthContextValue {
   updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>;
 
   refreshProfile: () => Promise<void>;
-  updateProfilePatch: (patch: Partial<Profile>) => Promise<{ error: Error | null }>;
+  updateProfilePatch: (
+    patch: Partial<Profile>,
+  ) => Promise<{ error: Error | null }>;
 
   acceptCreatorAgreement: () => Promise<{ error: Error | null }>;
   updateBankDetails: (d: BankDetails) => Promise<{ error: Error | null }>;
@@ -203,20 +216,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const purchaseQuiz = useCallback(
-    async (quizId: string, _priceKobo: number) => {
+    async (
+      quizId: string,
+      isTimed: boolean,
+      timeLimitSeconds?: number,
+    ): Promise<{ ok: boolean; attempt_id?: string }> => {
       const { data, error, status } = await apiFetch<{ attempt_id: string }>(
         `/api/quiz/${quizId}/attempt`,
-        { method: "POST", body: { is_timed: false } },
+        {
+          method: "POST",
+          body: {
+            is_timed: isTimed,
+            time_allowed_seconds: isTimed ? timeLimitSeconds : undefined,
+          },
+        },
       );
       if (error) {
         console.warn("purchaseQuiz failed:", error, "status:", status);
-        return false;
+        return { ok: false };
       }
-      if (!data) return false;
+      if (!data) return { ok: false };
       if (session?.user?.id) {
         await loadWalletData(session.user.id);
       }
-      return true;
+      return { ok: true, attempt_id: data.attempt_id };
     },
     [loadWalletData, session],
   );
