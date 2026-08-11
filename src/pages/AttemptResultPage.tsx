@@ -463,10 +463,13 @@ export function AttemptResultPage() {
   const band = scoreBand(result.score);
   const duration = formatDuration(result.started_at, result.completed_at);
 
-  // Smart back: if there's browser history within the app use it,
-  // otherwise fall back to the quiz detail page.
+  // Smart back: use explicit `from` state first, then browser history, then quiz detail
+  const fromPath = (location.state as { from?: string } | null)?.from;
+
   function goBack() {
-    if (window.history.state?.idx > 0) {
+    if (fromPath) {
+      navigate(fromPath);
+    } else if (window.history.state?.idx > 0) {
       navigate(-1);
     } else {
       navigate(result.quiz_id ? `/quiz/${result.quiz_id}` : "/browse");
@@ -475,10 +478,12 @@ export function AttemptResultPage() {
 
   // Label based on where the user came from
   const backLabel = (() => {
-    const from = (location.state as { from?: string } | null)?.from ?? "";
+    const from = fromPath ?? "";
     if (from.includes("/history")) return "History";
     if (from.includes("/library")) return "Library";
     if (from.includes("/home")) return "Home";
+    if (from.includes("/browse")) return "Browse";
+    if (window.history.state?.idx > 0) return "Back";
     return "Quiz";
   })();
 

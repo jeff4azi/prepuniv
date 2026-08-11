@@ -107,29 +107,32 @@ export function QuizDetailPage() {
   const { hasPurchasedQuiz, purchaseQuiz, walletBalance, currentUser } =
     useAuth();
 
-  // Smart back: go back in history if there's a previous entry within the
-  // app, otherwise fall back to /browse (handles direct links & refreshes).
+  // Resolve where to go back to, in priority order:
+  // 1. Explicit `from` passed via router state (most reliable)
+  // 2. Browser history stack (handles cases where state wasn't set)
+  // 3. /browse as final fallback
+  const fromPath = location.state?.from as string | undefined;
+
   function goBack() {
-    if (window.history.state?.idx > 0) {
+    if (fromPath) {
+      navigate(fromPath);
+    } else if (window.history.state?.idx > 0) {
       navigate(-1);
     } else {
       navigate("/browse");
     }
   }
 
-  // Label the back button based on where the user came from.
   const backLabel = useMemo(() => {
-    const prev = location.state?.from as string | undefined;
-    if (prev?.includes("/library")) return "Library";
-    if (prev?.includes("/history")) return "History";
-    if (prev?.includes("/home")) return "Home";
-    // Referrer-based fallback (works for direct links too)
-    const ref = document.referrer;
-    if (ref.includes("/library")) return "Library";
-    if (ref.includes("/history")) return "History";
-    if (ref.includes("/home")) return "Home";
+    const path = fromPath ?? "";
+    if (path.includes("/library")) return "Library";
+    if (path.includes("/history")) return "History";
+    if (path.includes("/home")) return "Home";
+    if (path.includes("/browse")) return "Browse";
+    // If no state, check if there's actual browser history to go back to
+    if (window.history.state?.idx > 0) return "Back";
     return "Browse";
-  }, [location.state]);
+  }, [fromPath]);
 
   // ── mock data look-up ──────────────────────────────────────────────────────
   const quiz = useMemo(() => allQuizzes.find((q) => q.id === id), [id]);
