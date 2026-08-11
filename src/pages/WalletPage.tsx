@@ -91,7 +91,6 @@ export function WalletPage() {
     const txRef = params.get("tx_ref");
     if (!txRef) return;
 
-    // Clean the URL so a hard-refresh doesn't re-trigger
     window.history.replaceState({}, "", window.location.pathname);
 
     setRedirectTxRef(txRef);
@@ -99,40 +98,90 @@ export function WalletPage() {
 
     let cancelled = false;
 
-    const verify = async () => {
-      const { data, error } = await apiFetch<{ status: string }>(
-        "/api/wallet/topup/verify",
-        { method: "POST", body: { tx_ref: txRef } },
-      );
+    const verifyWithPolling = async () => {
+      const maxAttempts = 15;
+      const delayMs = 3000;
 
-      if (cancelled) return;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const { data, error } = await apiFetch<{ status: string }>(
+          "/api/wallet/topup/verify",
+          { method: "POST", body: { tx_ref: txRef } },
+        );
 
-      if (error) {
-        // Network / server error — show a soft "still processing" message
-        setVerifyState("pending");
-        return;
-      }
-
-      const status = data?.status;
-
-      if (status === "completed") {
-        await refreshProfile();
         if (cancelled) return;
-        setVerifyState("success");
-      } else if (status === "failed") {
-        setVerifyState("failed");
-      } else {
-        // Flutterwave hasn't confirmed yet — ask user to wait
-        setVerifyState("pending");
+
+        if (error) {
+          setVerifyState("pending");
+          await new Promise((r) => setTimeout(r, delayMs));
+          continue;
+        }
+
+        const status = data?.status;
+
+        if (status === "completed") {
+          await refreshProfile();
+          if (cancelled) return;
+          setVerifyState("success");
+          return;
+        } else if (status === "failed") {
+          await refreshProfile();
+          if (cancelled) return;
+          setVerifyState("failed");
+          return;
+        } else {
+          setVerifyState("pending");
+          await refreshProfile();
+          if (cancelled) return;
+          await new Promise((r) => setTimeout(r, delayMs));
+        }
       }
+
+      if (!cancelled) setVerifyState("pending");
     };
 
-    void verify();
+    void verifyWithPolling();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const pendingTopups = walletTxns.filter(
+      (t) => t.type === "topup" && t.status === "pending",
+    );
+    if (pendingTopups.length === 0) return;
+
+    let cancelled = false;
+    let stopped = false;
+
+    const tick = async () => {
+      while (!stopped && !cancelled) {
+        await new Promise((r) => setTimeout(r, 8000));
+        if (stopped || cancelled) break;
+
+        let allResolved = true;
+        for (const tx of pendingTopups) {
+          if (cancelled || stopped) break;
+          const { data } = await apiFetch<{ status: string }>(
+            "/api/wallet/topup/verify",
+            { method: "POST", body: { tx_ref: tx.reference } },
+          );
+          if (data?.status === "pending") allResolved = false;
+        }
+
+        if (!cancelled && !stopped) await refreshProfile();
+        if (allResolved) break;
+      }
+    };
+
+    void tick();
+    return () => {
+      cancelled = true;
+      stopped = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [walletTxns.length]);
 
   useEffect(() => {
     let cancelled = false;
@@ -208,9 +257,11 @@ export function WalletPage() {
       await refreshProfile();
       const found = walletTxns.find((t) => t.reference === txRef);
       if (found && found.status === "completed") return true;
+      if (found && found.status === "failed") return false;
     }
     await refreshProfile();
-    return true;
+    const final = walletTxns.find((t) => t.reference === txRef);
+    return final?.status === "completed";
   };
 
   const handleContinue = async () => {
