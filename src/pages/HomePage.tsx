@@ -65,17 +65,22 @@ export function HomePage() {
         return;
       }
       try {
-        const quizQuery = supabase.from("quizzes").select("*");
-        if (currentUser.role !== "admin") {
-          quizQuery.eq("is_published", true).eq("unpublished_by_admin", false);
-          if (currentUser.university_id) {
-            quizQuery.eq("university_id", currentUser.university_id);
-          }
+        // Supabase builder is immutable — must reassign, not mutate in-place
+        let quizQuery = supabase
+          .from("quizzes")
+          .select("*")
+          .eq("is_published", true)
+          .eq("unpublished_by_admin", false);
+        if (currentUser.role !== "admin" && currentUser.university_id) {
+          quizQuery = quizQuery.eq("university_id", currentUser.university_id);
         }
 
-        const courseQuery = supabase.from("courses").select("*");
+        let courseQuery = supabase.from("courses").select("*");
         if (currentUser.role !== "admin" && currentUser.university_id) {
-          courseQuery.eq("university_id", currentUser.university_id);
+          courseQuery = courseQuery.eq(
+            "university_id",
+            currentUser.university_id,
+          );
         }
 
         const profilesQuery = supabase
@@ -202,42 +207,44 @@ export function HomePage() {
     const unpurchased = publishedQuizzes.filter((q) => !hasPurchasedQuiz(q.id));
     if (!unpurchased.length) return [];
 
+    // Pre-compute purchased course IDs once (not per-item)
+    const purchasedCourseIds = new Set(
+      purchasedQuizIds
+        .map((id) => quizzesById.get(id)?.course_id)
+        .filter((id): id is string => !!id),
+    );
+
     // Score each quiz by relevance
     const scored = unpurchased.map((q) => {
       let score = 0;
 
       // +30 — same course as a quiz they've already purchased
-      const purchasedCourseIds = new Set(
-        purchasedQuizIds
-          .map((id) => quizzesById.get(id)?.course_id)
-          .filter((id): id is string => !!id),
-      );
       if (purchasedCourseIds.has(q.course_id)) score += 30;
 
       // +20 — same course as a quiz they've attempted (but not purchased)
       if (attemptedCourseIds.has(q.course_id)) score += 20;
 
-      // +10 — quiz has high attempt count (popular = trusted)
+      // +10 / +5 — popular quiz
       if ((q.attempt_count ?? 0) >= 500) score += 10;
       else if ((q.attempt_count ?? 0) >= 100) score += 5;
 
-      // +8 — quiz is affordable given their wallet balance (price in kobo)
+      // +8 — affordable right now
       if (q.price <= walletBalance) score += 8;
 
-      // +5 — recently published (within 60 days) — fresh content
+      // +5 — recently published (within 60 days)
       const ageMs = Date.now() - new Date(q.created_at ?? 0).getTime();
       if (ageMs < 60 * 24 * 60 * 60 * 1000) score += 5;
 
-      // -5 — they've already attempted this quiz and scored >=70 (already mastered)
-      const bestAttempt = userAttempts
+      // -5 — already attempted and scored ≥70 (no urgency to revisit)
+      const bestScore = userAttempts
         .filter((a) => a.quiz_id === q.id)
-        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0];
-      if (bestAttempt && (bestAttempt.score ?? 0) >= 70) score -= 5;
+        .reduce((best, a) => Math.max(best, a.score ?? 0), 0);
+      if (bestScore >= 70) score -= 5;
 
       return { quiz: q, score };
     });
 
-    // Sort by score desc, then by attempt_count desc as tiebreaker
+    // Sort by score desc, then popularity as tiebreaker
     scored.sort((a, b) =>
       b.score !== a.score
         ? b.score - a.score
