@@ -1,19 +1,10 @@
 import { supabase } from "./supabase";
 
-const HOST =
-  typeof window !== "undefined" && window.location.hostname
-    ? window.location.hostname
-    : "";
+const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
 
-const IS_PROD_HOST = HOST === "prepuniv.vercel.app" || HOST === "www.prepuniv.vercel.app";
-
-const ENV_BASE: string = import.meta.env.VITE_API_BASE_URL ?? "";
-
-const API_BASE: string = (() => {
-  if (IS_PROD_HOST) return "";
-  if (ENV_BASE === "undefined") return "";
-  return ENV_BASE;
-})();
+if (!API_BASE) {
+  console.warn("VITE_API_BASE_URL is not set — money-moving endpoints will fail.");
+}
 
 type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -70,43 +61,18 @@ export async function apiFetch<T = unknown>(
     };
   }
 
-  let json: unknown = null;
+  let json: T | { error: string } | null = null;
   try {
-    json = await resp.json();
+    json = (await resp.json()) as T | { error: string };
   } catch {
     json = null;
   }
 
-  function normalizeError(raw: unknown): string {
-    if (typeof raw === "string") return raw;
-    if (raw && typeof raw === "object") {
-      const o = raw as Record<string, unknown>;
-      if (typeof o.message === "string") return o.message;
-      if (typeof o.error === "string") return o.error;
-      if (typeof o.detail === "string") return o.detail;
-      if (typeof o.code !== "undefined") {
-        const codeStr = String(o.code);
-        return typeof o.msg === "string" ? o.msg : typeof o.message === "string" ? o.message : `Server error (${codeStr})`;
-      }
-      try {
-        return JSON.stringify(raw);
-      } catch {
-        return "Unknown error";
-      }
-    }
-    return `HTTP ${resp.status}`;
-  }
-
   if (!resp.ok) {
-    let errMsg: string = resp.statusText || `HTTP ${resp.status}`;
-    if (json && typeof json === "object") {
-      const o = json as Record<string, unknown>;
-      if (typeof o.error === "string") errMsg = o.error;
-      else if ("message" in o || "code" in o || "detail" in o) errMsg = normalizeError(json);
-      else if (typeof (json as { error?: unknown }).error !== "undefined") {
-        errMsg = normalizeError((json as { error: unknown }).error);
-      }
-    }
+    const errMsg =
+      (json && typeof json === "object" && "error" in json
+        ? (json as { error: string }).error
+        : null) || resp.statusText || `HTTP ${resp.status}`;
     return { data: null, error: errMsg, status: resp.status };
   }
 

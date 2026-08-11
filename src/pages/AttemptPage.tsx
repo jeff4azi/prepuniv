@@ -409,13 +409,8 @@ export function AttemptPage() {
       const timeTakenMs = new Date(completedAt).getTime() - new Date(startedAt).getTime();
       const timeTakenSeconds = Math.max(0, Math.round(timeTakenMs / 1000));
 
-      const host = window.location.hostname;
-      const isProd = host === "prepuniv.vercel.app" || host === "www.prepuniv.vercel.app";
-      const envBase = import.meta.env.VITE_API_BASE_URL ?? "";
-      const apiBase = isProd ? "" : (envBase === "undefined" ? "" : envBase);
-
       const res = await fetch(
-        `${apiBase}/api/attempt/${attemptId}/complete`,
+        `${import.meta.env.VITE_API_URL ?? ""}/api/attempt/${attemptId}/complete`,
         {
           method: "POST",
           headers: {
@@ -478,7 +473,6 @@ export function AttemptPage() {
 
   useEffect(() => {
     if (!isOverall || overallExpiredRef.current) return;
-    if (!sessionRef.current) return;
     if (overallSecs <= 0) {
       overallExpiredRef.current = true;
       void handleFinalSubmitRef.current();
@@ -486,7 +480,7 @@ export function AttemptPage() {
     }
     const t = setTimeout(() => setOverallSecs((s) => s - 1), 1000);
     return () => clearTimeout(t);
-  });
+  }); // no dep array — runs as a heartbeat, guarded by the ref flag
 
   function trySubmit() {
     const unanswered = (sessionRef.current?.questions ?? []).filter(

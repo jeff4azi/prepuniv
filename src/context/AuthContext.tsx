@@ -62,8 +62,7 @@ interface AuthContextValue {
   walletTxns: DbWalletTxn[];
   purchasedQuizIds: string[];
   hasPurchasedQuiz: (quizId: string) => boolean;
-  purchaseQuiz: (quizId: string, priceKobo: number) => Promise<string | null>;
-  startAttempt: (quizId: string, isTimed?: boolean) => Promise<string | null>;
+  purchaseQuiz: (quizId: string, priceKobo: number) => Promise<boolean>;
 
   signUp: (args: {
     full_name: string;
@@ -203,30 +202,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [purchasedQuizIds],
   );
 
-  const startAttempt = useCallback(
-    async (quizId: string, isTimed: boolean = false) => {
+  const purchaseQuiz = useCallback(
+    async (quizId: string, _priceKobo: number) => {
       const { data, error, status } = await apiFetch<{ attempt_id: string }>(
         `/api/quiz/${quizId}/attempt`,
-        { method: "POST", body: { is_timed: isTimed } },
+        { method: "POST", body: { is_timed: false } },
       );
       if (error) {
-        console.warn("startAttempt failed:", error, "status:", status);
-        return null;
+        console.warn("purchaseQuiz failed:", error, "status:", status);
+        return false;
       }
-      if (!data?.attempt_id) return null;
+      if (!data) return false;
       if (session?.user?.id) {
         await loadWalletData(session.user.id);
       }
-      return data.attempt_id;
+      return true;
     },
     [loadWalletData, session],
-  );
-
-  const purchaseQuiz = useCallback(
-    async (quizId: string, _priceKobo: number) => {
-      return startAttempt(quizId, false);
-    },
-    [startAttempt],
   );
 
   /* ---------------------- Session listener (the primary driver) ---------------------- */
@@ -424,7 +416,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       purchasedQuizIds,
       hasPurchasedQuiz,
       purchaseQuiz,
-      startAttempt,
 
       signUp,
       logIn,
@@ -454,7 +445,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       purchasedQuizIds,
       hasPurchasedQuiz,
       purchaseQuiz,
-      startAttempt,
       signUp,
       logIn,
       logOut,
