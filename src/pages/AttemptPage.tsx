@@ -410,7 +410,7 @@ export function AttemptPage() {
       const timeTakenSeconds = Math.max(0, Math.round(timeTakenMs / 1000));
 
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL ?? ""}/api/attempt/${attemptId}/complete`,
+        `${import.meta.env.VITE_API_BASE_URL ?? ""}/api/attempt/${attemptId}/complete`,
         {
           method: "POST",
           headers: {
