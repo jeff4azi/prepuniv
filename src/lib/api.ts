@@ -1,10 +1,6 @@
 import { supabase } from "./supabase";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
-
-if (!API_BASE) {
-  console.warn("VITE_API_BASE_URL is not set — money-moving endpoints will fail.");
-}
+const API_BASE: string = import.meta.env.VITE_API_BASE_URL ?? "";
 
 type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
