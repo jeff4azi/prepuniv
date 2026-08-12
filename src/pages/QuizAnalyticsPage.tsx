@@ -164,7 +164,7 @@ export function QuizAnalyticsPage() {
       }
       setQuiz(qData);
 
-      const [cRes, qRes, aRes] = await Promise.all([
+      const [cRes, qRes, aRes, vRes] = await Promise.all([
         qData.course_id
           ? supabase
               .from("courses")
@@ -182,36 +182,27 @@ export function QuizAnalyticsPage() {
           .select("*")
           .eq("quiz_id", quizId)
           .not("completed_at", "is", null),
+        supabase
+          .from("quiz_versions")
+          .select("*")
+          .eq("quiz_id", quizId)
+          .order("version_number", { ascending: false }),
       ]);
 
       if (cancelled) return;
 
       let questionsList = qRes.data ?? [];
       const rawAttempts = aRes.data ?? [];
+      const versionsList = vRes.data ?? [];
       const attemptRows = rawAttempts.map(toAttempt);
 
-      // Fallback: parse questions from quiz_snapshot if questions table is empty
-      if (questionsList.length === 0 && rawAttempts.length > 0) {
-        for (const att of rawAttempts) {
-          if (att.quiz_snapshot) {
-            try {
-              const parsed =
-                typeof att.quiz_snapshot === "string"
-                  ? JSON.parse(att.quiz_snapshot)
-                  : att.quiz_snapshot;
-              if (
-                parsed &&
-                Array.isArray(parsed.questions) &&
-                parsed.questions.length > 0
-              ) {
-                questionsList = parsed.questions;
-                break;
-              }
-            } catch (e) {
-              /* ignore */
-            }
-          }
-        }
+      // Fallback: use quiz_versions snapshot if questions table is empty
+      if (questionsList.length === 0 && versionsList.length > 0) {
+        const latestSnap = versionsList[0].questions_snapshot;
+        questionsList =
+          typeof latestSnap === "string"
+            ? JSON.parse(latestSnap)
+            : latestSnap;
       }
 
       setCourse(cRes.data ?? null);

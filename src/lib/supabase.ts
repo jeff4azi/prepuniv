@@ -102,11 +102,21 @@ export type DbWalletTxn = {
   created_at: string;
 };
 
+export type DbQuizVersion = {
+  id: string;
+  quiz_id: string;
+  version_number: number;
+  questions_snapshot: unknown;
+  question_count: number;
+  created_at: string;
+};
+
 export type DbQuizAttempt = {
   id: string;
   user_id: string;
   quiz_id: string;
-  quiz_snapshot: unknown;
+  quiz_version_id: string | null;
+  answers: Record<string, string> | null;
   is_timed: boolean;
   time_allowed_seconds: number | null;
   time_taken_seconds: number | null;

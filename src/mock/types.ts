@@ -86,10 +86,21 @@ export interface WalletTransaction {
   created_at: string;
 }
 
+export interface QuizVersion {
+  id: string;
+  quiz_id: string;
+  version_number: number;
+  questions_snapshot: Question[];
+  question_count: number;
+  created_at: string;
+}
+
 export interface QuizAttempt {
   id: string;
   user_id: string;
   quiz_id: string;
+  quiz_version_id?: string;
+  answers?: Record<string, string>;
   score: number;
   is_timed: boolean;
   started_at: string;

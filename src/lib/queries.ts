@@ -109,6 +109,8 @@ export function toAttempt(row: any): QuizAttempt {
     id: row.id,
     user_id: row.user_id,
     quiz_id: row.quiz_id,
+    quiz_version_id: row.quiz_version_id ?? undefined,
+    answers: row.answers ?? undefined,
     score: row.score ?? 0,
     is_timed: !!row.is_timed,
     started_at: row.started_at,
@@ -327,9 +329,7 @@ export async function fetchQuizAttempts(
 export async function fetchAttemptAnswers(
   attemptId: string,
 ): Promise<AttemptAnswer[]> {
-  // Select only columns on attempt_answers — no join to questions.
-  // question_text and correct_answer are stored as snapshots on the row
-  // (saved by the backend at attempt completion time).
+  // 1. Try fetching from attempt_answers table
   const { data, error } = await supabase
     .from("attempt_answers")
     .select(
@@ -337,27 +337,66 @@ export async function fetchAttemptAnswers(
     )
     .eq("attempt_id", attemptId);
 
-  if (error) {
-    console.warn("fetchAttemptAnswers error:", error.message);
-    return [];
+  if (!error && data && data.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data as any[]).map((row) => ({
+      question_id: row.question_id,
+      question_text: row.question_text ?? "",
+      type: "mcq" as const,
+      given:
+        typeof row.answer_given === "string"
+          ? row.answer_given
+          : String(row.answer_given ?? ""),
+      correct:
+        typeof row.correct_answer === "string"
+          ? row.correct_answer
+          : String(row.correct_answer ?? ""),
+      is_correct: !!row.is_correct,
+    }));
   }
-  if (!data) return [];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data as any[]).map((row) => ({
-    question_id: row.question_id,
-    question_text: row.question_text ?? "",
-    type: "mcq" as const, // type not stored; mcq is safe default for display
-    given:
-      typeof row.answer_given === "string"
-        ? row.answer_given
-        : String(row.answer_given ?? ""),
-    correct:
-      typeof row.correct_answer === "string"
-        ? row.correct_answer
-        : String(row.correct_answer ?? ""),
-    is_correct: !!row.is_correct,
-  }));
+  // 2. Reconstruct from quiz_versions snapshot and attempt.answers JSONB
+  const { data: attemptRow } = await supabase
+    .from("quiz_attempts")
+    .select("quiz_version_id, answers")
+    .eq("id", attemptId)
+    .maybeSingle();
+
+  if (attemptRow?.quiz_version_id) {
+    const { data: vData } = await supabase
+      .from("quiz_versions")
+      .select("questions_snapshot")
+      .eq("id", attemptRow.quiz_version_id)
+      .maybeSingle();
+
+    if (vData?.questions_snapshot) {
+      const questions =
+        typeof vData.questions_snapshot === "string"
+          ? JSON.parse(vData.questions_snapshot)
+          : vData.questions_snapshot;
+      const userAnswers: Record<string, string> = attemptRow.answers ?? {};
+
+      if (Array.isArray(questions)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return questions.map((q: any) => {
+          const given = (userAnswers[q.id] ?? "").trim();
+          const correct = String(q.correct_answer ?? "").trim();
+          const is_correct =
+            given.toLowerCase() === correct.toLowerCase();
+          return {
+            question_id: q.id,
+            question_text: q.question_text ?? "",
+            type: (q.type || "mcq") as "mcq" | "fill_blank",
+            given,
+            correct,
+            is_correct,
+          };
+        });
+      }
+    }
+  }
+
+  return [];
 }
 
 /** Creator applications */

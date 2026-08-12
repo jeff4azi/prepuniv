@@ -312,14 +312,35 @@ export function AttemptPage() {
       // Resolve quizId: prefer router state, fall back to DB lookup via attemptId
       let quizId = state.quizId;
 
-      if (!quizId && attemptId) {
-        // Page was refreshed or navigated to directly — fetch quizId from DB
-        const { data } = await supabase
+      let versionQuestions: Question[] | null = null;
+
+      if (attemptId) {
+        const { data: attData } = await supabase
           .from("quiz_attempts")
-          .select("quiz_id")
+          .select("quiz_id, quiz_version_id")
           .eq("id", attemptId)
           .maybeSingle();
-        quizId = data?.quiz_id ?? undefined;
+
+        if (attData) {
+          quizId = quizId || attData.quiz_id;
+          if (attData.quiz_version_id) {
+            const { data: vData } = await supabase
+              .from("quiz_versions")
+              .select("questions_snapshot")
+              .eq("id", attData.quiz_version_id)
+              .maybeSingle();
+
+            if (vData?.questions_snapshot) {
+              const parsed =
+                typeof vData.questions_snapshot === "string"
+                  ? JSON.parse(vData.questions_snapshot)
+                  : vData.questions_snapshot;
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                versionQuestions = parsed;
+              }
+            }
+          }
+        }
       }
 
       if (!quizId) {
@@ -330,11 +351,13 @@ export function AttemptPage() {
         return;
       }
 
-      const [q, qs] = await Promise.all([
+      const [q, dbQs] = await Promise.all([
         fetchQuiz(quizId),
-        fetchQuestions(quizId),
+        versionQuestions ? Promise.resolve(versionQuestions) : fetchQuestions(quizId),
       ]);
       if (cancelled) return;
+
+      const qs = versionQuestions || dbQs;
 
       if (!q) {
         setError("Quiz not found. It may have been removed.");
