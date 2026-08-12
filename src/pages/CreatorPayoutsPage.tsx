@@ -1183,7 +1183,7 @@ function BankAccountSetupSheet({
         className="absolute inset-0 bg-text/40 backdrop-blur-sm"
         onClick={step === "verifying" ? undefined : onClose}
       />
-      <div className="absolute left-0 right-0 bottom-0 lg:left-1/2 lg:-translate-x-1/2 lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2 lg:max-w-[480px] lg:w-[92%] lg:rounded-3xl rounded-t-3xl bg-cream shadow-elevated safe-bottom flex flex-col max-h-[90dvh]">
+      <div className="absolute left-0 right-0 bottom-0 lg:left-1/2 lg:-translate-x-1/2 lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2 lg:max-w-[480px] lg:w-[92%] lg:rounded-3xl rounded-t-3xl bg-cream shadow-elevated safe-bottom flex flex-col max-h-[85dvh] lg:max-h-[90dvh]">
         <div className="lg:hidden pt-2 pb-1 flex justify-center shrink-0">
           <div className="h-1 w-10 rounded-full bg-border" />
         </div>
@@ -1218,7 +1218,7 @@ function BankAccountSetupSheet({
           )}
         </div>
 
-        <div className="px-5 sm:px-6 lg:px-7 pb-6 lg:pb-7 overflow-y-auto flex-1">
+        <div className="px-5 sm:px-6 lg:px-7 pb-6 lg:pb-7 overflow-y-auto min-h-0">
           {step === "entry" && (
             <div className="space-y-4">
               <p className="text-sm text-text-soft leading-relaxed">
@@ -1256,8 +1256,8 @@ function BankAccountSetupSheet({
                     />
                   </button>
                   {bankDropOpen && (
-                    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 bg-cream border border-border/60 rounded-2xl shadow-elevated overflow-hidden">
-                      <div className="px-3 pt-3 pb-2 border-b border-border/40">
+                    <div className="mt-2 bg-cream border border-border/70 rounded-2xl shadow-sm overflow-hidden transition-all">
+                      <div className="p-3 border-b border-border/40 bg-surface/30">
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
                           <input
@@ -1266,11 +1266,11 @@ function BankAccountSetupSheet({
                             value={bankSearch}
                             onChange={(e) => setBankSearch(e.target.value)}
                             autoFocus
-                            className="w-full h-9 pl-8 pr-3 rounded-xl bg-surface/60 border border-border/50 text-sm font-heading text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            className="w-full h-9 pl-8 pr-3 rounded-xl bg-cream border border-border/50 text-sm font-heading text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30"
                           />
                         </div>
                       </div>
-                      <ul className="max-h-44 overflow-y-auto">
+                      <ul className="max-h-52 sm:max-h-56 overflow-y-auto divide-y divide-border/20">
                         {filteredBanks.length === 0 ? (
                           <li className="px-4 py-3 text-sm text-muted text-center">
                             No banks found
@@ -1286,7 +1286,7 @@ function BankAccountSetupSheet({
                                   setBankSearch("");
                                   setVerifyError("");
                                 }}
-                                className={`w-full text-left px-4 py-2.5 text-sm font-heading font-medium transition-colors hover:bg-surface/60 ${selectedBankCode === b.code ? "bg-primary/10 text-primary" : "text-text"}`}
+                                className={`w-full text-left px-4 py-3 text-sm font-heading font-medium transition-colors hover:bg-surface/60 ${selectedBankCode === b.code ? "bg-primary/10 text-primary font-bold" : "text-text"}`}
                               >
                                 {b.name}
                               </button>
