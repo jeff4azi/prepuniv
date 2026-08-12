@@ -126,15 +126,21 @@ export function QuizAnalyticsPage() {
 
       // Try backend endpoint first (bypasses RLS & parses quiz_snapshot if needed)
       try {
-        const res = await apiFetch(`/api/quiz/${quizId}/analytics`);
-        if (res.ok) {
-          const data = await res.json();
-          if (!cancelled && data) {
-            setQuiz(data.quiz ?? null);
-            setCourse(data.course ?? null);
-            setQuizQuestions(data.questions ?? []);
-            setAttempts((data.attempts ?? []).map(toAttempt));
-            setAttemptAnswers(data.attemptAnswers ?? []);
+        const res = await apiFetch<{
+          quiz: DbQuiz;
+          course: DbCourse;
+          questions: DbQuestion[];
+          attempts: any[];
+          attemptAnswers: DbAttemptAnswer[];
+        }>(`/api/quiz/${quizId}/analytics`);
+
+        if (res.status === 200 && res.data) {
+          if (!cancelled) {
+            setQuiz(res.data.quiz ?? null);
+            setCourse(res.data.course ?? null);
+            setQuizQuestions(res.data.questions ?? []);
+            setAttempts((res.data.attempts ?? []).map(toAttempt));
+            setAttemptAnswers(res.data.attemptAnswers ?? []);
             setLoading(false);
             return;
           }
@@ -179,10 +185,37 @@ export function QuizAnalyticsPage() {
       ]);
 
       if (cancelled) return;
-      setCourse(cRes.data ?? null);
-      setQuizQuestions(qRes.data ?? []);
 
-      const attemptRows = (aRes.data ?? []).map(toAttempt);
+      let questionsList = qRes.data ?? [];
+      const rawAttempts = aRes.data ?? [];
+      const attemptRows = rawAttempts.map(toAttempt);
+
+      // Fallback: parse questions from quiz_snapshot if questions table is empty
+      if (questionsList.length === 0 && rawAttempts.length > 0) {
+        for (const att of rawAttempts) {
+          if (att.quiz_snapshot) {
+            try {
+              const parsed =
+                typeof att.quiz_snapshot === "string"
+                  ? JSON.parse(att.quiz_snapshot)
+                  : att.quiz_snapshot;
+              if (
+                parsed &&
+                Array.isArray(parsed.questions) &&
+                parsed.questions.length > 0
+              ) {
+                questionsList = parsed.questions;
+                break;
+              }
+            } catch (e) {
+              /* ignore */
+            }
+          }
+        }
+      }
+
+      setCourse(cRes.data ?? null);
+      setQuizQuestions(questionsList);
       setAttempts(attemptRows);
 
       const attemptIds = attemptRows.map((a) => a.id);
