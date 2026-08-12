@@ -119,15 +119,7 @@ interface LibraryCardProps {
 }
 
 function LibraryCard({ quiz, course, creator, stats }: LibraryCardProps) {
-  const navigate = useNavigate();
   const attempted = stats.count > 0;
-
-  function handleStartAttempt() {
-    const id = fakeAttemptId();
-    navigate(`/attempt/${id}`, {
-      state: { quizId: quiz.id, isTimed: true },
-    });
-  }
 
   return (
     <Card
@@ -226,29 +218,33 @@ function LibraryCard({ quiz, course, creator, stats }: LibraryCardProps) {
 
       {/* CTA */}
       <div className="px-5 pb-5 pt-1">
-        {attempted ? (
-          <Button
-            fullWidth
-            variant="primary"
-            size="md"
-            className="h-11"
-            onClick={handleStartAttempt}
-          >
-            <RotateCcw className="w-4 h-4" />
-            Retake
-          </Button>
-        ) : (
-          <Button
-            fullWidth
-            variant="primary"
-            size="md"
-            className="h-11"
-            onClick={handleStartAttempt}
-          >
-            <PlayCircle className="w-4 h-4" />
-            Start Attempt
-          </Button>
-        )}
+        <Link
+          to={`/quiz/${quiz.id}`}
+          state={{ from: "/library" }}
+          className="block"
+        >
+          {attempted ? (
+            <Button
+              fullWidth
+              variant="primary"
+              size="md"
+              className="h-11"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Retake
+            </Button>
+          ) : (
+            <Button
+              fullWidth
+              variant="primary"
+              size="md"
+              className="h-11"
+            >
+              <PlayCircle className="w-4 h-4" />
+              Start Attempt
+            </Button>
+          )}
+        </Link>
       </div>
     </Card>
   );
