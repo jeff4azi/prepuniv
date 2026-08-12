@@ -36,55 +36,14 @@ const PAYOUT_FREQUENCY_CAP_MS = 7 * 24 * 60 * 60 * 1000;
 type PayoutRequestStatus = DbPayoutRequest["status"];
 type PayoutRequest = DbPayoutRequest;
 
-interface Bank {
-  code: string;
-  name: string;
-}
-
-const NIGERIAN_BANKS: Bank[] = [
-  { code: "044", name: "Access Bank" },
-  { code: "023", name: "Citibank Nigeria" },
-  { code: "050", name: "EcoBank Nigeria" },
-  { code: "070", name: "Fidelity Bank" },
-  { code: "011", name: "First Bank of Nigeria" },
-  { code: "214", name: "First City Monument Bank (FCMB)" },
-  { code: "058", name: "GTBank (Guaranty Trust)" },
-  { code: "030", name: "Heritage Bank" },
-  { code: "082", name: "Keystone Bank" },
-  { code: "999992", name: "OPay" },
-  { code: "50211", name: "Kuda Bank" },
-  { code: "076", name: "Polaris Bank" },
-  { code: "039", name: "Stanbic IBTC Bank" },
-  { code: "232", name: "Sterling Bank" },
-  { code: "033", name: "United Bank for Africa (UBA)" },
-  { code: "035", name: "Wema Bank" },
-  { code: "057", name: "Zenith Bank" },
-];
-
-function getBankName(code: string): string {
-  return NIGERIAN_BANKS.find((b) => b.code === code)?.name ?? code;
-}
-
-function maskAccountNumber(acct: string): string {
-  if (acct.length <= 4) return acct;
-  return "•••• •••• " + acct.slice(-4);
-}
-
-async function mockVerifyAccount(
-  accountNumber: string,
-  _bankCode: string,
-  ownerFullName: string,
-): Promise<{ success: true; accountName: string } | { success: false }> {
-  await new Promise((r) => setTimeout(r, 1100));
-  const allSame = accountNumber.split("").every((c) => c === accountNumber[0]);
-  if (allSame) return { success: false };
-  const parts = ownerFullName.trim().toUpperCase().split(/\s+/);
-  const accountName =
-    parts.length >= 2
-      ? `${parts[parts.length - 1]} ${parts[0]}${parts.length > 2 ? " " + parts.slice(1, -1).join(" ") : ""}`
-      : ownerFullName.toUpperCase();
-  return { success: true, accountName };
-}
+import {
+  NIGERIAN_BANKS,
+  getBankName,
+  maskAccountNumber,
+  fetchBanksList,
+  resolveAccountDetails,
+  type Bank,
+} from "../mock/banks";
 
 function computeEarningsBalance(userId: string, walletTxns: { user_id: string | null; type: string; status: string; amount: number }[]): number {
   const naira = walletTxns
@@ -1126,26 +1085,40 @@ function BankAccountSetupSheet({
     return () => document.removeEventListener("mousedown", h);
   }, [bankDropOpen]);
 
+  const [banksList, setBanksList] = useState<Bank[]>(NIGERIAN_BANKS);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchBanksList().then((list) => {
+      if (!cancelled && list && list.length > 0) {
+        setBanksList(list);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const filteredBanks = useMemo(
     () =>
       bankSearch.trim()
-        ? NIGERIAN_BANKS.filter((b) =>
+        ? banksList.filter((b) =>
             b.name.toLowerCase().includes(bankSearch.toLowerCase()),
           )
-        : NIGERIAN_BANKS,
-    [bankSearch],
+        : banksList,
+    [bankSearch, banksList],
   );
 
   const accountValid = /^\d{10}$/.test(accountNumber);
   const canVerify = selectedBankCode !== "" && accountValid;
 
-  const selectedBank = NIGERIAN_BANKS.find((b) => b.code === selectedBankCode);
+  const selectedBank = banksList.find((b) => b.code === selectedBankCode);
 
   async function handleVerify() {
     if (!canVerify) return;
     setVerifyError("");
     setStep("verifying");
-    const result = await mockVerifyAccount(
+    const result = await resolveAccountDetails(
       accountNumber,
       selectedBankCode,
       ownerName,
@@ -1155,7 +1128,8 @@ function BankAccountSetupSheet({
       setStep("confirm");
     } else {
       setVerifyError(
-        "Couldn't verify this account — check the number and try again.",
+        result.error ||
+          "Couldn't verify this account — check the account number and bank selected.",
       );
       setStep("entry");
     }

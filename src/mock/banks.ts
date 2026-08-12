@@ -1,3 +1,5 @@
+import { apiFetch } from "../lib/api";
+
 export interface Bank {
   code: string;
   name: string;
@@ -23,10 +25,63 @@ export const NIGERIAN_BANKS: Bank[] = [
   { code: "057", name: "Zenith Bank" },
 ];
 
+let cachedBanksClient: Bank[] | null = null;
+
 /**
- * Mock account verification.
- * Returns a plausible account holder name derived from the owner's full name.
- * Failure condition: all-same-digit account numbers (e.g. "1111111111").
+ * Fetch supported banks list (tries backend Flutterwave endpoint first, falls back to static list).
+ */
+export async function fetchBanksList(): Promise<Bank[]> {
+  if (cachedBanksClient && cachedBanksClient.length > 0) {
+    return cachedBanksClient;
+  }
+  try {
+    const res = await apiFetch<{ status: string; data: Bank[] }>("/api/banks");
+    if (res.status === 200 && res.data?.data && Array.isArray(res.data.data)) {
+      cachedBanksClient = res.data.data;
+      return cachedBanksClient;
+    }
+  } catch (e) {
+    console.warn("fetchBanksList error:", e);
+  }
+  return NIGERIAN_BANKS;
+}
+
+/**
+ * Account name resolution via Flutterwave backend endpoint.
+ * Returns account holder name or error.
+ */
+export async function resolveAccountDetails(
+  accountNumber: string,
+  bankCode: string,
+  ownerFullName: string,
+): Promise<{ success: true; accountName: string } | { success: false; error?: string }> {
+  try {
+    const res = await apiFetch<{
+      success: boolean;
+      accountName?: string;
+      error?: string;
+    }>("/api/banks/resolve", {
+      method: "POST",
+      body: { accountNumber, bankCode },
+    });
+
+    if (res.status === 200 && res.data?.success && res.data?.accountName) {
+      return { success: true, accountName: res.data.accountName };
+    }
+
+    if (res.error) {
+      return { success: false, error: res.error };
+    }
+  } catch (e) {
+    console.warn("resolveAccountDetails API call failed, falling back:", e);
+  }
+
+  // Fallback to local mock derivation if backend is offline or unconfigured
+  return mockVerifyAccount(accountNumber, bankCode, ownerFullName);
+}
+
+/**
+ * Mock account verification fallback.
  */
 export async function mockVerifyAccount(
   accountNumber: string,
@@ -35,12 +90,9 @@ export async function mockVerifyAccount(
 ): Promise<{ success: true; accountName: string } | { success: false }> {
   await new Promise((r) => setTimeout(r, 1100));
 
-  // Fail: all same digits
   const allSame = accountNumber.split("").every((c) => c === accountNumber[0]);
   if (allSame) return { success: false };
 
-  // Derive a plausible name from the owner's name
-  // Split into parts and reconstruct in a "bank response" style (SURNAME FIRSTNAME)
   const parts = ownerFullName.trim().toUpperCase().split(/\s+/);
   const accountName =
     parts.length >= 2
@@ -51,7 +103,8 @@ export async function mockVerifyAccount(
 }
 
 export function getBankName(code: string): string {
-  return NIGERIAN_BANKS.find((b) => b.code === code)?.name ?? code;
+  const bankList = cachedBanksClient || NIGERIAN_BANKS;
+  return bankList.find((b) => b.code === code)?.name ?? code;
 }
 
 export function maskAccountNumber(acct: string): string {
