@@ -35,9 +35,18 @@ export async function apiFetch<T = unknown>(
     if (str) url += `?${str}`;
   }
 
-  const {
+  let {
     data: { session },
   } = await supabase.auth.getSession();
+
+  // If token is missing, expired, or expiring within 60s, refresh session
+  if (!session || (session.expires_at && Date.now() / 1000 >= session.expires_at - 60)) {
+    const { data: refreshData } = await supabase.auth.refreshSession();
+    if (refreshData?.session) {
+      session = refreshData.session;
+    }
+  }
+
   const token = session?.access_token;
 
   const headers: Record<string, string> = {
