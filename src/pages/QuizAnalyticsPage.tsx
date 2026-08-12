@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -27,18 +27,47 @@ import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { MathText } from "../components/MathText";
 import { useAuth } from "../context/AuthContext";
-import {
-  quizzes as allQuizzes,
-  questions as allQuestions,
-  quizAttempts as allAttempts,
-  attemptResults as allResults,
-  courses as allCourses,
-} from "../mock";
+import { supabase } from "../lib/supabase";
+import { toAttempt } from "../lib/queries";
+import type { QuizAttempt } from "../mock/types";
 import { formatNaira } from "./CreatorDashboardPage";
+
+import { apiFetch } from "../lib/api";
+
+interface DbQuiz {
+  id: string;
+  creator_id: string;
+  course_id: string;
+  title: string;
+  description?: string;
+  price: number;
+  is_published: boolean;
+  question_count?: number;
+  attempt_count?: number;
+  created_at: string;
+}
+
+interface DbCourse {
+  id: string;
+  name: string;
+  code: string;
+}
+
+interface DbQuestion {
+  id: string;
+  quiz_id: string;
+  type: string;
+  question_text: string;
+  order_index: number;
+}
+
+interface DbAttemptAnswer {
+  question_id: string;
+  is_correct: boolean;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const CREATOR_SHARE = 0.65;
 const NEEDS_REVIEW_THRESHOLD = 40; // % correct
 
 function isoToDateKey(iso: string) {
@@ -79,33 +108,111 @@ function ChartTooltip({
 
 export function QuizAnalyticsPage() {
   const { id: quizId } = useParams<{ id: string }>();
-  const { currentUser } = useAuth();
+  const { currentUser, walletTxns } = useAuth();
 
-  // All hooks first, gate after
-  const quiz = useMemo(() => allQuizzes.find((q) => q.id === quizId), [quizId]);
-  const course = useMemo(
-    () => allCourses.find((c) => c.id === quiz?.course_id),
-    [quiz],
-  );
-  const quizQuestions = useMemo(
-    () => allQuestions.filter((q) => q.quiz_id === quizId),
-    [quizId],
-  );
+  const [loading, setLoading] = useState(true);
+  const [quiz, setQuiz] = useState<DbQuiz | null>(null);
+  const [course, setCourse] = useState<DbCourse | null>(null);
+  const [quizQuestions, setQuizQuestions] = useState<DbQuestion[]>([]);
+  const [attempts, setAttempts] = useState<QuizAttempt[]>([]);
+  const [attemptAnswers, setAttemptAnswers] = useState<DbAttemptAnswer[]>([]);
 
-  // All attempts for this quiz
-  const attempts = useMemo(
-    () => allAttempts.filter((a) => a.quiz_id === quizId),
-    [quizId],
-  );
+  useEffect(() => {
+    if (!quizId) return;
+    let cancelled = false;
 
-  // All result records for this quiz (have per-question answers)
-  const results = useMemo(
-    () => allResults.filter((r) => r.quiz_id === quizId),
-    [quizId],
-  );
+    (async () => {
+      setLoading(true);
+
+      // Try backend endpoint first (bypasses RLS & parses quiz_snapshot if needed)
+      try {
+        const res = await apiFetch(`/api/quiz/${quizId}/analytics`);
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled && data) {
+            setQuiz(data.quiz ?? null);
+            setCourse(data.course ?? null);
+            setQuizQuestions(data.questions ?? []);
+            setAttempts((data.attempts ?? []).map(toAttempt));
+            setAttemptAnswers(data.attemptAnswers ?? []);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (e) {
+        /* fallback to Supabase query */
+      }
+
+      // Fallback: Supabase direct query
+      const { data: qData } = await supabase
+        .from("quizzes")
+        .select("*")
+        .eq("id", quizId)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (!qData) {
+        setQuiz(null);
+        setLoading(false);
+        return;
+      }
+      setQuiz(qData);
+
+      const [cRes, qRes, aRes] = await Promise.all([
+        qData.course_id
+          ? supabase
+              .from("courses")
+              .select("*")
+              .eq("id", qData.course_id)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+        supabase
+          .from("questions")
+          .select("*")
+          .eq("quiz_id", quizId)
+          .order("order_index", { ascending: true }),
+        supabase
+          .from("quiz_attempts")
+          .select("*")
+          .eq("quiz_id", quizId)
+          .not("completed_at", "is", null),
+      ]);
+
+      if (cancelled) return;
+      setCourse(cRes.data ?? null);
+      setQuizQuestions(qRes.data ?? []);
+
+      const attemptRows = (aRes.data ?? []).map(toAttempt);
+      setAttempts(attemptRows);
+
+      const attemptIds = attemptRows.map((a) => a.id);
+      if (attemptIds.length > 0) {
+        const { data: ansData } = await supabase
+          .from("attempt_answers")
+          .select("question_id, is_correct")
+          .in("attempt_id", attemptIds);
+
+        if (!cancelled && ansData) {
+          setAttemptAnswers(
+            ansData.map((ans) => ({
+              question_id: ans.question_id,
+              is_correct: !!ans.is_correct,
+            })),
+          );
+        }
+      } else {
+        setAttemptAnswers([]);
+      }
+
+      setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [quizId]);
 
   // ── Key stats ──────────────────────────────────────────────────────────────
-  const { walletTxns } = useAuth();
   const totalAttempts = attempts.length;
   const creatorEarnings = useMemo(() => {
     if (!quiz?.id) return 0;
@@ -170,19 +277,12 @@ export function QuizAnalyticsPage() {
 
   // ── Per-question performance ───────────────────────────────────────────────
   const questionPerformance = useMemo(() => {
-    if (!quizQuestions.length || !results.length) return [];
+    if (!quizQuestions.length) return [];
 
     return quizQuestions.map((q, idx) => {
-      // Count how many result records have an answer for this question
-      let correct = 0;
-      let total = 0;
-      for (const r of results) {
-        const ans = r.answers.find((a) => a.question_id === q.id);
-        if (ans) {
-          total++;
-          if (ans.is_correct) correct++;
-        }
-      }
+      const qAns = attemptAnswers.filter((a) => a.question_id === q.id);
+      const total = qAns.length;
+      const correct = qAns.filter((a) => a.is_correct).length;
       const pct = total > 0 ? Math.round((correct / total) * 100) : null;
       return {
         index: idx + 1,
@@ -193,7 +293,7 @@ export function QuizAnalyticsPage() {
         needsReview: pct !== null && pct < NEEDS_REVIEW_THRESHOLD,
       };
     });
-  }, [quizQuestions, results]);
+  }, [quizQuestions, attemptAnswers]);
 
   // Sort worst-first (null pct goes last)
   const sortedQuestions = useMemo(
@@ -209,6 +309,23 @@ export function QuizAnalyticsPage() {
   // Gates
   if (!currentUser.is_approved_creator)
     return <Navigate to="/creator/apply" replace />;
+
+  if (loading) {
+    return (
+      <PageContainer className="!max-w-[1100px]">
+        <div className="space-y-6">
+          <div className="h-20 rounded-2xl bg-surface/50 animate-pulse" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-28 rounded-2xl bg-surface/50 animate-pulse" />
+            ))}
+          </div>
+          <div className="h-64 rounded-3xl bg-surface/50 animate-pulse" />
+        </div>
+      </PageContainer>
+    );
+  }
+
   if (!quiz) {
     return (
       <PageContainer>
@@ -503,8 +620,8 @@ export function QuizAnalyticsPage() {
                 </p>
                 <p className="text-xs text-text-soft mt-0.5">
                   Worst-performing questions shown first · based on{" "}
-                  {results.length} result record
-                  {results.length !== 1 ? "s" : ""}
+                  {totalAttempts} completed attempt
+                  {totalAttempts !== 1 ? "s" : ""}
                 </p>
               </div>
               {sortedQuestions.some((q) => q.needsReview) && (

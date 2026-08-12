@@ -104,7 +104,7 @@ function toQuestion(row: any): Question {
 
 /** Map a DB attempt row to the mock QuizAttempt shape */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function toAttempt(row: any): QuizAttempt {
+export function toAttempt(row: any): QuizAttempt {
   return {
     id: row.id,
     user_id: row.user_id,
