@@ -50,6 +50,13 @@ export type DbCourse = {
   created_at: string;
 };
 
+export type DbUniversity = {
+  id: string;
+  name: string;
+  abbreviation: string;
+  state: string | null;
+};
+
 export type DbQuiz = {
   id: string;
   creator_id: string;

@@ -1,6 +1,6 @@
 import type { HTMLAttributes, ReactNode } from 'react';
 
-type Variant = 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'muted';
+type Variant = 'default' | 'primary' | 'secondary' | 'tertiary' | 'success' | 'warning' | 'danger' | 'muted';
 type Size = 'sm' | 'md';
 
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
@@ -14,6 +14,7 @@ const VARIANT_STYLES: Record<Variant, string> = {
   default: 'bg-surface text-text-soft border-border/60',
   primary: 'bg-primary/10 text-primary border-primary/20',
   secondary: 'bg-secondary/10 text-secondary border-secondary/20',
+  tertiary: 'bg-cream text-secondary border-secondary/15',
   success: 'bg-success-bg text-success border-success/20',
   warning: 'bg-warning-bg text-warning border-warning/20',
   danger: 'bg-danger-bg text-danger border-danger/20',
@@ -29,6 +30,7 @@ const DOT_COLORS: Record<Variant, string> = {
   default: 'bg-muted',
   primary: 'bg-primary',
   secondary: 'bg-secondary',
+  tertiary: 'bg-secondary',
   success: 'bg-success',
   warning: 'bg-warning',
   danger: 'bg-danger',

@@ -8,6 +8,8 @@ import {
   Users,
   BarChart2,
   FileQuestion,
+  GraduationCap,
+  MapPin,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -24,6 +26,7 @@ import type {
   DbCourse,
   DbProfile,
   DbQuizAttempt,
+  DbUniversity,
 } from "../lib/supabase";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -76,6 +79,7 @@ export function CreatorProfilePage() {
   const [quizzes, setQuizzes] = useState<DbQuiz[]>([]);
   const [courses, setCourses] = useState<Map<string, DbCourse>>(new Map());
   const [myAttempts, setMyAttempts] = useState<DbQuizAttempt[]>([]);
+  const [university, setUniversity] = useState<DbUniversity | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -101,6 +105,18 @@ export function CreatorProfilePage() {
         return;
       }
       setProfile(profileRow as DbProfile);
+
+      // Fetch the creator's university (if affiliated) — displayed in header
+      if (profileRow.university_id) {
+        const { data: uniRow } = await supabase
+          .from("universities")
+          .select("id, name, abbreviation, state")
+          .eq("id", profileRow.university_id)
+          .maybeSingle();
+        if (!cancelled) setUniversity((uniRow as DbUniversity) ?? null);
+      } else if (!cancelled) {
+        setUniversity(null);
+      }
 
       // Fetch their published quizzes
       const { data: quizRows } = await supabase
@@ -252,6 +268,12 @@ export function CreatorProfilePage() {
                     <Sparkles className="w-3 h-3" />
                     Creator
                   </Badge>
+                  {university && (
+                    <Badge variant="tertiary" size="sm">
+                      <GraduationCap className="w-3 h-3" />
+                      {university.abbreviation || university.name}
+                    </Badge>
+                  )}
                   {profile.created_at && (
                     <span className="inline-flex items-center gap-1 text-xs text-muted font-heading">
                       <CalendarDays className="w-3.5 h-3.5" />
@@ -272,6 +294,29 @@ export function CreatorProfilePage() {
                     size="sm"
                   />
                 </div>
+                {(university || profile.bio) && (
+                  <div className="pt-1 space-y-1.5 max-w-2xl">
+                    {university && (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-soft font-body">
+                        <span className="inline-flex items-center gap-1">
+                          <GraduationCap className="w-3.5 h-3.5 text-muted" />
+                          <span className="font-medium">{university.name}</span>
+                        </span>
+                        {university.state && (
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-muted" />
+                            {university.state}, Nigeria
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {profile.bio && (
+                      <p className="text-sm leading-relaxed text-text-soft whitespace-pre-line">
+                        {profile.bio}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
