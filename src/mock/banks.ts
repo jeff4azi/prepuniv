@@ -69,8 +69,10 @@ export async function resolveAccountDetails(
       return { success: true, accountName: res.data.accountName };
     }
 
-    if (res.error) {
-      return { success: false, error: res.error };
+    // Surface error from the backend response body or the top-level error
+    const errorMsg = res.data?.error || res.error;
+    if (errorMsg) {
+      return { success: false, error: errorMsg };
     }
   } catch (e) {
     console.warn("resolveAccountDetails API call failed, falling back:", e);
@@ -79,6 +81,7 @@ export async function resolveAccountDetails(
   // Fallback to local mock derivation if backend is offline or unconfigured
   return mockVerifyAccount(accountNumber, bankCode, ownerFullName);
 }
+
 
 /**
  * Mock account verification fallback.
