@@ -9,6 +9,7 @@ import {
   BookOpen,
   AlertTriangle,
   Sparkles,
+  Layers,
 } from "lucide-react";
 import {
   BarChart,
@@ -26,6 +27,7 @@ import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { MathText } from "../components/MathText";
+import { FilterSelect, type SelectOption } from "../components/CustomSelect";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import { toAttempt } from "../lib/queries";
@@ -64,6 +66,16 @@ interface DbQuestion {
 interface DbAttemptAnswer {
   question_id: string;
   is_correct: boolean;
+}
+
+interface DbQuizVersion {
+  id: string;
+  quiz_id: string;
+  version_number: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  questions_snapshot: any;
+  question_count: number;
+  created_at: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -113,6 +125,8 @@ export function QuizAnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [quiz, setQuiz] = useState<DbQuiz | null>(null);
   const [course, setCourse] = useState<DbCourse | null>(null);
+  const [versions, setVersions] = useState<DbQuizVersion[]>([]);
+  const [selectedVersionId, setSelectedVersionId] = useState<string>("");
   const [quizQuestions, setQuizQuestions] = useState<DbQuestion[]>([]);
   const [attempts, setAttempts] = useState<QuizAttempt[]>([]);
   const [attemptAnswers, setAttemptAnswers] = useState<DbAttemptAnswer[]>([]);
@@ -129,6 +143,7 @@ export function QuizAnalyticsPage() {
         const res = await apiFetch<{
           quiz: DbQuiz;
           course: DbCourse;
+          versions: DbQuizVersion[];
           questions: DbQuestion[];
           attempts: any[];
           attemptAnswers: DbAttemptAnswer[];
@@ -138,6 +153,11 @@ export function QuizAnalyticsPage() {
           if (!cancelled) {
             setQuiz(res.data.quiz ?? null);
             setCourse(res.data.course ?? null);
+            const vList = res.data.versions ?? [];
+            setVersions(vList);
+            if (vList.length > 0) {
+              setSelectedVersionId(vList[0].id); // Default to latest version
+            }
             setQuizQuestions(res.data.questions ?? []);
             setAttempts((res.data.attempts ?? []).map(toAttempt));
             setAttemptAnswers(res.data.attemptAnswers ?? []);
@@ -196,6 +216,11 @@ export function QuizAnalyticsPage() {
       const versionsList = vRes.data ?? [];
       const attemptRows = rawAttempts.map(toAttempt);
 
+      setVersions(versionsList);
+      if (versionsList.length > 0) {
+        setSelectedVersionId(versionsList[0].id);
+      }
+
       // Fallback: use quiz_versions snapshot if questions table is empty
       if (questionsList.length === 0 && versionsList.length > 0) {
         const latestSnap = versionsList[0].questions_snapshot;
@@ -247,10 +272,7 @@ export function QuizAnalyticsPage() {
           (t.status === "completed" || t.status === "success") &&
           t.related_quiz_id === quiz.id,
       )
-      .reduce(
-        (sum, t) => sum + Math.round(Number(t.amount || 0) * 100),
-        0,
-      );
+      .reduce((sum, t) => sum + Math.round(Number(t.amount || 0) * 100), 0);
   }, [quiz?.id, walletTxns]);
 
   const avgScore = useMemo(() => {
@@ -299,25 +321,99 @@ export function QuizAnalyticsPage() {
     }));
   }, [attempts]);
 
-  // ── Per-question performance ───────────────────────────────────────────────
-  const questionPerformance = useMemo(() => {
-    if (!quizQuestions.length) return [];
+  // ── Selected version & Per-question performance ────────────────────────────
+  const versionOptions = useMemo<SelectOption<string>[]>(() => {
+    const opts: SelectOption<string>[] = versions.map((v, idx) => {
+      const qCount =
+        v.question_count ??
+        (Array.isArray(v.questions_snapshot) ? v.questions_snapshot.length : 0);
+      return {
+        value: v.id,
+        label: `Version ${v.version_number}${idx === 0 ? " (Latest)" : ""} · ${qCount} q`,
+      };
+    });
+    if (versions.length > 1) {
+      opts.push({
+        value: "all",
+        label: "All Versions (Aggregate)",
+      });
+    }
+    return opts;
+  }, [versions]);
 
-    return quizQuestions.map((q, idx) => {
-      const qAns = attemptAnswers.filter((a) => a.question_id === q.id);
-      const total = qAns.length;
-      const correct = qAns.filter((a) => a.is_correct).length;
-      const pct = total > 0 ? Math.round((correct / total) * 100) : null;
+  const selectedVersion = useMemo(() => {
+    if (!selectedVersionId && versions.length > 0) return versions[0];
+    if (selectedVersionId === "all") return null;
+    return (
+      versions.find((v) => v.id === selectedVersionId) ?? versions[0] ?? null
+    );
+  }, [versions, selectedVersionId]);
+
+  const questionsForPerf = useMemo(() => {
+    if (selectedVersion && selectedVersion.questions_snapshot) {
+      const snap =
+        typeof selectedVersion.questions_snapshot === "string"
+          ? JSON.parse(selectedVersion.questions_snapshot)
+          : selectedVersion.questions_snapshot;
+      if (Array.isArray(snap) && snap.length > 0) return snap;
+    }
+    return quizQuestions;
+  }, [selectedVersion, quizQuestions]);
+
+  const attemptsForPerf = useMemo(() => {
+    if (!selectedVersion) return attempts;
+    return attempts.filter(
+      (a) =>
+        a.quiz_version_id === selectedVersion.id ||
+        (!a.quiz_version_id && versions.length <= 1),
+    );
+  }, [selectedVersion, attempts, versions]);
+
+  const questionPerformance = useMemo(() => {
+    if (!questionsForPerf.length) return [];
+
+    const attemptIdsSet = new Set(attemptsForPerf.map((a) => a.id));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return questionsForPerf.map((q: any, idx: number) => {
+      let total = 0;
+      let correctCount = 0;
+
+      for (const att of attemptsForPerf) {
+        if (att.answers && typeof att.answers === "object") {
+          const given = att.answers[q.id];
+          if (given !== undefined && given !== null) {
+            total++;
+            const isCorr =
+              String(given).trim().toLowerCase() ===
+              String(q.correct_answer || "").trim().toLowerCase();
+            if (isCorr) correctCount++;
+          }
+        }
+      }
+
+      if (total === 0) {
+        const qAns = attemptAnswers.filter(
+          (a) =>
+            a.question_id === q.id &&
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (attemptIdsSet.size === 0 || attemptIdsSet.has((a as any).attempt_id)),
+        );
+        total = qAns.length;
+        correctCount = qAns.filter((a) => a.is_correct).length;
+      }
+
+      const pct = total > 0 ? Math.round((correctCount / total) * 100) : null;
       return {
         index: idx + 1,
         id: q.id,
-        text: q.question_text,
-        type: q.type,
+        text: q.question_text || q.text || "",
+        type: q.type || "mcq",
         correctPct: pct,
         needsReview: pct !== null && pct < NEEDS_REVIEW_THRESHOLD,
       };
     });
-  }, [quizQuestions, attemptAnswers]);
+  }, [questionsForPerf, attemptsForPerf, attemptAnswers]);
 
   // Sort worst-first (null pct goes last)
   const sortedQuestions = useMemo(
@@ -634,7 +730,7 @@ export function QuizAnalyticsPage() {
         {/* 5. Per-question performance */}
         {sortedQuestions.length > 0 && (
           <Card padded={false} className="overflow-hidden">
-            <div className="px-5 pt-5 pb-4 border-b border-border/40 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+            <div className="px-5 pt-5 pb-4 border-b border-border/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted mb-1">
                   Per-question performance
@@ -644,26 +740,40 @@ export function QuizAnalyticsPage() {
                 </p>
                 <p className="text-xs text-text-soft mt-0.5">
                   Worst-performing questions shown first · based on{" "}
-                  {totalAttempts} completed attempt
-                  {totalAttempts !== 1 ? "s" : ""}
+                  {attemptsForPerf.length} completed attempt
+                  {attemptsForPerf.length !== 1 ? "s" : ""}
+                  {selectedVersion ? ` (Version ${selectedVersion.version_number})` : ""}
                 </p>
               </div>
-              {sortedQuestions.some((q) => q.needsReview) && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-warning-bg border border-warning/25 shrink-0">
-                  <AlertTriangle
-                    className="w-3.5 h-3.5 text-warning shrink-0"
-                    strokeWidth={2}
+
+              <div className="flex items-center gap-3 flex-wrap">
+                {versions.length > 0 && (
+                  <FilterSelect
+                    value={selectedVersionId || (versions[0]?.id ?? "")}
+                    onChange={(val) => setSelectedVersionId(val)}
+                    options={versionOptions}
+                    leadingIcon={<Layers className="w-3.5 h-3.5" />}
+                    aria-label="Select quiz version"
                   />
-                  <span className="text-[12px] font-heading font-semibold text-warning">
-                    {sortedQuestions.filter((q) => q.needsReview).length}{" "}
-                    question
-                    {sortedQuestions.filter((q) => q.needsReview).length !== 1
-                      ? "s"
-                      : ""}{" "}
-                    need review
-                  </span>
-                </div>
-              )}
+                )}
+
+                {sortedQuestions.some((q) => q.needsReview) && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-warning-bg border border-warning/25 shrink-0">
+                    <AlertTriangle
+                      className="w-3.5 h-3.5 text-warning shrink-0"
+                      strokeWidth={2}
+                    />
+                    <span className="text-[12px] font-heading font-semibold text-warning">
+                      {sortedQuestions.filter((q) => q.needsReview).length}{" "}
+                      question
+                      {sortedQuestions.filter((q) => q.needsReview).length !== 1
+                        ? "s"
+                        : ""}{" "}
+                      need review
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="divide-y divide-border/40">
