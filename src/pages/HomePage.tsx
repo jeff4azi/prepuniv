@@ -114,10 +114,21 @@ export function HomePage() {
           ...new Set(quizzes.map((q: DbQuiz) => q.creator_id).filter(Boolean)),
         ];
         if (creatorIds.length && !cancelled) {
-          const { data: profileRows } = await supabase
+          const { data: profileRows, error: profileErr } = await supabase
             .from("profiles")
-            .select("id, full_name, role, is_approved_creator, created_at")
+            .select(
+              "id, full_name, role, is_approved_creator, is_suspended, university_id, agreement_accepted_at, bank_account_number, bank_code, bank_name, bank_account_name, bio, avatar_url, created_at",
+            )
             .in("id", creatorIds);
+          if (profileErr)
+            console.warn("Creator profiles fetch error:", profileErr.message);
+          console.log(
+            "[Home] creator IDs:",
+            creatorIds,
+            "profiles returned:",
+            profileRows?.length ?? 0,
+            profileRows,
+          );
           if (!cancelled) setAllProfiles(profileRows ?? []);
         }
       } catch (e) {

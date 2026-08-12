@@ -512,3 +512,22 @@ export async function fetchProfilesByIds(
   for (const row of data ?? []) map.set(row.id, toProfile(row));
   return map;
 }
+
+/** Raw DbProfile rows for a list of user ids — used by card-rendering pages */
+export async function fetchDbProfilesByIds(
+  userIds: string[],
+): Promise<Map<string, import("./supabase").DbProfile>> {
+  if (!userIds.length) return new Map();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(
+      "id, full_name, role, is_approved_creator, is_suspended, university_id, agreement_accepted_at, bank_account_number, bank_code, bank_name, bank_account_name, bio, avatar_url, created_at",
+    )
+    .in("id", [...new Set(userIds)]);
+  if (error) console.warn("fetchDbProfilesByIds error:", error.message);
+  const map = new Map<string, import("./supabase").DbProfile>();
+  for (const row of data ?? []) {
+    map.set(row.id, row as import("./supabase").DbProfile);
+  }
+  return map;
+}

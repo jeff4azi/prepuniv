@@ -34,6 +34,8 @@ export type DbProfile = {
   bank_code: string | null;
   bank_name: string | null;
   bank_account_name: string | null;
+  bio: string | null;
+  avatar_url: string | null;
   created_at: string;
 };
 

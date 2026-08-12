@@ -15,11 +15,12 @@ import { Button } from "../components/Button";
 import { QuizCard } from "../components/QuizCard";
 import { FilterSelect } from "../components/CustomSelect";
 import { useAuth } from "../context/AuthContext";
-import type { Quiz, Course, Profile } from "../mock/types";
+import type { Quiz, Course } from "../mock/types";
+import type { DbProfile } from "../lib/supabase";
 import {
   fetchPublishedQuizzes,
   fetchCourses,
-  fetchProfilesByIds,
+  fetchDbProfilesByIds,
 } from "../lib/queries";
 
 type SortKey = "newest" | "popular" | "price-asc" | "price-desc";
@@ -52,7 +53,7 @@ export function BrowsePage() {
   const [loading, setLoading] = useState(true);
   const [allQuizzes, setAllQuizzes] = useState<Quiz[]>([]);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
-  const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
+  const [allProfiles, setAllProfiles] = useState<DbProfile[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [deptFilter, setDeptFilter] = useState<string>("all");
@@ -77,8 +78,15 @@ export function BrowsePage() {
         ...new Set(quizzes.map((q) => q.creator_id).filter(Boolean)),
       ];
       const profileMap = creatorIds.length
-        ? await fetchProfilesByIds(creatorIds)
+        ? await fetchDbProfilesByIds(creatorIds)
         : new Map();
+      console.log(
+        "[Browse] creator IDs:",
+        creatorIds,
+        "profiles fetched:",
+        profileMap.size,
+        [...profileMap.values()],
+      );
       if (cancelled) return;
       setAllProfiles([...profileMap.values()]);
       setLoading(false);

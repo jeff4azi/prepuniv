@@ -49,6 +49,7 @@ import { AttemptResultPage } from "./pages/AttemptResultPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { CreatorApplyPage } from "./pages/CreatorApplyPage";
 import { CreatorProfilePage } from "./pages/CreatorProfilePage";
+import { SelectUniversityPage } from "./pages/SelectUniversityPage";
 import { useEffect } from "react";
 
 function PageTransition({ children }: { children: React.ReactNode }) {
@@ -142,6 +143,15 @@ function AppShell() {
                 element={
                   <RequireAuth>
                     <SettingsPage />
+                  </RequireAuth>
+                }
+              />
+
+              <Route
+                path="/select-university"
+                element={
+                  <RequireAuth>
+                    <SelectUniversityPage />
                   </RequireAuth>
                 }
               />
@@ -405,7 +415,7 @@ function RoutingSwitch() {
 
   // Known app-shell paths — anything else is a 404, rendered shell-free
   const isAppPath =
-    /^\/(home|browse|library|wallet|history|settings|quiz|profile|creator|admin)/.test(
+    /^\/(home|browse|library|wallet|history|settings|quiz|profile|creator|admin|select-university)/.test(
       loc.pathname,
     );
 

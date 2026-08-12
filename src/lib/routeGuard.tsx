@@ -16,8 +16,14 @@ interface RequireAuthProps {
  *   <RequireAuth role="approvedCreator"><CreatorXPage /></RequireAuth>
  */
 export function RequireAuth({ children, role, redirectTo }: RequireAuthProps) {
-  const { isLoggedIn, isLoading, isAdmin, isApprovedCreator, profile } =
-    useAuth();
+  const {
+    isLoggedIn,
+    isLoading,
+    isAdmin,
+    isApprovedCreator,
+    profile,
+    currentUser,
+  } = useAuth();
   const { pathname } = useLocation();
 
   if (isLoading) {
@@ -32,6 +38,15 @@ export function RequireAuth({ children, role, redirectTo }: RequireAuthProps) {
     const fallback =
       redirectTo ?? `/login?redirect=${encodeURIComponent(pathname)}`;
     return <Navigate to={fallback} replace />;
+  }
+
+  // Non-admin users must select a university before accessing the app
+  if (
+    currentUser.role !== "admin" &&
+    !currentUser.university_id &&
+    pathname !== "/select-university"
+  ) {
+    return <Navigate to="/select-university" replace />;
   }
 
   if (role === "admin" && !isAdmin) {
