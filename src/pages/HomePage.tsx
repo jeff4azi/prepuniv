@@ -356,16 +356,19 @@ export function HomePage() {
                   label="Attempts"
                   value={stats.total}
                   icon={<Target className="w-4 h-4" />}
+                  loading={loading}
                 />
                 <WalletStatChip
                   label="Avg score"
                   value={stats.total ? stats.avg + "%" : "—"}
                   icon={<Flame className="w-4 h-4" />}
+                  loading={loading}
                 />
                 <WalletStatChip
                   label="Day streak"
                   value={stats.streak + (stats.streak === 1 ? " day" : " days")}
                   icon={<Clock className="w-4 h-4" />}
+                  loading={loading}
                 />
               </div>
 
@@ -397,84 +400,98 @@ export function HomePage() {
           </Card>
 
           <div className="grid grid-cols-2 gap-4 lg:gap-5 lg:h-full">
-            <Card padded className="flex flex-col gap-4">
-              <div className="flex items-center gap-2">
-                <div className="h-10 w-10 rounded-2xl bg-secondary/12 text-secondary flex items-center justify-center">
-                  <Library className="w-5 h-5" strokeWidth={2} />
+            {loading ? (
+              <LibraryCardSkeleton />
+            ) : (
+              <Card padded className="flex flex-col gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-10 w-10 rounded-2xl bg-secondary/12 text-secondary flex items-center justify-center">
+                    <Library className="w-5 h-5" strokeWidth={2} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted">
+                      Your library
+                    </p>
+                    <p className="font-heading font-bold text-2xl text-text leading-none mt-1">
+                      {purchasedQuizzes.length === 0 ? (
+                        <span className="text-base font-semibold text-text-soft font-heading">
+                          No quizzes yet
+                        </span>
+                      ) : (
+                        purchasedQuizzes.length
+                      )}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted">
-                    Your library
-                  </p>
-                  <p className="font-heading font-bold text-2xl text-text leading-none mt-1">
-                    {purchasedQuizzes.length}
+                <div className="flex-1">
+                  <p className="text-xs text-text-soft leading-relaxed">
+                    {purchasedQuizzes.length
+                      ? "Unlimited retakes, no extra fees. Jump into one whenever you're ready."
+                      : "Buy a quiz once, keep it in your library forever. Start by browsing."}
                   </p>
                 </div>
-              </div>
-              <div className="flex-1">
-                <p className="text-xs text-text-soft leading-relaxed">
-                  {purchasedQuizzes.length
-                    ? "Unlimited retakes, no extra fees. Jump into one whenever you're ready."
-                    : "Buy a quiz once, keep it in your library forever. Start by browsing."}
-                </p>
-              </div>
-              <Link to="/library">
-                <Button variant="ghost" size="sm" fullWidth>
-                  Open library
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-              </Link>
-            </Card>
+                <Link to="/library">
+                  <Button variant="ghost" size="sm" fullWidth>
+                    Open library
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </Link>
+              </Card>
+            )}
 
-            <Card padded className="flex flex-col gap-4">
-              <div className="flex items-center gap-2">
-                <div className="h-10 w-10 rounded-2xl bg-primary/12 text-primary flex items-center justify-center">
-                  <Sparkles className="w-5 h-5" strokeWidth={2} />
+            {loading ? (
+              <NextUpCardSkeleton />
+            ) : (
+              <Card padded className="flex flex-col gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-10 w-10 rounded-2xl bg-primary/12 text-primary flex items-center justify-center">
+                    <Sparkles className="w-5 h-5" strokeWidth={2} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted">
+                      Next up
+                    </p>
+                    <p className="font-heading font-semibold text-sm text-text leading-tight mt-1 line-clamp-2">
+                      {suggestedQuizzes[0]?.title ?? "Nothing queued yet"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted">
-                    Next up
-                  </p>
-                  <p className="font-heading font-semibold text-sm text-text leading-tight mt-1 line-clamp-2">
-                    {suggestedQuizzes[0]?.title ?? "Nothing queued yet"}
+                <div className="flex-1">
+                  <p className="text-xs text-text-soft leading-relaxed">
+                    {suggestedQuizzes[0]
+                      ? (() => {
+                          const q = suggestedQuizzes[0];
+                          const purchasedCourseIds = new Set(
+                            purchasedQuizIds
+                              .map((id) => quizzesById.get(id)?.course_id)
+                              .filter(Boolean),
+                          );
+                          if (purchasedCourseIds.has(q.course_id))
+                            return "Matches a course you've already purchased — a natural next step.";
+                          if (attemptedCourseIds.has(q.course_id))
+                            return "Same course as a quiz you've attempted — keep building on it.";
+                          return "Popular in your university and within your budget.";
+                        })()
+                      : "Browse a little and PrepUniv will start recommending quizzes for you."}
                   </p>
                 </div>
-              </div>
-              <div className="flex-1">
-                <p className="text-xs text-text-soft leading-relaxed">
-                  {suggestedQuizzes[0]
-                    ? (() => {
-                        const q = suggestedQuizzes[0];
-                        const purchasedCourseIds = new Set(
-                          purchasedQuizIds
-                            .map((id) => quizzesById.get(id)?.course_id)
-                            .filter(Boolean),
-                        );
-                        if (purchasedCourseIds.has(q.course_id))
-                          return "Matches a course you've already purchased — a natural next step.";
-                        if (attemptedCourseIds.has(q.course_id))
-                          return "Same course as a quiz you've attempted — keep building on it.";
-                        return "Popular in your university and within your budget.";
-                      })()
-                    : "Browse a little and PrepUniv will start recommending quizzes for you."}
-                </p>
-              </div>
-              {suggestedQuizzes[0] ? (
-                <Link to={`/quiz/${suggestedQuizzes[0].id}`}>
-                  <Button variant="primary" size="sm" fullWidth>
-                    <Wand2 className="w-4 h-4" />
-                    View quiz
-                  </Button>
-                </Link>
-              ) : (
-                <Link to="/browse">
-                  <Button variant="outline" size="sm" fullWidth>
-                    <Compass className="w-4 h-4" />
-                    Browse quizzes
-                  </Button>
-                </Link>
-              )}
-            </Card>
+                {suggestedQuizzes[0] ? (
+                  <Link to={`/quiz/${suggestedQuizzes[0].id}`}>
+                    <Button variant="primary" size="sm" fullWidth>
+                      <Wand2 className="w-4 h-4" />
+                      View quiz
+                    </Button>
+                  </Link>
+                ) : (
+                  <Link to="/browse">
+                    <Button variant="outline" size="sm" fullWidth>
+                      <Compass className="w-4 h-4" />
+                      Browse quizzes
+                    </Button>
+                  </Link>
+                )}
+              </Card>
+            )}
           </div>
         </section>
 
@@ -503,7 +520,9 @@ export function HomePage() {
           </Badge>
         </SectionHeader>
 
-        {recentAttempts.length ? (
+        {loading ? (
+          <QuizGridSkeleton count={4} rowOnMobile />
+        ) : recentAttempts.length ? (
           <QuizGrid rowOnMobile>
             {recentAttempts.map((attempt) => {
               const quiz = quizzesById.get(attempt.quiz_id);
@@ -559,7 +578,9 @@ export function HomePage() {
           </Badge>
         </SectionHeader>
 
-        {purchasedQuizzes.length ? (
+        {loading ? (
+          <QuizGridSkeleton count={4} />
+        ) : purchasedQuizzes.length ? (
           <QuizGrid>
             {purchasedQuizzes.slice(0, 4).map((q) => {
               const lastAttempt = userAttempts.find((a) => a.quiz_id === q.id);
@@ -622,7 +643,9 @@ export function HomePage() {
           </Badge>
         </SectionHeader>
 
-        {suggestedQuizzes.length ? (
+        {loading ? (
+          <QuizGridSkeleton count={4} />
+        ) : suggestedQuizzes.length ? (
           <QuizGrid>
             {suggestedQuizzes.map((q) => (
               <QuizCard
@@ -655,10 +678,12 @@ function WalletStatChip({
   label,
   value,
   icon,
+  loading = false,
 }: {
   label: string;
   value: string | number;
   icon: React.ReactNode;
+  loading?: boolean;
 }) {
   return (
     <div className="rounded-2xl bg-cream/10 border border-cream/15 p-2 sm:p-3.5 backdrop-blur-sm min-h-0">
@@ -670,10 +695,100 @@ function WalletStatChip({
           {label}
         </p>
       </div>
-      <p className="mt-1.5 sm:mt-2 font-heading font-bold text-[15px] sm:text-xl leading-none text-cream break-words">
-        {value}
-      </p>
+      {loading ? (
+        <div className="mt-2 h-5 w-12 rounded bg-cream/20 animate-pulse" />
+      ) : (
+        <p className="mt-1.5 sm:mt-2 font-heading font-bold text-[15px] sm:text-xl leading-none text-cream break-words">
+          {value}
+        </p>
+      )}
     </div>
+  );
+}
+
+function LibraryCardSkeleton() {
+  return (
+    <Card padded className="flex flex-col gap-4">
+      <div className="flex items-center gap-2">
+        <div className="h-10 w-10 rounded-2xl bg-surface animate-pulse shrink-0" />
+        <div className="space-y-1.5 flex-1 min-w-0">
+          <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted">
+            Your library
+          </p>
+          <div className="h-6 w-16 rounded-md bg-surface animate-pulse" />
+        </div>
+      </div>
+      <div className="flex-1 space-y-2">
+        <div className="h-3 w-full rounded-md bg-surface animate-pulse" />
+        <div className="h-3 w-3/4 rounded-md bg-surface animate-pulse" />
+      </div>
+      <div className="h-9 w-full rounded-xl bg-surface animate-pulse" />
+    </Card>
+  );
+}
+
+function NextUpCardSkeleton() {
+  return (
+    <Card padded className="flex flex-col gap-4">
+      <div className="flex items-center gap-2">
+        <div className="h-10 w-10 rounded-2xl bg-surface animate-pulse shrink-0" />
+        <div className="space-y-1.5 flex-1 min-w-0">
+          <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted">
+            Next up
+          </p>
+          <div className="h-4 w-32 rounded-md bg-surface animate-pulse" />
+        </div>
+      </div>
+      <div className="flex-1 space-y-2">
+        <div className="h-3 w-full rounded-md bg-surface animate-pulse" />
+        <div className="h-3 w-4/5 rounded-md bg-surface animate-pulse" />
+      </div>
+      <div className="h-9 w-full rounded-xl bg-surface animate-pulse" />
+    </Card>
+  );
+}
+
+function QuizGridSkeleton({
+  count = 4,
+  rowOnMobile = false,
+}: {
+  count?: number;
+  rowOnMobile?: boolean;
+}) {
+  return (
+    <QuizGrid rowOnMobile={rowOnMobile}>
+      {Array.from({ length: count }).map((_, i) => (
+        <QuizCardSkeleton key={i} />
+      ))}
+    </QuizGrid>
+  );
+}
+
+function QuizCardSkeleton() {
+  return (
+    <Card padded={false} className="bg-cream overflow-hidden">
+      <div className="p-5 space-y-4 animate-pulse">
+        <div className="flex justify-between gap-3">
+          <div className="flex-1 space-y-2.5">
+            <div className="flex items-center gap-2">
+              <div className="h-5 w-16 rounded-lg bg-surface" />
+              <div className="h-3 w-20 rounded-lg bg-surface" />
+            </div>
+            <div className="h-4 w-full rounded-lg bg-surface" />
+            <div className="h-4 w-3/4 rounded-lg bg-surface" />
+          </div>
+          <div className="h-6 w-16 rounded-xl bg-surface shrink-0" />
+        </div>
+        <div className="h-3.5 w-28 rounded-lg bg-surface" />
+        <div className="flex justify-between items-center pt-2 border-t border-border/20">
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-6 rounded-full bg-surface" />
+            <div className="h-3 w-24 rounded-lg bg-surface" />
+          </div>
+          <div className="h-3 w-12 rounded-lg bg-surface" />
+        </div>
+      </div>
+    </Card>
   );
 }
 
