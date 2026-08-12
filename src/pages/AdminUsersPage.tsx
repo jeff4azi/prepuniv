@@ -28,6 +28,7 @@ import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Avatar } from "../components/Avatar";
 import { Toast, useToast } from "../components/Toast";
+import { formatNaira } from "../components/QuizCard";
 import { DrawerShell } from "../components/DrawerShell";
 import { UniversitySelect } from "../components/UniversitySelect";
 import { useAuth } from "../context/AuthContext";
@@ -237,7 +238,7 @@ function UserDetailPanel({
             <Wallet className="w-4 h-4 text-muted shrink-0" strokeWidth={2} />
             <span>
               <span className="font-heading font-semibold text-text">
-                ₦{(topUpTotal / 100).toLocaleString("en-NG")}
+                {formatNaira(topUpTotal)}
               </span>{" "}
               topped up
             </span>

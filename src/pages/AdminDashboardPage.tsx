@@ -649,9 +649,7 @@ export function AdminDashboardPage() {
                       }}
                       axisLine={false}
                       tickLine={false}
-                      tickFormatter={(v) =>
-                        `₦${(v / 100).toLocaleString("en-NG", { maximumFractionDigits: 0 })}`
-                      }
+                      tickFormatter={(v) => formatNaira(v)}
                       width={64}
                     />
                     <Tooltip

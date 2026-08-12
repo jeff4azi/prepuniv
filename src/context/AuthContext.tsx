@@ -257,7 +257,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const creatorEarningsBalance = useMemo(() => {
     if (!sessionUser?.id) return 0;
     const uid = sessionUser.id;
-    return walletTxns
+    const sumNaira = walletTxns
       .filter(
         (t) =>
           t.user_id === uid &&
@@ -265,12 +265,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           (t.status === "completed" || t.status === "success"),
       )
       .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    return Math.round(sumNaira * 100);
   }, [sessionUser?.id, walletTxns]);
 
   const creatorLifetimeEarnings = useMemo(() => {
     if (!sessionUser?.id) return 0;
     const uid = sessionUser.id;
-    return walletTxns
+    const sumNaira = walletTxns
       .filter(
         (t) =>
           t.user_id === uid &&
@@ -278,13 +279,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           (t.status === "completed" || t.status === "success"),
       )
       .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    return Math.round(sumNaira * 100);
   }, [sessionUser?.id, walletTxns]);
 
   const creatorThisMonthEarnings = useMemo(() => {
     if (!sessionUser?.id) return 0;
     const uid = sessionUser.id;
     const now = new Date();
-    return walletTxns
+    const sumNaira = walletTxns
       .filter(
         (t) =>
           t.user_id === uid &&
@@ -294,6 +296,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           new Date(t.created_at).getUTCMonth() === now.getUTCMonth(),
       )
       .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    return Math.round(sumNaira * 100);
   }, [sessionUser?.id, walletTxns]);
 
   /* ---------------------- Session listener (the primary driver) ---------------------- */

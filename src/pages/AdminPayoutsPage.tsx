@@ -323,7 +323,7 @@ function PayoutReviewSheet({
                 }`}
               >
                 {transferOutcome === "paid"
-                  ? `₦${(req.amount / 100).toLocaleString("en-NG")} sent successfully`
+                  ? `${formatNaira(req.amount)} sent successfully`
                   : "Transfer failed"}
               </p>
               {transferOutcome === "failed" && (

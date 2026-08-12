@@ -19,15 +19,11 @@ import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
+import { formatNaira } from "../components/QuizCard";
 import { useAuth } from "../context/AuthContext";
 import { supabase, type DbQuiz, type DbWalletTxn } from "../lib/supabase";
 
-export function formatNaira(naira: number) {
-  const abs = Math.abs(Number(naira) || 0);
-  const formatted =
-    "₦" + abs.toLocaleString("en-NG", { maximumFractionDigits: 0 });
-  return naira < 0 ? "-" + formatted : formatted;
-}
+export { formatNaira };
 
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -69,7 +65,13 @@ function quizRevenue(q: DbQuiz) {
 }
 
 export function CreatorDashboardPage() {
-  const { currentUser, walletBalance } = useAuth();
+  const {
+    currentUser,
+    walletBalance,
+    creatorEarningsBalance,
+    creatorLifetimeEarnings,
+    creatorThisMonthEarnings,
+  } = useAuth();
   const now = useMemo(() => new Date(), []);
   const creatorId = currentUser.id;
 
@@ -110,27 +112,31 @@ export function CreatorDashboardPage() {
 
   const creatorTxns = walletTxns;
 
-  const lifetimeEarnings = useMemo(
+  const fetchedLifetime = useMemo(
     () =>
       Math.round(
         creatorTxns
           .filter((t) => t.type === "creator_earning")
-          .reduce((sum, t) => sum + Number(t.amount), 0) * 100,
+          .reduce((sum, t) => sum + Number(t.amount || 0), 0) * 100,
       ),
     [creatorTxns],
   );
 
-  const thisMonthEarnings = useMemo(
+  const fetchedThisMonth = useMemo(
     () =>
       Math.round(
         creatorTxns
           .filter(
             (t) => t.type === "creator_earning" && sameMonth(t.created_at, now),
           )
-          .reduce((sum, t) => sum + Number(t.amount), 0) * 100,
+          .reduce((sum, t) => sum + Number(t.amount || 0), 0) * 100,
       ),
     [creatorTxns, now],
   );
+
+  const lifetimeEarnings = creatorLifetimeEarnings || fetchedLifetime;
+  const thisMonthEarnings = creatorThisMonthEarnings || fetchedThisMonth;
+  const displayEarningsBalance = creatorEarningsBalance || walletBalance;
 
   const totalAttempts = useMemo(
     () => myQuizzes.reduce((sum, q) => sum + Number(q.attempt_count || 0), 0),
@@ -246,7 +252,7 @@ export function CreatorDashboardPage() {
                     Earnings balance
                   </Badge>
                   <p className="mt-3 font-heading font-bold text-[34px] sm:text-[40px] lg:text-[44px] leading-none tracking-tight">
-                    {formatNaira(walletBalance)}
+                    {formatNaira(displayEarningsBalance)}
                   </p>
                   <p className="mt-2 text-[13px] text-cream/75 max-w-sm leading-relaxed">
                     Accumulated earnings after payouts. Request a payout to
@@ -594,7 +600,7 @@ function ActivityRow({
           }`}
         >
           {isEarning ? "+" : "−"}
-          {formatNaira(Math.abs(Number(txn.amount)))}
+          {formatNaira(Math.abs(Number(txn.amount)) * 100)}
         </p>
       </div>
     </div>
