@@ -279,69 +279,6 @@ export function HomePage() {
     return { total, avg, best, streak };
   }, [userAttempts]);
 
-  // ── Loading skeleton ──────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <PageContainer className="!max-w-[1160px]">
-        <div className="space-y-7 lg:space-y-9 animate-pulse">
-          {/* Greeting header skeleton */}
-          <section className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
-            <div className="flex items-start gap-4">
-              <div className="h-14 w-14 rounded-full bg-surface shrink-0" />
-              <div className="space-y-2.5 pt-1">
-                <div className="h-3 w-24 rounded-md bg-surface" />
-                <div className="h-7 w-56 rounded-xl bg-surface" />
-                <div className="h-4 w-80 rounded-lg bg-surface/60" />
-              </div>
-            </div>
-          </section>
-
-          {/* Wallet + stats row skeleton */}
-          <section className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 lg:gap-5">
-            <div className="h-52 rounded-3xl bg-surface" />
-            <div className="grid grid-cols-2 gap-4">
-              <div className="h-52 rounded-3xl bg-surface" />
-              <div className="h-52 rounded-3xl bg-surface" />
-            </div>
-          </section>
-
-          {/* Section header skeleton */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <div className="h-5 w-44 rounded-lg bg-surface" />
-              <div className="h-3.5 w-64 rounded-md bg-surface/60" />
-            </div>
-          </div>
-
-          {/* Quiz card grid skeleton */}
-          <QuizCardSkeletonGrid count={4} />
-
-          {/* Section header skeleton */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <div className="h-5 w-32 rounded-lg bg-surface" />
-              <div className="h-3.5 w-56 rounded-md bg-surface/60" />
-            </div>
-          </div>
-
-          {/* Quiz card grid skeleton */}
-          <QuizCardSkeletonGrid count={4} />
-
-          {/* Section header skeleton */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <div className="h-5 w-40 rounded-lg bg-surface" />
-              <div className="h-3.5 w-72 rounded-md bg-surface/60" />
-            </div>
-          </div>
-
-          {/* Quiz card grid skeleton */}
-          <QuizCardSkeletonGrid count={4} />
-        </div>
-      </PageContainer>
-    );
-  }
-
   return (
     <PageContainer className="!max-w-[1160px]">
       <div className="space-y-7 lg:space-y-9">
@@ -863,43 +800,4 @@ function computeStreak(attempts: DbQuizAttempt[]) {
     }
   }
   return streak;
-}
-
-// ─── Quiz card skeleton ───────────────────────────────────────────────────────
-
-function QuizCardSkeleton() {
-  return (
-    <div className="rounded-3xl bg-cream border border-border/40 p-5 flex flex-col gap-4 min-h-[220px]">
-      {/* badge + title */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 space-y-2.5">
-          <div className="h-5 w-16 rounded-lg bg-surface" />
-          <div className="h-4 w-full rounded-lg bg-surface" />
-          <div className="h-4 w-3/4 rounded-lg bg-surface/60" />
-        </div>
-        <div className="h-6 w-20 rounded-xl bg-surface shrink-0" />
-      </div>
-      {/* meta row */}
-      <div className="h-3.5 w-28 rounded-md bg-surface/60" />
-      {/* progress bar */}
-      <div className="h-1.5 w-full rounded-full bg-surface" />
-      {/* creator + share */}
-      <div className="flex items-center justify-between pt-1">
-        <div className="h-4 w-24 rounded-md bg-surface/60" />
-        <div className="h-6 w-16 rounded-lg bg-surface/40" />
-      </div>
-      {/* CTA */}
-      <div className="h-11 w-full rounded-2xl bg-surface mt-auto" />
-    </div>
-  );
-}
-
-function QuizCardSkeletonGrid({ count = 4 }: { count?: number }) {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5 animate-pulse">
-      {Array.from({ length: count }).map((_, i) => (
-        <QuizCardSkeleton key={i} />
-      ))}
-    </div>
-  );
 }
