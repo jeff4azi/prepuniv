@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -18,13 +18,13 @@ import { QuizCard } from "../components/QuizCard";
 import { ShareIconButton } from "../components/ShareActions";
 import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
-import {
-  profiles as allProfiles,
-  quizzes as allQuizzes,
-  courses as allCourses,
-  quizAttempts as allAttempts,
-  type QuizAttempt,
-} from "../mock";
+import { supabase } from "../lib/supabase";
+import type {
+  DbQuiz,
+  DbCourse,
+  DbProfile,
+  DbQuizAttempt,
+} from "../lib/supabase";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -69,16 +69,129 @@ export function CreatorProfilePage() {
   const { currentUser, hasPurchasedQuiz } = useAuth();
   const [toast, showToast, dismissToast] = useToast();
 
-  const coursesById = useMemo(
-    () => new Map(allCourses.map((c) => [c.id, c])),
-    [],
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<DbProfile | null | undefined>(
+    undefined,
+  );
+  const [quizzes, setQuizzes] = useState<DbQuiz[]>([]);
+  const [courses, setCourses] = useState<Map<string, DbCourse>>(new Map());
+  const [myAttempts, setMyAttempts] = useState<DbQuizAttempt[]>([]);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    setLoading(true);
+
+    (async () => {
+      // Fetch profile
+      const { data: profileRow } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      if (
+        !profileRow ||
+        (profileRow.role !== "creator" && profileRow.role !== "admin")
+      ) {
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+      setProfile(profileRow as DbProfile);
+
+      // Fetch their published quizzes
+      const { data: quizRows } = await supabase
+        .from("quizzes")
+        .select("*")
+        .eq("creator_id", id)
+        .eq("is_published", true)
+        .eq("unpublished_by_admin", false)
+        .order("created_at", { ascending: false });
+
+      if (cancelled) return;
+      const publishedQuizzes = (quizRows ?? []) as DbQuiz[];
+      setQuizzes(publishedQuizzes);
+
+      // Fetch courses for those quizzes
+      const courseIds = [
+        ...new Set(publishedQuizzes.map((q) => q.course_id).filter(Boolean)),
+      ];
+      if (courseIds.length) {
+        const { data: courseRows } = await supabase
+          .from("courses")
+          .select("*")
+          .in("id", courseIds);
+        if (!cancelled) {
+          const m = new Map<string, DbCourse>();
+          for (const c of (courseRows ?? []) as DbCourse[]) m.set(c.id, c);
+          setCourses(m);
+        }
+      }
+
+      // Fetch current user's attempts on this creator's quizzes
+      if (currentUser.id && publishedQuizzes.length) {
+        const quizIds = publishedQuizzes.map((q) => q.id);
+        const { data: attemptRows } = await supabase
+          .from("quiz_attempts")
+          .select("*")
+          .eq("user_id", currentUser.id)
+          .in("quiz_id", quizIds)
+          .order("started_at", { ascending: false });
+        if (!cancelled) setMyAttempts((attemptRows ?? []) as DbQuizAttempt[]);
+      }
+
+      if (!cancelled) setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, currentUser.id]);
+
+  // Best attempt per quiz for the current user
+  const lastAttemptByQuizId = useMemo(() => {
+    const m = new Map<string, DbQuizAttempt>();
+    for (const a of myAttempts) {
+      if (!m.has(a.quiz_id)) m.set(a.quiz_id, a);
+    }
+    return m;
+  }, [myAttempts]);
+
+  // Stats
+  const totalAttempts = useMemo(
+    () => quizzes.reduce((sum, q) => sum + (q.attempt_count ?? 0), 0),
+    [quizzes],
   );
 
-  // Resolve profile
-  const profile = useMemo(() => allProfiles.find((p) => p.id === id), [id]);
+  const avgScore = useMemo(() => {
+    if (!myAttempts.length) return null;
+    const sum = myAttempts.reduce((s, a) => s + (a.score ?? 0), 0);
+    return Math.round(sum / myAttempts.length);
+  }, [myAttempts]);
 
-  // Gate: only creator/admin profiles are valid here
-  if (!profile || (profile.role !== "creator" && profile.role !== "admin")) {
+  // ── Loading skeleton ────────────────────────────────────────────────────────
+  if (loading || profile === undefined) {
+    return (
+      <PageContainer className="max-w-290!">
+        <div className="space-y-5 animate-pulse">
+          <div className="h-5 w-20 rounded-lg bg-surface" />
+          <Card padded={false} className="overflow-hidden">
+            <div className="h-20 bg-surface" />
+            <div className="px-7 pb-6 -mt-10 space-y-4">
+              <div className="h-20 w-20 rounded-full bg-surface" />
+              <div className="h-6 w-48 rounded-lg bg-surface" />
+            </div>
+          </Card>
+        </div>
+      </PageContainer>
+    );
+  }
+
+  // ── Not found ───────────────────────────────────────────────────────────────
+  if (!profile) {
     return (
       <PageContainer>
         <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
@@ -100,44 +213,6 @@ export function CreatorProfilePage() {
       </PageContainer>
     );
   }
-
-  // Derive stats from live mock data
-  const publishedQuizzes = useMemo(
-    () =>
-      allQuizzes.filter((q) => q.creator_id === profile.id && q.is_published),
-    [profile.id],
-  );
-
-  const totalAttempts = useMemo(
-    () => publishedQuizzes.reduce((sum, q) => sum + q.attempt_count, 0),
-    [publishedQuizzes],
-  );
-
-  // Average score across all attempts on this creator's quizzes (from mock attempts store)
-  const avgScore = useMemo(() => {
-    const quizIds = new Set(publishedQuizzes.map((q) => q.id));
-    const relevant = allAttempts.filter((a) => quizIds.has(a.quiz_id));
-    if (relevant.length === 0) return null;
-    const sum = relevant.reduce((s, a) => s + a.score, 0);
-    return Math.round(sum / relevant.length);
-  }, [publishedQuizzes]);
-
-  // Current user's last attempt per quiz (for variant + retake)
-  const lastAttemptByQuizId = useMemo(() => {
-    const m = new Map<string, QuizAttempt>();
-    const quizIds = new Set(publishedQuizzes.map((q) => q.id));
-    const userAttempts = allAttempts
-      .filter((a) => a.user_id === currentUser.id && quizIds.has(a.quiz_id))
-      .sort(
-        (a, b) =>
-          new Date(b.completed_at ?? b.started_at).getTime() -
-          new Date(a.completed_at ?? a.started_at).getTime(),
-      );
-    for (const a of userAttempts) {
-      if (!m.has(a.quiz_id)) m.set(a.quiz_id, a);
-    }
-    return m;
-  }, [publishedQuizzes, currentUser.id]);
 
   return (
     <PageContainer className="max-w-290!">
@@ -161,11 +236,9 @@ export function CreatorProfilePage() {
 
         {/* ── Header card ── */}
         <Card padded={false} className="overflow-hidden">
-          {/* Subtle tinted band at top */}
           <div className="h-20 bg-linear-to-br from-primary/12 via-secondary/8 to-transparent" />
 
           <div className="px-5 sm:px-7 pb-6 -mt-10 space-y-4">
-            {/* Avatar + name row */}
             <div className="flex flex-col sm:flex-row sm:items-end gap-4">
               <Avatar
                 name={profile.full_name}
@@ -179,10 +252,10 @@ export function CreatorProfilePage() {
                     <Sparkles className="w-3 h-3" />
                     Creator
                   </Badge>
-                  {profile.joined_at && (
+                  {profile.created_at && (
                     <span className="inline-flex items-center gap-1 text-xs text-muted font-heading">
                       <CalendarDays className="w-3.5 h-3.5" />
-                      Joined {joinedLabel(profile.joined_at)}
+                      Joined {joinedLabel(profile.created_at)}
                     </span>
                   )}
                 </div>
@@ -201,13 +274,6 @@ export function CreatorProfilePage() {
                 </div>
               </div>
             </div>
-
-            {/* Bio */}
-            {profile.bio && (
-              <p className="text-sm text-text-soft leading-relaxed max-w-2xl">
-                {profile.bio}
-              </p>
-            )}
           </div>
 
           {/* ── Stats strip ── */}
@@ -215,7 +281,7 @@ export function CreatorProfilePage() {
             <StatChip
               icon={BookOpen}
               label="Quizzes published"
-              value={publishedQuizzes.length}
+              value={quizzes.length}
             />
             <StatChip
               icon={Users}
@@ -225,15 +291,15 @@ export function CreatorProfilePage() {
             {avgScore !== null ? (
               <StatChip
                 icon={BarChart2}
-                label="Avg. score on their quizzes"
+                label="Your avg. score"
                 value={`${avgScore}%`}
               />
             ) : (
               <StatChip
                 icon={FileQuestion}
                 label="Total questions"
-                value={publishedQuizzes
-                  .reduce((s, q) => s + q.question_count, 0)
+                value={quizzes
+                  .reduce((s, q) => s + (q.question_count ?? 0), 0)
                   .toLocaleString()}
               />
             )}
@@ -248,14 +314,14 @@ export function CreatorProfilePage() {
                 Quizzes by {profile.full_name.split(" ")[0]}
               </h2>
               <p className="text-sm text-text-soft mt-0.5">
-                {publishedQuizzes.length > 0
-                  ? `${publishedQuizzes.length} published quiz${publishedQuizzes.length !== 1 ? "zes" : ""}`
+                {quizzes.length > 0
+                  ? `${quizzes.length} published quiz${quizzes.length !== 1 ? "zes" : ""}`
                   : "No published quizzes yet"}
               </p>
             </div>
           </div>
 
-          {publishedQuizzes.length === 0 ? (
+          {quizzes.length === 0 ? (
             <Card className="bg-surface/30 border-border/40">
               <div className="flex flex-col items-center text-center py-10 px-4">
                 <div className="h-14 w-14 rounded-3xl bg-cream text-secondary shadow-card ring-1 ring-border/50 flex items-center justify-center mb-4">
@@ -277,7 +343,7 @@ export function CreatorProfilePage() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
-              {publishedQuizzes.map((quiz) => {
+              {quizzes.map((quiz) => {
                 const lastAttempt = lastAttemptByQuizId.get(quiz.id);
                 const purchased = hasPurchasedQuiz(quiz.id);
                 const variant = lastAttempt
@@ -289,7 +355,7 @@ export function CreatorProfilePage() {
                   <QuizCard
                     key={quiz.id}
                     quiz={quiz}
-                    course={coursesById.get(quiz.course_id)}
+                    course={courses.get(quiz.course_id)}
                     creator={profile}
                     variant={variant}
                     attempt={lastAttempt}

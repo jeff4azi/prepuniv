@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -27,11 +27,12 @@ import { Toast, useToast } from "../components/Toast";
 import { ShareActionsMenu } from "../components/ShareActions";
 import { useAuth } from "../context/AuthContext";
 import {
-  quizzes as allQuizzes,
-  courses as allCourses,
-  profiles as allProfiles,
-  quizAttempts as allAttempts,
-} from "../mock";
+  fetchQuiz,
+  fetchCourse,
+  fetchProfile,
+  fetchUserAttempts,
+} from "../lib/queries";
+import type { Quiz, Course, Profile, QuizAttempt } from "../mock/types";
 import { formatNaira } from "../components/QuizCard";
 import { apiFetch } from "../lib/api";
 
@@ -134,27 +135,35 @@ export function QuizDetailPage() {
     return "Browse";
   }, [fromPath]);
 
-  // ── mock data look-up ──────────────────────────────────────────────────────
-  const quiz = useMemo(() => allQuizzes.find((q) => q.id === id), [id]);
-  const course = useMemo(
-    () => allCourses.find((c) => c.id === quiz?.course_id),
-    [quiz],
-  );
-  const creator = useMemo(
-    () => allProfiles.find((p) => p.id === quiz?.creator_id),
-    [quiz],
-  );
+  // ── live data fetch ────────────────────────────────────────────────────────
+  const [quiz, setQuiz] = useState<Quiz | null | undefined>(undefined); // undefined = loading
+  const [course, setCourse] = useState<Course | null>(null);
+  const [creator, setCreator] = useState<Profile | null>(null);
+  const [myAttempts, setMyAttempts] = useState<QuizAttempt[]>([]);
 
-  // Attempts for the current user on this quiz
-  const myAttempts = useMemo(
-    () =>
-      quiz
-        ? allAttempts.filter(
-            (a) => a.quiz_id === quiz.id && a.user_id === currentUser.id,
-          )
-        : [],
-    [quiz, currentUser.id],
-  );
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    (async () => {
+      const q = await fetchQuiz(id);
+      if (cancelled) return;
+      setQuiz(q);
+      if (!q) return;
+
+      const [c, p, attempts] = await Promise.all([
+        q.course_id ? fetchCourse(q.course_id) : Promise.resolve(null),
+        q.creator_id ? fetchProfile(q.creator_id) : Promise.resolve(null),
+        fetchUserAttempts(currentUser.id),
+      ]);
+      if (cancelled) return;
+      setCourse(c);
+      setCreator(p);
+      setMyAttempts(attempts.filter((a) => a.quiz_id === id));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, currentUser.id]);
 
   const bestScore = useMemo(
     () =>
@@ -184,7 +193,19 @@ export function QuizDetailPage() {
   const [showReport, setShowReport] = useState(false);
   const [toast, showToast, dismissToast] = useToast();
 
-  if (!quiz) {
+  if (quiz === undefined) {
+    // Still loading
+    return (
+      <PageContainer>
+        <div className="space-y-4 animate-pulse">
+          <div className="h-6 w-32 rounded-lg bg-surface" />
+          <div className="h-48 rounded-3xl bg-surface" />
+        </div>
+      </PageContainer>
+    );
+  }
+
+  if (quiz === null) {
     return (
       <PageContainer>
         <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
@@ -399,7 +420,7 @@ export function QuizDetailPage() {
                   className="inline-flex items-center gap-1.5 text-primary font-heading font-semibold hover:underline underline-offset-2 transition-colors"
                 >
                   <Trophy className="w-4 h-4" />
-                  View Leaderboard
+                  Leaderboard · resets weekly
                 </Link>
               </div>
 

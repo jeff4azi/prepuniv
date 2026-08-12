@@ -83,20 +83,15 @@ export function HomePage() {
           );
         }
 
-        const profilesQuery = supabase
-          .from("profiles")
-          .select("id, full_name, role, is_approved_creator, created_at");
-
         const attemptsQuery = supabase
           .from("quiz_attempts")
           .select("*")
           .eq("user_id", currentUser.id)
           .order("started_at", { ascending: false });
 
-        const [quizRes, courseRes, profileRes, attemptRes] = await Promise.all([
+        const [quizRes, courseRes, attemptRes] = await Promise.all([
           quizQuery,
           courseQuery,
-          profilesQuery,
           attemptsQuery,
         ]);
 
@@ -106,15 +101,25 @@ export function HomePage() {
           console.warn("Home quizzes fetch:", quizRes.error.message);
         if (courseRes.error)
           console.warn("Home courses fetch:", courseRes.error.message);
-        if (profileRes.error)
-          console.warn("Home profiles fetch:", profileRes.error.message);
         if (attemptRes.error)
           console.warn("Home attempts fetch:", attemptRes.error.message);
 
-        setAllQuizzes(quizRes.data ?? []);
+        const quizzes = quizRes.data ?? [];
+        setAllQuizzes(quizzes);
         setAllCourses(courseRes.data ?? []);
-        setAllProfiles(profileRes.data ?? []);
         setAllAttempts(attemptRes.data ?? []);
+
+        // Fetch only the creator profiles for visible quizzes
+        const creatorIds = [
+          ...new Set(quizzes.map((q: DbQuiz) => q.creator_id).filter(Boolean)),
+        ];
+        if (creatorIds.length && !cancelled) {
+          const { data: profileRows } = await supabase
+            .from("profiles")
+            .select("id, full_name, role, is_approved_creator, created_at")
+            .in("id", creatorIds);
+          if (!cancelled) setAllProfiles(profileRows ?? []);
+        }
       } catch (e) {
         if (!cancelled) console.warn("Home page data fetch failed:", e);
       } finally {
@@ -596,7 +601,7 @@ export function HomePage() {
           subtitle={
             suggestedQuizzes.length
               ? "Picked based on your courses, purchase history, and what's popular right now."
-              : "Everything in the marketplace is already in your library. Nice work!"
+              : "You’ve added everything currently available to your library. Check back later for new questions and resources."
           }
           action={
             suggestedQuizzes.length ? (
@@ -631,7 +636,7 @@ export function HomePage() {
           <EmptyState
             icon={Sparkles}
             title="All caught up"
-            description="Every published quiz in the marketplace is already in your library. Retry them in My quizzes above."
+            description="You’ve added everything currently available to your library. Check back later for new questions and resources."
             primaryCta={{
               label: "Go to my quizzes",
               to: "/library",

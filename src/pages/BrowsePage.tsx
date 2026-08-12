@@ -19,7 +19,7 @@ import type { Quiz, Course, Profile } from "../mock/types";
 import {
   fetchPublishedQuizzes,
   fetchCourses,
-  fetchAllProfiles,
+  fetchProfilesByIds,
 } from "../lib/queries";
 
 type SortKey = "newest" | "popular" | "price-asc" | "price-desc";
@@ -68,12 +68,19 @@ export function BrowsePage() {
         currentUser.role === "admin" ? undefined : userUniversityId,
       ),
       fetchCourses(currentUser.role === "admin" ? undefined : userUniversityId),
-      fetchAllProfiles(),
-    ]).then(([quizzes, courses, profiles]) => {
+    ]).then(async ([quizzes, courses]) => {
       if (cancelled) return;
       setAllQuizzes(quizzes);
       setAllCourses(courses);
-      setAllProfiles(profiles);
+      // Fetch only the creator profiles needed for the visible quizzes
+      const creatorIds = [
+        ...new Set(quizzes.map((q) => q.creator_id).filter(Boolean)),
+      ];
+      const profileMap = creatorIds.length
+        ? await fetchProfilesByIds(creatorIds)
+        : new Map();
+      if (cancelled) return;
+      setAllProfiles([...profileMap.values()]);
       setLoading(false);
     });
     return () => {

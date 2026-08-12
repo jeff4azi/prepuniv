@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Trophy, Users, PlayCircle, Star } from "lucide-react";
+import {
+  ArrowLeft,
+  Trophy,
+  Users,
+  PlayCircle,
+  Star,
+  Timer,
+  TimerOff,
+  CalendarClock,
+} from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
@@ -40,7 +49,48 @@ function formatDisplayName(fullName: string, isCurrentUser: boolean): string {
   return `${first} ${lastInitial}`;
 }
 
+/** Returns the Monday 00:00 UTC of the current ISO week */
+function getWeekStart(): Date {
+  const now = new Date();
+  const day = now.getUTCDay(); // 0=Sun … 6=Sat
+  const diff = day === 0 ? -6 : 1 - day; // shift to Monday
+  const monday = new Date(now);
+  monday.setUTCDate(now.getUTCDate() + diff);
+  monday.setUTCHours(0, 0, 0, 0);
+  return monday;
+}
+
+/** Next Monday 00:00 UTC */
+function getWeekEnd(): Date {
+  const start = getWeekStart();
+  const end = new Date(start);
+  end.setUTCDate(start.getUTCDate() + 7);
+  return end;
+}
+
+function formatWeekRange(): string {
+  const start = getWeekStart();
+  const end = new Date(getWeekEnd());
+  end.setUTCDate(end.getUTCDate() - 1); // last day of week
+  const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" };
+  return `${start.toLocaleDateString("en-NG", opts)} – ${end.toLocaleDateString("en-NG", opts)}`;
+}
+
+function formatTimeUntilReset(): string {
+  const now = Date.now();
+  const end = getWeekEnd().getTime();
+  const ms = end - now;
+  if (ms <= 0) return "resetting…";
+  const h = Math.floor(ms / 3_600_000);
+  const d = Math.floor(h / 24);
+  if (d > 1) return `resets in ${d} days`;
+  if (d === 1) return "resets tomorrow";
+  return `resets in ${h}h`;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+type TabMode = "timed" | "untimed";
 
 interface LeaderboardEntry {
   rank: number;
@@ -83,6 +133,82 @@ const MEDAL_CONFIG = [
   },
 ] as const;
 
+// ─── Build leaderboard entries from attempts ──────────────────────────────────
+
+function buildLeaderboard(
+  attempts: QuizAttempt[],
+  profiles: Map<string, Profile>,
+  currentUserId: string,
+  mode: TabMode,
+): LeaderboardEntry[] {
+  const weekStart = getWeekStart();
+
+  // Filter by mode and within this week
+  const filtered = attempts.filter((a) => {
+    const isMode = mode === "timed" ? a.is_timed : !a.is_timed;
+    const inWeek = new Date(a.completed_at ?? a.started_at) >= weekStart;
+    return isMode && inWeek;
+  });
+
+  // Best attempt per user — score desc, tiebreak time asc, then date asc
+  const bestByUser = new Map<
+    string,
+    { score: number; timeTaken?: number; completedAt: string }
+  >();
+
+  for (const a of filtered) {
+    const existing = bestByUser.get(a.user_id);
+    const better =
+      !existing ||
+      a.score > existing.score ||
+      (a.score === existing.score &&
+        (a.time_taken_seconds ?? Infinity) <
+          (existing.timeTaken ?? Infinity)) ||
+      (a.score === existing.score &&
+        a.time_taken_seconds === existing.timeTaken &&
+        new Date(a.completed_at) < new Date(existing.completedAt));
+
+    if (better) {
+      bestByUser.set(a.user_id, {
+        score: a.score,
+        timeTaken: a.time_taken_seconds,
+        completedAt: a.completed_at,
+      });
+    }
+  }
+
+  const sorted = [...bestByUser.entries()].sort(([, a], [, b]) => {
+    if (b.score !== a.score) return b.score - a.score;
+    const ta = a.timeTaken ?? Infinity;
+    const tb = b.timeTaken ?? Infinity;
+    if (ta !== tb) return ta - tb;
+    return (
+      new Date(a.completedAt).getTime() - new Date(b.completedAt).getTime()
+    );
+  });
+
+  return sorted.map(([userId, data], idx) => {
+    const profile = profiles.get(userId);
+    const fullName = profile?.full_name ?? "Anonymous User";
+    const isCurrentUser = userId === currentUserId;
+    const isCreator =
+      !!profile?.is_approved_creator ||
+      profile?.role === "creator" ||
+      profile?.role === "admin";
+    return {
+      rank: idx + 1,
+      userId,
+      fullName,
+      displayName: formatDisplayName(fullName, isCurrentUser),
+      score: data.score,
+      timeTaken: data.timeTaken,
+      completedAt: data.completedAt,
+      isCurrentUser,
+      isCreator,
+    };
+  });
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function LeaderboardPage() {
@@ -94,6 +220,7 @@ export function LeaderboardPage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [quizAttempts, setQuizAttempts] = useState<QuizAttempt[]>([]);
   const [profiles, setProfiles] = useState<Map<string, Profile>>(new Map());
+  const [tab, setTab] = useState<TabMode>("timed");
 
   useEffect(() => {
     if (!quizId) return;
@@ -127,63 +254,21 @@ export function LeaderboardPage() {
     };
   }, [quizId]);
 
-  // Best attempt per user — score desc, tiebreak by time asc, then date asc
-  const leaderboard = useMemo((): LeaderboardEntry[] => {
-    const bestByUser = new Map<
-      string,
-      { score: number; timeTaken?: number; completedAt: string }
-    >();
+  // Set default tab based on whether quiz has a time limit
+  useEffect(() => {
+    if (quiz) setTab(quiz.time_limit_seconds ? "timed" : "untimed");
+  }, [quiz]);
 
-    for (const a of quizAttempts) {
-      const existing = bestByUser.get(a.user_id);
-      const better =
-        !existing ||
-        a.score > existing.score ||
-        (a.score === existing.score &&
-          (a.time_taken_seconds ?? Infinity) <
-            (existing.timeTaken ?? Infinity)) ||
-        (a.score === existing.score &&
-          a.time_taken_seconds === existing.timeTaken &&
-          new Date(a.completed_at) < new Date(existing.completedAt));
+  const timedBoard = useMemo(
+    () => buildLeaderboard(quizAttempts, profiles, currentUser.id, "timed"),
+    [quizAttempts, profiles, currentUser.id],
+  );
+  const untimedBoard = useMemo(
+    () => buildLeaderboard(quizAttempts, profiles, currentUser.id, "untimed"),
+    [quizAttempts, profiles, currentUser.id],
+  );
 
-      if (better) {
-        bestByUser.set(a.user_id, {
-          score: a.score,
-          timeTaken: a.time_taken_seconds,
-          completedAt: a.completed_at,
-        });
-      }
-    }
-
-    const sorted = [...bestByUser.entries()].sort(([, a], [, b]) => {
-      if (b.score !== a.score) return b.score - a.score;
-      const ta = a.timeTaken ?? Infinity;
-      const tb = b.timeTaken ?? Infinity;
-      if (ta !== tb) return ta - tb;
-      return (
-        new Date(a.completedAt).getTime() - new Date(b.completedAt).getTime()
-      );
-    });
-
-    return sorted.map(([userId, data], idx) => {
-      const profile = profiles.get(userId);
-      const fullName = profile?.full_name ?? "Anonymous User";
-      const isCurrentUser = userId === currentUser.id;
-      const isCreator = !!profile?.is_approved_creator || profile?.role === "creator" || profile?.role === "admin";
-      return {
-        rank: idx + 1,
-        userId,
-        fullName,
-        displayName: formatDisplayName(fullName, isCurrentUser),
-        score: data.score,
-        timeTaken: data.timeTaken,
-        completedAt: data.completedAt,
-        isCurrentUser,
-        isCreator,
-      };
-    });
-  }, [quizAttempts, profiles, currentUser.id]);
-
+  const leaderboard = tab === "timed" ? timedBoard : untimedBoard;
   const currentUserEntry = leaderboard.find((e) => e.isCurrentUser);
   const hasAttempted = !!currentUserEntry;
   const top3 = leaderboard.slice(0, 3);
@@ -259,17 +344,78 @@ export function LeaderboardPage() {
               </h1>
             </div>
             <p className="text-sm text-text-soft leading-relaxed">
-              Ranked by best score per learner.
+              Weekly rankings — best score per learner, this week only.
               {leaderboard.length > 0 &&
                 ` ${leaderboard.length} learner${leaderboard.length !== 1 ? "s" : ""} on the board.`}
             </p>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Users className="w-4 h-4 text-muted" />
-            <span className="text-sm font-heading font-semibold text-text-soft">
-              {quiz.attempt_count.toLocaleString()} attempts
-            </span>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <div className="flex items-center gap-1.5">
+              <Users className="w-4 h-4 text-muted" />
+              <span className="text-sm font-heading font-semibold text-text-soft">
+                {quiz.attempt_count.toLocaleString()} attempts
+              </span>
+            </div>
           </div>
+        </div>
+
+        {/* ── Weekly reset info chip ──────────────────────────────────── */}
+        <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-surface/60 border border-border/50">
+          <CalendarClock className="w-4 h-4 text-muted shrink-0" />
+          <p className="text-[12px] font-heading text-text-soft">
+            <span className="font-semibold text-text">{formatWeekRange()}</span>
+            <span className="ml-2 text-muted">· {formatTimeUntilReset()}</span>
+          </p>
+        </div>
+
+        {/* ── Timed / Untimed tabs ────────────────────────────────────── */}
+        <div className="flex gap-1 p-1 rounded-2xl bg-surface/60 border border-border/50">
+          <button
+            type="button"
+            onClick={() => setTab("timed")}
+            className={`flex-1 flex items-center justify-center gap-2 h-9 rounded-xl text-sm font-heading font-semibold transition-all duration-150 ${
+              tab === "timed"
+                ? "bg-primary text-cream shadow-soft"
+                : "text-text-soft hover:text-text"
+            }`}
+          >
+            <Timer className="w-4 h-4" strokeWidth={2} />
+            Timed
+            {timedBoard.length > 0 && (
+              <span
+                className={`text-[11px] font-bold px-1.5 py-0.5 rounded-md ${
+                  tab === "timed"
+                    ? "bg-cream/20 text-cream"
+                    : "bg-surface text-muted"
+                }`}
+              >
+                {timedBoard.length}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("untimed")}
+            className={`flex-1 flex items-center justify-center gap-2 h-9 rounded-xl text-sm font-heading font-semibold transition-all duration-150 ${
+              tab === "untimed"
+                ? "bg-primary text-cream shadow-soft"
+                : "text-text-soft hover:text-text"
+            }`}
+          >
+            <TimerOff className="w-4 h-4" strokeWidth={2} />
+            Untimed
+            {untimedBoard.length > 0 && (
+              <span
+                className={`text-[11px] font-bold px-1.5 py-0.5 rounded-md ${
+                  tab === "untimed"
+                    ? "bg-cream/20 text-cream"
+                    : "bg-surface text-muted"
+                }`}
+              >
+                {untimedBoard.length}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* ── Not-yet-attempted banner ──────────────────────────────── */}
@@ -281,11 +427,12 @@ export function LeaderboardPage() {
             />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-heading font-semibold text-text leading-tight">
-                You haven&apos;t attempted this quiz yet
+                You haven&apos;t attempted this quiz{" "}
+                {tab === "timed" ? "timed" : "untimed"} yet
               </p>
               <p className="text-[12px] text-text-soft mt-0.5 leading-relaxed">
-                Take it to see your rank — you might be closer to the top than
-                you think.
+                Take it this week to get on the board — rankings reset every
+                Monday.
               </p>
             </div>
             <Link
@@ -307,10 +454,12 @@ export function LeaderboardPage() {
               <Trophy className="w-8 h-8" strokeWidth={1.8} />
             </div>
             <h2 className="font-heading font-bold text-xl text-text">
-              No attempts yet
+              No {tab} attempts this week
             </h2>
             <p className="mt-2 text-sm text-text-soft max-w-xs mx-auto leading-relaxed">
-              Be the first to take this quiz and top the leaderboard.
+              {tab === "timed"
+                ? "Be the first to complete this quiz timed this week and claim the top spot."
+                : "No untimed attempts this week yet. Take it at your own pace and get on the board."}
             </p>
             <Link to={`/quiz/${quiz.id}`} className="inline-block mt-5">
               <Button variant="primary" size="md">
@@ -338,6 +487,7 @@ export function LeaderboardPage() {
                         key={entry.userId}
                         entry={entry}
                         medal={medal}
+                        showTime={tab === "timed"}
                       />
                     );
                   })}
@@ -355,13 +505,17 @@ export function LeaderboardPage() {
                 </div>
                 <div className="divide-y divide-border/30">
                   {rest.map((entry) => (
-                    <RankRow key={entry.userId} entry={entry} />
+                    <RankRow
+                      key={entry.userId}
+                      entry={entry}
+                      showTime={tab === "timed"}
+                    />
                   ))}
                 </div>
               </Card>
             )}
 
-            {/* ── Current user's position if they appear ─────────────── */}
+            {/* ── Current user's position ─────────────────────────── */}
             {currentUserEntry && currentUserEntry.rank > 3 && (
               <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-surface/60 border border-border/50">
                 <Trophy
@@ -377,7 +531,7 @@ export function LeaderboardPage() {
                   <span className="font-heading font-bold text-text">
                     {currentUserEntry.score}%
                   </span>
-                  {currentUserEntry.timeTaken && (
+                  {tab === "timed" && currentUserEntry.timeTaken && (
                     <> in {formatTime(currentUserEntry.timeTaken)}</>
                   )}
                   . Keep practicing to climb higher.
@@ -404,9 +558,11 @@ export function LeaderboardPage() {
 function PodiumRow({
   entry,
   medal,
+  showTime,
 }: {
   entry: LeaderboardEntry;
   medal: (typeof MEDAL_CONFIG)[number];
+  showTime: boolean;
 }) {
   const nameNode = entry.isCreator ? (
     <Link
@@ -430,13 +586,11 @@ function PodiumRow({
       >
         {entry.rank}
       </div>
-
       <Avatar
         name={entry.fullName}
         size="sm"
         className={entry.rank <= 3 ? medal.ring : ""}
       />
-
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           {nameNode}
@@ -448,16 +602,20 @@ function PodiumRow({
         </div>
         <p className="text-[11px] text-muted mt-0.5">
           {formatShortDate(entry.completedAt)}
-          {entry.timeTaken && ` · ${formatTime(entry.timeTaken)}`}
+          {showTime && entry.timeTaken && ` · ${formatTime(entry.timeTaken)}`}
         </p>
       </div>
-
       <div className="shrink-0 text-right">
         <p
           className={`font-heading font-bold text-lg leading-none ${medal.text}`}
         >
           {entry.score}%
         </p>
+        {showTime && entry.timeTaken && (
+          <p className="text-[11px] text-muted mt-0.5">
+            {formatTime(entry.timeTaken)}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -465,7 +623,13 @@ function PodiumRow({
 
 // ─── RankRow (4th and below) ──────────────────────────────────────────────────
 
-function RankRow({ entry }: { entry: LeaderboardEntry }) {
+function RankRow({
+  entry,
+  showTime,
+}: {
+  entry: LeaderboardEntry;
+  showTime: boolean;
+}) {
   const nameNode = entry.isCreator ? (
     <Link
       to={`/profile/creator/${entry.userId}`}
@@ -488,9 +652,7 @@ function RankRow({ entry }: { entry: LeaderboardEntry }) {
       <span className="text-[13px] font-heading font-bold text-muted w-7 shrink-0 text-center">
         {entry.rank}
       </span>
-
       <Avatar name={entry.fullName} size="xs" />
-
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
           {nameNode}
@@ -502,14 +664,18 @@ function RankRow({ entry }: { entry: LeaderboardEntry }) {
         </div>
         <p className="text-[11px] text-muted mt-0.5">
           {formatShortDate(entry.completedAt)}
-          {entry.timeTaken && ` · ${formatTime(entry.timeTaken)}`}
+          {showTime && entry.timeTaken && ` · ${formatTime(entry.timeTaken)}`}
         </p>
       </div>
-
       <div className="shrink-0 text-right">
         <p className="font-heading font-bold text-[14px] text-text leading-none">
           {entry.score}%
         </p>
+        {showTime && entry.timeTaken && (
+          <p className="text-[11px] text-muted mt-0.5">
+            {formatTime(entry.timeTaken)}
+          </p>
+        )}
       </div>
     </div>
   );
