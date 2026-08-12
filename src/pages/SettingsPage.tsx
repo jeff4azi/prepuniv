@@ -1,18 +1,13 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { User, Lock, Building2, LogOut } from "lucide-react";
+import { User, Building2, LogOut } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
-import {
-  TextInput,
-  PasswordInput,
-  validatePassword,
-  validatePasswordMatch,
-  validateFullName,
-} from "../components/Form";
+import { TextInput, validateFullName } from "../components/Form";
 import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
+import { getBankName } from "../mock/banks";
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 
@@ -49,9 +44,19 @@ function SettingsSection({
 
 // ─── Profile section ──────────────────────────────────────────────────────────
 
-function ProfileSection({ onSaved }: { onSaved: () => void }) {
-  const { currentUser } = useAuth();
+function ProfileSection({
+  onSaved,
+  onError,
+}: {
+  onSaved: () => void;
+  onError: (msg: string) => void;
+}) {
+  const { currentUser, updateProfilePatch } = useAuth();
+  const isCreator =
+    currentUser.is_approved_creator || currentUser.role === "creator";
+
   const [fullName, setFullName] = useState(currentUser.full_name);
+  const [bio, setBio] = useState(currentUser.bio ?? "");
   const [nameError, setNameError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -60,18 +65,26 @@ function ProfileSection({ onSaved }: { onSaved: () => void }) {
     const err = validateFullName(fullName);
     setNameError(err);
     if (err) return;
+
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 700));
-    // mock update — in a real app this would patch the profile
+    const { error } = await updateProfilePatch({
+      full_name: fullName.trim(),
+      ...(isCreator ? { bio: bio.trim() } : {}),
+    });
     setSaving(false);
-    onSaved();
+
+    if (error) {
+      onError(error.message || "Failed to update profile.");
+    } else {
+      onSaved();
+    }
   }
 
   return (
     <SettingsSection
       icon={User}
       title="Profile"
-      description="Update your display name. Email changes require contacting support."
+      description="Update your display name and creator bio. Email changes require contacting support."
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <TextInput
@@ -86,6 +99,28 @@ function ProfileSection({ onSaved }: { onSaved: () => void }) {
           error={nameError ?? undefined}
           autoComplete="name"
         />
+
+        {isCreator && (
+          <div className="w-full">
+            <label
+              htmlFor="settings-bio"
+              className="block mb-1.5 text-xs sm:text-[13px] font-heading font-semibold text-text-soft tracking-tight"
+            >
+              Creator Bio
+            </label>
+            <textarea
+              id="settings-bio"
+              rows={3}
+              placeholder="Tell students about yourself, your background, and your courses..."
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              className="w-full p-3.5 rounded-xl bg-cream border border-border/60 text-sm text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-y"
+            />
+            <p className="mt-1 text-xs text-muted leading-snug">
+              Shown on your public creator profile and quizzes.
+            </p>
+          </div>
+        )}
 
         <div className="w-full">
           <label className="block mb-1.5 text-xs sm:text-[13px] font-heading font-semibold text-text-soft tracking-tight">
@@ -116,105 +151,19 @@ function ProfileSection({ onSaved }: { onSaved: () => void }) {
   );
 }
 
-// ─── Password section ─────────────────────────────────────────────────────────
-
-function PasswordSection({ onSaved }: { onSaved: () => void }) {
-  const [current, setCurrent] = useState("");
-  const [newPw, setNewPw] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [errors, setErrors] = useState<{
-    current?: string;
-    newPw?: string;
-    confirm?: string;
-  }>({});
-  const [saving, setSaving] = useState(false);
-
-  function validate() {
-    const e: typeof errors = {};
-    if (!current.trim()) e.current = "Enter your current password";
-    const newErr = validatePassword(newPw);
-    if (newErr) e.newPw = newErr;
-    const matchErr = validatePasswordMatch(newPw, confirm);
-    if (matchErr) e.confirm = matchErr;
-    return e;
-  }
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    const errs = validate();
-    setErrors(errs);
-    if (Object.keys(errs).length) return;
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 700));
-    setSaving(false);
-    setCurrent("");
-    setNewPw("");
-    setConfirm("");
-    onSaved();
-  }
-
-  return (
-    <SettingsSection
-      icon={Lock}
-      title="Password"
-      description="Use a strong password of at least 8 characters. We'll never ask for it by email."
-    >
-      <form onSubmit={handleSubmit} noValidate className="space-y-4">
-        <PasswordInput
-          id="settings-current-pw"
-          label="Current Password"
-          placeholder="Enter your current password"
-          value={current}
-          onChange={(e) => {
-            setCurrent(e.target.value);
-            if (errors.current)
-              setErrors((p) => ({ ...p, current: undefined }));
-          }}
-          error={errors.current}
-          autoComplete="current-password"
-        />
-        <PasswordInput
-          id="settings-new-pw"
-          label="New Password"
-          placeholder="At least 8 characters"
-          value={newPw}
-          onChange={(e) => {
-            setNewPw(e.target.value);
-            if (errors.newPw) setErrors((p) => ({ ...p, newPw: undefined }));
-          }}
-          error={errors.newPw}
-          autoComplete="new-password"
-        />
-        <PasswordInput
-          id="settings-confirm-pw"
-          label="Confirm New Password"
-          placeholder="Repeat your new password"
-          value={confirm}
-          onChange={(e) => {
-            setConfirm(e.target.value);
-            if (errors.confirm)
-              setErrors((p) => ({ ...p, confirm: undefined }));
-          }}
-          error={errors.confirm}
-          autoComplete="new-password"
-        />
-
-        <div className="flex justify-end pt-1">
-          <Button type="submit" variant="primary" size="md" isLoading={saving}>
-            Update password
-          </Button>
-        </div>
-      </form>
-    </SettingsSection>
-  );
-}
-
 // ─── Creator bank details section ─────────────────────────────────────────────
 
 function BankDetailsSection() {
   const { currentUser, resolvedAccountName } = useAuth();
   const hasBankDetails =
     !!currentUser.bank_account_number && !!currentUser.bank_code;
+
+  const bankDisplayName =
+    currentUser.bank_name ||
+    (currentUser.bank_code ? getBankName(currentUser.bank_code) : "") ||
+    currentUser.bank_code;
+
+  const accountName = currentUser.bank_account_name || resolvedAccountName;
 
   return (
     <SettingsSection
@@ -227,28 +176,28 @@ function BankDetailsSection() {
           <div className="rounded-2xl bg-surface/50 border border-border/50 p-4 space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="text-[12px] text-muted font-heading font-medium">
-                Bank
+                Bank Name
               </span>
               <span className="text-[13px] font-heading font-semibold text-text">
-                {currentUser.bank_code}
+                {bankDisplayName}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-[12px] text-muted font-heading font-medium">
-                Account
+                Account Number
               </span>
               <span className="text-[13px] font-mono font-semibold text-text tracking-wider">
                 {"•••• •••• " +
                   (currentUser.bank_account_number ?? "").slice(-4)}
               </span>
             </div>
-            {resolvedAccountName && (
+            {accountName && (
               <div className="flex items-center justify-between">
                 <span className="text-[12px] text-muted font-heading font-medium">
-                  Verified name
+                  Account Name
                 </span>
                 <span className="text-[13px] font-heading font-semibold text-success">
-                  {resolvedAccountName}
+                  {accountName}
                 </span>
               </div>
             )}
@@ -357,7 +306,8 @@ function DangerSection() {
 
 export function SettingsPage() {
   const { currentUser } = useAuth();
-  const isCreator = currentUser.is_approved_creator;
+  const isCreator =
+    currentUser.is_approved_creator || currentUser.role === "creator";
 
   const [toast, showToast, dismissToast] = useToast();
 
@@ -373,17 +323,15 @@ export function SettingsPage() {
 
       <PageContainer
         title="Settings"
-        subtitle="Manage your profile, security, and account preferences."
+        subtitle="Manage your profile, creator bio, and account preferences."
       >
         <div className="space-y-5 max-w-2xl">
           <ProfileSection
             onSaved={() =>
               showToast({ message: "Profile updated successfully." })
             }
-          />
-          <PasswordSection
-            onSaved={() =>
-              showToast({ message: "Password updated successfully." })
+            onError={(msg) =>
+              showToast({ message: msg, variant: "danger" })
             }
           />
           {isCreator && <BankDetailsSection />}

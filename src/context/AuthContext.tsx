@@ -40,6 +40,8 @@ export interface CurrentUser {
   bank_code?: string;
   bank_name?: string;
   bank_account_name?: string;
+  bio?: string;
+  avatar_url?: string;
   joined_at?: string;
 }
 
@@ -192,6 +194,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       bank_code: profile.bank_code ?? undefined,
       bank_name: profile.bank_name ?? undefined,
       bank_account_name: profile.bank_account_name ?? undefined,
+      bio: profile.bio ?? undefined,
+      avatar_url: profile.avatar_url ?? undefined,
       joined_at: profile.created_at,
     };
   }, [sessionUser, profile]);
