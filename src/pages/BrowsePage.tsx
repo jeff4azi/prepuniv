@@ -80,13 +80,6 @@ export function BrowsePage() {
       const profileMap = creatorIds.length
         ? await fetchDbProfilesByIds(creatorIds)
         : new Map();
-      console.log(
-        "[Browse] creator IDs:",
-        creatorIds,
-        "profiles fetched:",
-        profileMap.size,
-        [...profileMap.values()],
-      );
       if (cancelled) return;
       setAllProfiles([...profileMap.values()]);
       setLoading(false);
