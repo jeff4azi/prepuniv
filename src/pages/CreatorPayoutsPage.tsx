@@ -94,6 +94,15 @@ export function CreatorPayoutsPage() {
 
   const [payoutList, setPayoutList] = useState<PayoutRequest[]>([]);
   const [loadingPayouts, setLoadingPayouts] = useState(true);
+  const [banksReady, setBanksReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchBanksList().then(() => {
+      if (!cancelled) setBanksReady(true);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const loadPayoutRequests = useCallback(async () => {
     if (!currentUser.id) return;
@@ -276,6 +285,7 @@ export function CreatorPayoutsPage() {
             bankCode={currentUser.bank_code}
             accountNumber={currentUser.bank_account_number}
             resolvedName={resolvedAccountName}
+            banksReady={banksReady}
             onAdd={() => setBankSheetOpen(true)}
             onEdit={() => setBankSheetOpen(true)}
           />
@@ -365,12 +375,14 @@ function BankAccountCard({
   bankCode,
   accountNumber,
   resolvedName,
+  banksReady: _banksReady,
   onAdd,
   onEdit,
 }: {
   bankCode?: string;
   accountNumber?: string;
   resolvedName?: string;
+  banksReady?: boolean;
   onAdd: () => void;
   onEdit: () => void;
 }) {
