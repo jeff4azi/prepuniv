@@ -306,6 +306,7 @@ export async function fetchUserAttempts(
     .from("quiz_attempts")
     .select("*")
     .eq("user_id", userId)
+    .not("completed_at", "is", null)
     .order("completed_at", { ascending: false });
   return (data ?? []).map(toAttempt);
 }
@@ -317,7 +318,8 @@ export async function fetchQuizAttempts(
   const { data } = await supabase
     .from("quiz_attempts")
     .select("*")
-    .eq("quiz_id", quizId);
+    .eq("quiz_id", quizId)
+    .not("completed_at", "is", null);
   return (data ?? []).map(toAttempt);
 }
 

@@ -598,13 +598,27 @@ export function AttemptPage() {
       : animPhase === "enter"
         ? "opacity-0 -translate-x-2"
         : "opacity-100 translate-x-0";
+  async function handleLeaveAttempt() {
+    if (attemptId) {
+      try {
+        await supabase
+          .from("quiz_attempts")
+          .delete()
+          .eq("id", attemptId)
+          .is("completed_at", null);
+      } catch (e) {
+        console.warn("Failed to delete abandoned attempt:", e);
+      }
+    }
+    navigate(quiz ? `/quiz/${quiz.id}` : "/browse");
+  }
 
   return (
     <>
       {showExitDialog && (
         <ExitDialog
           onCancel={() => setShowExitDialog(false)}
-          onLeave={() => navigate(quiz ? `/quiz/${quiz.id}` : "/browse")}
+          onLeave={handleLeaveAttempt}
         />
       )}
       {showSubmitDialog && (
