@@ -64,9 +64,27 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 ];
 
 export function CreatorQuizzesPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, walletTxns } = useAuth();
   const creatorId = currentUser.id;
   const [toast, showToast, dismissToast] = useToast();
+
+  const quizEarningsMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const t of walletTxns) {
+      if (
+        t.type === "creator_earning" &&
+        (t.status === "completed" || t.status === "success") &&
+        t.related_quiz_id
+      ) {
+        const prev = map.get(t.related_quiz_id) ?? 0;
+        map.set(
+          t.related_quiz_id,
+          prev + Math.round(Number(t.amount || 0) * 100),
+        );
+      }
+    }
+    return map;
+  }, [walletTxns]);
 
   const [quizList, setQuizList] = useState<MutableQuiz[]>([]);
   const [allCourses, setAllCourses] = useState<DbCourse[]>([]);
@@ -149,13 +167,15 @@ export function CreatorQuizzesPage() {
         );
       if (sortKey === "attempts")
         return Number(b.attempt_count || 0) - Number(a.attempt_count || 0);
-      if (sortKey === "revenue") return creatorRevenue(b) - creatorRevenue(a);
-      if (sortKey === "price")
-        return Number(b.price) - Number(a.price);
+      if (sortKey === "revenue")
+        return (
+          (quizEarningsMap.get(b.id) ?? 0) - (quizEarningsMap.get(a.id) ?? 0)
+        );
+      if (sortKey === "price") return Number(b.price) - Number(a.price);
       return 0;
     });
     return list;
-  }, [quizList, search, statusFilter, courseFilter, sortKey]);
+  }, [quizList, search, statusFilter, courseFilter, sortKey, quizEarningsMap]);
 
   const publishedCount = quizList.filter((q) => q.is_published).length;
 
@@ -420,6 +440,7 @@ export function CreatorQuizzesPage() {
                   <QuizTable
                     quizzes={filtered}
                     coursesById={coursesById}
+                    quizEarningsMap={quizEarningsMap}
                     onTogglePublish={handleTogglePublish}
                     onShowToast={showToast}
                   />
@@ -431,6 +452,7 @@ export function CreatorQuizzesPage() {
                   <QuizMobileCard
                     key={quiz.id}
                     quiz={quiz}
+                    revenue={quizEarningsMap.get(quiz.id) ?? 0}
                     course={coursesById.get(quiz.course_id)?.code}
                     shareUrl={publicQuizUrl(quiz.id)}
                     shareTitle={`${
@@ -471,11 +493,13 @@ export function CreatorQuizzesPage() {
 function QuizTable({
   quizzes,
   coursesById,
+  quizEarningsMap,
   onTogglePublish,
   onShowToast,
 }: {
   quizzes: MutableQuiz[];
   coursesById: Map<string, DbCourse>;
+  quizEarningsMap: Map<string, number>;
   onTogglePublish: (q: MutableQuiz) => void;
   onShowToast: (t: {
     message: string;
@@ -503,6 +527,7 @@ function QuizTable({
           <QuizTableRow
             key={quiz.id}
             quiz={quiz}
+            revenue={quizEarningsMap.get(quiz.id) ?? 0}
             courseCode={coursesById.get(quiz.course_id)?.code}
             shareUrl={publicQuizUrl(quiz.id)}
             shareTitle={`${
@@ -519,6 +544,7 @@ function QuizTable({
 
 function QuizTableRow({
   quiz,
+  revenue,
   courseCode,
   shareUrl,
   shareTitle,
@@ -526,6 +552,7 @@ function QuizTableRow({
   showToast,
 }: {
   quiz: MutableQuiz;
+  revenue: number;
   courseCode?: string;
   shareUrl: string;
   shareTitle: string;
@@ -581,9 +608,8 @@ function QuizTableRow({
 
       <td className="px-4 py-3.5 text-right">
         <span className="font-heading font-bold text-[13px] text-success">
-          {formatNaira(creatorRevenue(quiz))}
+          {formatNaira(revenue)}
         </span>
-        <p className="text-[10px] text-muted font-medium">65% share</p>
       </td>
 
       <td className="px-4 py-3.5">
@@ -834,6 +860,7 @@ function QuizRowMenu({
 
 function QuizMobileCard({
   quiz,
+  revenue,
   course,
   shareUrl,
   shareTitle,
@@ -841,6 +868,7 @@ function QuizMobileCard({
   showToast,
 }: {
   quiz: MutableQuiz;
+  revenue: number;
   course?: string;
   shareUrl: string;
   shareTitle: string;
@@ -895,7 +923,7 @@ function QuizMobileCard({
               Your earnings
             </p>
             <p className="font-heading font-bold text-[15px] text-success leading-none">
-              {formatNaira(creatorRevenue(quiz))}
+              {formatNaira(revenue)}
             </p>
           </div>
         </div>

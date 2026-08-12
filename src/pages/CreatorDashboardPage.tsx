@@ -137,6 +137,23 @@ export function CreatorDashboardPage() {
   const lifetimeEarnings = creatorLifetimeEarnings || fetchedLifetime;
   const thisMonthEarnings = creatorThisMonthEarnings || fetchedThisMonth;
   const displayEarningsBalance = creatorEarningsBalance || walletBalance;
+  const quizEarningsMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const t of walletTxns) {
+      if (
+        t.type === "creator_earning" &&
+        (t.status === "completed" || t.status === "success") &&
+        t.related_quiz_id
+      ) {
+        const prev = map.get(t.related_quiz_id) ?? 0;
+        map.set(
+          t.related_quiz_id,
+          prev + Math.round(Number(t.amount || 0) * 100),
+        );
+      }
+    }
+    return map;
+  }, [walletTxns]);
 
   const totalAttempts = useMemo(
     () => myQuizzes.reduce((sum, q) => sum + Number(q.attempt_count || 0), 0),
@@ -312,7 +329,7 @@ export function CreatorDashboardPage() {
               <p className="text-xs text-text-soft leading-relaxed">
                 {Number(bestQuiz.attempt_count || 0).toLocaleString("en-NG")}{" "}
                 attempts&nbsp;·&nbsp;
-                {formatNaira(quizRevenue(bestQuiz))} earned
+                {formatNaira(quizEarningsMap.get(bestQuiz.id) ?? 0)} earned
               </p>
             )}
           </Card>
@@ -407,7 +424,7 @@ export function CreatorDashboardPage() {
                 <QuizRow
                   key={quiz.id}
                   quiz={quiz}
-                  revenue={quizRevenue(quiz)}
+                  revenue={quizEarningsMap.get(quiz.id) ?? 0}
                 />
               ))}
             {myQuizzes.length === 0 && (

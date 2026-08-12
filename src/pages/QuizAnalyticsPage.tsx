@@ -105,13 +105,22 @@ export function QuizAnalyticsPage() {
   );
 
   // ── Key stats ──────────────────────────────────────────────────────────────
+  const { walletTxns } = useAuth();
   const totalAttempts = attempts.length;
-
-  const grossRevenue = useMemo(
-    () => (quiz ? totalAttempts * quiz.price : 0),
-    [quiz, totalAttempts],
-  );
-  const creatorEarnings = Math.round(grossRevenue * CREATOR_SHARE);
+  const creatorEarnings = useMemo(() => {
+    if (!quiz?.id) return 0;
+    return walletTxns
+      .filter(
+        (t) =>
+          t.type === "creator_earning" &&
+          (t.status === "completed" || t.status === "success") &&
+          t.related_quiz_id === quiz.id,
+      )
+      .reduce(
+        (sum, t) => sum + Math.round(Number(t.amount || 0) * 100),
+        0,
+      );
+  }, [quiz?.id, walletTxns]);
 
   const avgScore = useMemo(() => {
     if (!totalAttempts) return 0;
@@ -283,7 +292,7 @@ export function QuizAnalyticsPage() {
             icon={<TrendingUp className="w-5 h-5" />}
             label="Your earnings"
             value={formatNaira(creatorEarnings)}
-            sub={`${formatNaira(grossRevenue)} gross · 65% share`}
+            sub="From wallet transactions"
             iconBg="bg-success/10 text-success"
           />
           <StatCard
