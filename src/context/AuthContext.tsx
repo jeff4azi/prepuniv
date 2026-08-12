@@ -17,6 +17,7 @@ import {
   type DbWalletTxn,
 } from "../lib/supabase";
 import { apiFetch } from "../lib/api";
+import { formatNaira } from "../components/QuizCard";
 
 export type UserRole = "user" | "creator" | "admin";
 
@@ -76,6 +77,11 @@ interface AuthContextValue {
     isTimed: boolean,
     timeLimitSeconds?: number,
   ) => Promise<{ ok: boolean; attempt_id?: string }>;
+
+  creatorEarningsBalance: number;
+  creatorLifetimeEarnings: number;
+  creatorThisMonthEarnings: number;
+  formatNaira: (amount: number) => string;
 
   signUp: (args: {
     full_name: string;
@@ -247,6 +253,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     [loadWalletData, session],
   );
+
+  const creatorEarningsBalance = useMemo(() => {
+    if (!sessionUser?.id) return 0;
+    const uid = sessionUser.id;
+    return walletTxns
+      .filter(
+        (t) =>
+          t.user_id === uid &&
+          (t.type === "creator_earning" || t.type === "payout" || t.type === "withdrawal") &&
+          (t.status === "completed" || t.status === "success"),
+      )
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  }, [sessionUser?.id, walletTxns]);
+
+  const creatorLifetimeEarnings = useMemo(() => {
+    if (!sessionUser?.id) return 0;
+    const uid = sessionUser.id;
+    return walletTxns
+      .filter(
+        (t) =>
+          t.user_id === uid &&
+          t.type === "creator_earning" &&
+          (t.status === "completed" || t.status === "success"),
+      )
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  }, [sessionUser?.id, walletTxns]);
+
+  const creatorThisMonthEarnings = useMemo(() => {
+    if (!sessionUser?.id) return 0;
+    const uid = sessionUser.id;
+    const now = new Date();
+    return walletTxns
+      .filter(
+        (t) =>
+          t.user_id === uid &&
+          t.type === "creator_earning" &&
+          (t.status === "completed" || t.status === "success") &&
+          new Date(t.created_at).getUTCFullYear() === now.getUTCFullYear() &&
+          new Date(t.created_at).getUTCMonth() === now.getUTCMonth(),
+      )
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  }, [sessionUser?.id, walletTxns]);
 
   /* ---------------------- Session listener (the primary driver) ---------------------- */
 
@@ -444,6 +492,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hasPurchasedQuiz,
       purchaseQuiz,
 
+      creatorEarningsBalance,
+      creatorLifetimeEarnings,
+      creatorThisMonthEarnings,
+      formatNaira,
+
       signUp,
       logIn,
       logOut,
@@ -472,6 +525,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       purchasedQuizIds,
       hasPurchasedQuiz,
       purchaseQuiz,
+      creatorEarningsBalance,
+      creatorLifetimeEarnings,
+      creatorThisMonthEarnings,
       signUp,
       logIn,
       logOut,
