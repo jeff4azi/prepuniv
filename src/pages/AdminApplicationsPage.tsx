@@ -5,7 +5,7 @@
  * Filter tabs: Pending / Approved / Rejected / All
  * Each application opens a side-sheet with full detail + action buttons.
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import {
   ListChecks,
@@ -30,14 +30,15 @@ import { Avatar } from "../components/Avatar";
 import { Toast, useToast } from "../components/Toast";
 import { DrawerShell } from "../components/DrawerShell";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
+import type { DbCreatorApplication, DbProfile } from "../lib/supabase";
 import {
-  creatorApplications,
-  updateApplicationStatus,
-  profiles,
-  approveCreator,
-  type CreatorApplication,
-  type Profile,
-} from "../mock";
+  useCreatorApplications,
+  useProfiles,
+  adminApproveApplication,
+  adminRejectApplication,
+  AdminLoadingState,
+} from "../hooks/useAdminData";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -60,7 +61,7 @@ function formatDate(iso: string) {
   });
 }
 
-function StatusBadge({ status }: { status: CreatorApplication["status"] }) {
+function StatusBadge({ status }: { status: string }) {
   if (status === "approved")
     return (
       <Badge variant="success" size="sm" dot>
@@ -113,8 +114,8 @@ function ReviewSheet({
   onApproved,
   onRejected,
 }: {
-  app: CreatorApplication;
-  profile: Profile | undefined;
+  app: DbCreatorApplication;
+  profile: DbProfile | undefined;
   onClose: () => void;
   onApproved: (id: string) => void;
   onRejected: (id: string) => void;
@@ -133,27 +134,29 @@ function ReviewSheet({
 
   async function handleApprove() {
     setApproving(true);
-    await new Promise((r) => setTimeout(r, 700));
-    updateApplicationStatus(app.user_id, "approved", "Approved by admin.");
-    approveCreator(app.user_id);
+    const { error } = await adminApproveApplication(app.id);
     setApproving(false);
+    if (error) {
+      console.error("Approve failed:", error);
+    }
     onApproved(app.id);
   }
 
   async function handleReject() {
     setRejecting(true);
-    await new Promise((r) => setTimeout(r, 700));
-    updateApplicationStatus(
-      app.user_id,
-      "rejected",
+    const { error } = await adminRejectApplication(
+      app.id,
       rejectNotes.trim() || undefined,
     );
     setRejecting(false);
+    if (error) {
+      console.error("Reject failed:", error);
+    }
     onRejected(app.id);
   }
 
   const name = profile?.full_name ?? "Unknown applicant";
-  const email = profile?.email ?? "";
+  const courseStrengths = (app as unknown as { course_strengths?: string }).course_strengths || "";
 
   return (
     <DrawerShell open={true} onClose={onClose} ariaLabel="Creator application">
@@ -164,7 +167,6 @@ function ReviewSheet({
         statusBadge={<StatusBadge status={app.status} />}
         meta={
           <>
-            <div>{email}</div>
             <div className="mt-0.5">
               Submitted {formatDate(app.submitted_at)}
             </div>
@@ -176,7 +178,7 @@ function ReviewSheet({
       <DrawerShell.Body className="space-y-5">
         {/* Courses */}
         <DetailSection icon={BookOpen} label="Course strengths">
-          <p className="text-sm text-text leading-relaxed">{app.courses}</p>
+          <p className="text-sm text-text leading-relaxed">{courseStrengths}</p>
         </DetailSection>
 
         {/* Background */}
@@ -409,12 +411,12 @@ function ApplicationRow({
   profile,
   onReview,
 }: {
-  app: CreatorApplication;
-  profile: Profile | undefined;
+  app: DbCreatorApplication;
+  profile: DbProfile | undefined;
   onReview: () => void;
 }) {
   const name = profile?.full_name ?? "Unknown";
-  const email = profile?.email ?? "";
+  const courseStrengths = (app as unknown as { course_strengths?: string }).course_strengths || "";
 
   return (
     <div className="flex items-center gap-3 sm:gap-4 py-3.5 px-5 border-b border-border/30 last:border-0 hover:bg-surface/20 transition-colors">
@@ -429,7 +431,6 @@ function ApplicationRow({
           </span>
           <StatusBadge status={app.status} />
         </div>
-        <p className="text-xs text-muted mt-0.5 truncate">{email}</p>
         <p className="text-xs text-text-soft mt-0.5">
           <Clock
             className="w-3 h-3 inline-block mr-1 text-muted"
@@ -441,7 +442,7 @@ function ApplicationRow({
 
       {/* Courses preview */}
       <p className="hidden sm:block text-xs text-text-soft truncate max-w-36 shrink-0">
-        {app.courses}
+        {courseStrengths}
       </p>
 
       {/* CTA */}
@@ -499,63 +500,71 @@ export function AdminApplicationsPage() {
   const [toast, showToast, dismissToast] = useToast();
   const [activeTab, setActiveTab] = useState<FilterTab>("pending");
   const [reviewingId, setReviewingId] = useState<string | null>(null);
-  // Local version counter — bump on approve/reject to force re-render
-  const [version, setVersion] = useState(0);
 
   if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
 
+  const { data: allApplications, loading: appsLoading, refetch: refetchApps } = useCreatorApplications();
+  const { data: allProfiles, loading: profilesLoading } = useProfiles();
+
+  const loading = appsLoading || profilesLoading;
+  const applications = allApplications || [];
+  const profiles = allProfiles || [];
+
   const profilesById = useMemo(
     () => new Map(profiles.map((p) => [p.id, p])),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [version],
+    [profiles],
   );
 
   const filtered = useMemo(() => {
-    const apps = [...creatorApplications].sort(
+    const apps = [...applications].sort(
       (a, b) =>
         new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime(),
     );
     if (activeTab === "all") return apps;
     return apps.filter((a) => a.status === activeTab);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, version]);
+  }, [applications, activeTab]);
 
   const counts = useMemo(
     () => ({
-      pending: creatorApplications.filter((a) => a.status === "pending").length,
-      approved: creatorApplications.filter((a) => a.status === "approved")
-        .length,
-      rejected: creatorApplications.filter((a) => a.status === "rejected")
-        .length,
-      all: creatorApplications.length,
+      pending: applications.filter((a) => a.status === "pending").length,
+      approved: applications.filter((a) => a.status === "approved").length,
+      rejected: applications.filter((a) => a.status === "rejected").length,
+      all: applications.length,
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [version],
+    [applications],
   );
 
   const reviewingApp = reviewingId
-    ? creatorApplications.find((a) => a.id === reviewingId)
+    ? applications.find((a) => a.id === reviewingId)
     : null;
 
   function handleApproved(id: string) {
-    const app = creatorApplications.find((a) => a.id === id);
+    const app = applications.find((a) => a.id === id);
     const profile = app ? profilesById.get(app.user_id) : undefined;
-    setVersion((v) => v + 1);
     setReviewingId(null);
     showToast({
       message: `${profile?.full_name ?? "Applicant"} approved as a creator.`,
       variant: "success",
     });
+    void refetchApps();
   }
 
   function handleRejected(id: string) {
-    const app = creatorApplications.find((a) => a.id === id);
+    const app = applications.find((a) => a.id === id);
     const profile = app ? profilesById.get(app.user_id) : undefined;
-    setVersion((v) => v + 1);
     setReviewingId(null);
     showToast({
       message: `${profile?.full_name ?? "Applicant"}'s application rejected.`,
     });
+    void refetchApps();
+  }
+
+  if (loading) {
+    return (
+      <PageContainer className="max-w-240!">
+        <AdminLoadingState label="Loading applications…" />
+      </PageContainer>
+    );
   }
 
   return (

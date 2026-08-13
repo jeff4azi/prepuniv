@@ -6,7 +6,7 @@
  * Creator rows link to their Creator Profile page.
  * Regular-user rows open a lightweight detail panel.
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Link, Navigate } from "react-router-dom";
 import {
   Users,
@@ -32,14 +32,9 @@ import { formatNaira } from "../components/QuizCard";
 import { DrawerShell } from "../components/DrawerShell";
 import { UniversitySelect } from "../components/UniversitySelect";
 import { useAuth } from "../context/AuthContext";
-import {
-  profiles,
-  toggleSuspension,
-  quizAttempts as allAttempts,
-  walletTransactions as allTxns,
-  universities,
-  type Profile,
-} from "../mock";
+import { supabase } from "../lib/supabase";
+import type { DbUniversity, DbWalletTxn } from "../lib/supabase";
+import { useAdminUsers, adminSuspendUser, AdminLoadingState, type AdminProfile } from "../hooks/useAdminData";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -64,7 +59,7 @@ function formatDate(iso?: string) {
   });
 }
 
-function RoleBadge({ profile }: { profile: Profile }) {
+function RoleBadge({ profile }: { profile: AdminProfile }) {
   if (profile.role === "admin")
     return (
       <Badge variant="warning" size="sm">
@@ -92,7 +87,7 @@ function SuspendConfirm({
   onCancel,
   loading,
 }: {
-  profile: Profile;
+  profile: AdminProfile;
   onConfirm: () => void;
   onCancel: () => void;
   loading: boolean;
@@ -166,30 +161,17 @@ function SuspendConfirm({
 
 function UserDetailPanel({
   profile,
+  attemptCount,
+  topUpTotal,
   onClose,
   onSuspendClick,
 }: {
-  profile: Profile;
+  profile: AdminProfile;
+  attemptCount: number;
+  topUpTotal: number;
   onClose: () => void;
   onSuspendClick: () => void;
 }) {
-  const attemptCount = useMemo(
-    () => allAttempts.filter((a) => a.user_id === profile.id).length,
-    [profile.id],
-  );
-  const topUpTotal = useMemo(
-    () =>
-      allTxns
-        .filter(
-          (t) =>
-            t.user_id === profile.id &&
-            t.type === "deposit" &&
-            t.status === "success",
-        )
-        .reduce((s, t) => s + t.amount, 0),
-    [profile.id],
-  );
-
   return (
     <DrawerShell open={true} onClose={onClose} ariaLabel="User detail">
       <DrawerShell.Header
@@ -220,7 +202,7 @@ function UserDetailPanel({
         <div className="space-y-2 text-sm">
           <div className="flex items-center gap-2 text-text-soft">
             <Clock className="w-4 h-4 text-muted shrink-0" strokeWidth={2} />
-            Joined {formatDate(profile.joined_at)}
+            Joined {formatDate(profile.created_at)}
           </div>
           <div className="flex items-center gap-2 text-text-soft">
             <FileQuestion
@@ -284,7 +266,7 @@ function UserRow({
   onDetail,
   onSuspend,
 }: {
-  profile: Profile;
+  profile: AdminProfile;
   onDetail: () => void;
   onSuspend: () => void;
 }) {
@@ -329,7 +311,7 @@ function UserRow({
       </div>
       {/* Joined */}
       <p className="text-xs text-text-soft shrink-0 hidden md:block w-24 text-right">
-        {formatDate(profile.joined_at)}
+        {formatDate(profile.created_at)}
       </p>
       {/* Suspended */}
       {profile.is_suspended && (
@@ -395,20 +377,42 @@ export function AdminUsersPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [suspendId, setSuspendId] = useState<string | null>(null);
   const [suspending, setSuspending] = useState(false);
-  const [version, setVersion] = useState(0);
 
   if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
 
-  // Exclude synthetic leaderboard users (no profile entry needed in admin list for them)
-  const managedProfiles = useMemo(
-    () =>
-      profiles.filter((p) => !p.id.startsWith("user_0") || p.id === "user_001"),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [version],
-  );
+  // ── Fetch data from Supabase ─────────────────────────────────────────────
+
+  const { data: allUsers, loading, refetch } = useAdminUsers();
+
+  const [universities, setUniversities] = useState<DbUniversity[]>([]);
+  const [txns, setTxns] = useState<DbWalletTxn[]>([]);
+  const [attemptCounts, setAttemptCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    // Fetch universities
+    supabase.from("universities").select("*").order("name").then(({ data }) => {
+      if (data) setUniversities(data);
+    });
+    // Fetch wallet transactions for top-up totals
+    supabase.from("wallet_transactions").select("*").then(({ data }) => {
+      if (data) setTxns(data);
+    });
+    // Fetch attempt counts grouped by user
+    supabase.from("quiz_attempts").select("user_id").then(({ data }) => {
+      if (data) {
+        const counts: Record<string, number> = {};
+        data.forEach((a: { user_id: string }) => {
+          counts[a.user_id] = (counts[a.user_id] || 0) + 1;
+        });
+        setAttemptCounts(counts);
+      }
+    });
+  }, []);
+
+  const profiles = allUsers || [];
 
   const filtered = useMemo(() => {
-    let list = managedProfiles;
+    let list = profiles;
     if (activeTab === "users")
       list = list.filter((p) => p.role === "user" && !p.is_suspended);
     if (activeTab === "creators")
@@ -423,28 +427,25 @@ export function AdminUsersPage() {
       list = list.filter(
         (p) =>
           p.full_name.toLowerCase().includes(q) ||
-          p.email.toLowerCase().includes(q),
+          (p.email || "").toLowerCase().includes(q),
       );
     }
     return [...list].sort(
       (a, b) =>
-        new Date(b.joined_at ?? 0).getTime() -
-        new Date(a.joined_at ?? 0).getTime(),
+        new Date(b.created_at ?? 0).getTime() -
+        new Date(a.created_at ?? 0).getTime(),
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [managedProfiles, activeTab, searchInput, uniFilter, version]);
+  }, [profiles, activeTab, searchInput, uniFilter]);
 
   const counts = useMemo(
     () => ({
-      all: managedProfiles.length,
-      users: managedProfiles.filter((p) => p.role === "user" && !p.is_suspended)
-        .length,
-      creators: managedProfiles.filter((p) => p.role === "creator").length,
-      admins: managedProfiles.filter((p) => p.role === "admin").length,
-      suspended: managedProfiles.filter((p) => p.is_suspended).length,
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      all: profiles.length,
+      users: profiles.filter((p) => p.role === "user" && !p.is_suspended).length,
+      creators: profiles.filter((p) => p.role === "creator").length,
+      admins: profiles.filter((p) => p.role === "admin").length,
+      suspended: profiles.filter((p) => p.is_suspended).length,
     }),
-    [managedProfiles, version],
+    [profiles],
   );
 
   const suspendTarget = suspendId
@@ -454,22 +455,46 @@ export function AdminUsersPage() {
     ? profiles.find((p) => p.id === detailId)
     : null;
 
+  const detailAttemptCount = detailTarget ? (attemptCounts[detailTarget.id] || 0) : 0;
+  const detailTopUpTotal = detailTarget
+    ? txns
+        .filter(
+          (t) =>
+            t.user_id === detailTarget.id &&
+            t.type === "topup" &&
+            t.status === "completed",
+        )
+        .reduce((s, t) => s + Number(t.amount), 0)
+    : 0;
+
   async function handleSuspendConfirm() {
     if (!suspendId) return;
     setSuspending(true);
-    await new Promise((r) => setTimeout(r, 500));
-    const nowSuspended = toggleSuspension(suspendId);
-    const name = profiles.find((p) => p.id === suspendId)?.full_name ?? "User";
+    const target = profiles.find((p) => p.id === suspendId);
+    const newSuspended = !target?.is_suspended;
+    const { error } = await adminSuspendUser(suspendId, newSuspended);
     setSuspending(false);
     setSuspendId(null);
     setDetailId(null);
-    setVersion((v) => v + 1);
-    showToast({
-      message: nowSuspended
-        ? `${name} has been suspended.`
-        : `${name} has been unsuspended.`,
-      variant: nowSuspended ? undefined : "success",
-    });
+    if (error) {
+      showToast({ message: error, variant: "danger" as "success" });
+    } else {
+      showToast({
+        message: newSuspended
+          ? `${target?.full_name ?? "User"} has been suspended.`
+          : `${target?.full_name ?? "User"} has been unsuspended.`,
+        variant: newSuspended ? undefined : "success",
+      });
+      void refetch();
+    }
+  }
+
+  if (loading) {
+    return (
+      <PageContainer className="max-w-290!">
+        <AdminLoadingState label="Loading users…" />
+      </PageContainer>
+    );
   }
 
   return (
@@ -609,6 +634,8 @@ export function AdminUsersPage() {
       {detailTarget && (
         <UserDetailPanel
           profile={detailTarget}
+          attemptCount={detailAttemptCount}
+          topUpTotal={detailTopUpTotal}
           onClose={() => setDetailId(null)}
           onSuspendClick={() => {
             if (detailTarget.role !== "admin") {

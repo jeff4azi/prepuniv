@@ -7,7 +7,7 @@
  *   3. Recent platform activity feed
  *   4. Platform revenue trend chart (last 30 days)
  */
-import { useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link, Navigate } from "react-router-dom";
 import {
   Users,
@@ -40,16 +40,9 @@ import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { useAuth } from "../context/AuthContext";
-import {
-  quizzes as allQuizzes,
-  profiles as allProfiles,
-  quizAttempts as allAttempts,
-  walletTransactions as allTxns,
-  payoutRequests as allPayouts,
-  creatorApplications as allApplications,
-  reports as allReports,
-} from "../mock";
-import { creatorReports as allCreatorReports } from "../mock/creatorReports";
+import { supabase } from "../lib/supabase";
+import type { DbProfile, DbQuiz, DbWalletTxn, DbPayoutRequest, DbReport, DbCreatorApplication } from "../lib/supabase";
+import { AdminLoadingState } from "../hooks/useAdminData";
 import { formatNaira } from "../components/QuizCard";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -264,6 +257,18 @@ function RevenueTooltip({
   );
 }
 
+// ─── Dashboard data shape ─────────────────────────────────────────────────────
+
+interface DashboardData {
+  profiles: DbProfile[];
+  quizzes: DbQuiz[];
+  attemptCount: number;
+  txns: DbWalletTxn[];
+  payouts: DbPayoutRequest[];
+  applications: DbCreatorApplication[];
+  reports: DbReport[];
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function AdminDashboardPage() {
@@ -274,202 +279,201 @@ export function AdminDashboardPage() {
     return <Navigate to="/home" replace />;
   }
 
+  // ── Fetch all dashboard data ───────────────────────────────────────────────
+
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [profilesRes, quizzesRes, attemptCountRes, txnsRes, payoutsRes, appsRes, reportsRes] = await Promise.all([
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabase.from("quizzes").select("*"),
+        supabase.from("quiz_attempts").select("*", { count: "exact", head: true }),
+        supabase.from("wallet_transactions").select("*").order("created_at", { ascending: false }),
+        supabase.from("payout_requests").select("*").order("requested_at", { ascending: false }),
+        supabase.from("creator_applications").select("*").order("submitted_at", { ascending: false }),
+        supabase.from("reports").select("*").order("created_at", { ascending: false }),
+      ]);
+
+      setData({
+        profiles: profilesRes.data || [],
+        quizzes: quizzesRes.data || [],
+        attemptCount: attemptCountRes.count || 0,
+        txns: txnsRes.data || [],
+        payouts: payoutsRes.data || [],
+        applications: appsRes.data || [],
+        reports: reportsRes.data || [],
+      });
+    } catch (err) {
+      console.error("Dashboard fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void fetchData(); }, [fetchData]);
+
+  if (loading || !data) {
+    return (
+      <PageContainer className="max-w-290!">
+        <AdminLoadingState label="Loading dashboard…" />
+      </PageContainer>
+    );
+  }
+
+  const { profiles: allProfiles, quizzes: allQuizzes, attemptCount: totalAttempts, txns: allTxns, payouts: allPayouts, applications: allApplications, reports: allReports } = data;
+
   // ── Platform stats ──────────────────────────────────────────────────────────
 
-  const totalUsers = useMemo(
-    () => allProfiles.filter((p) => p.role === "user").length,
-    [],
-  );
+  const totalUsers = allProfiles.filter((p) => p.role === "user").length;
+  const totalCreators = allProfiles.filter((p) => p.is_approved_creator && p.role !== "admin").length;
+  const publishedQuizzes = allQuizzes.filter((q) => q.is_published).length;
 
-  const totalCreators = useMemo(
-    () =>
-      allProfiles.filter((p) => p.is_approved_creator && p.role !== "admin")
-        .length,
-    [],
-  );
+  const platformRevenue = allTxns
+    .filter((t) => t.type === "platform_revenue" && t.status === "completed")
+    .reduce((sum, t) => sum + Number(t.amount), 0);
 
-  const publishedQuizzes = useMemo(
-    () => allQuizzes.filter((q) => q.is_published).length,
-    [],
-  );
-
-  const totalAttempts = useMemo(() => allAttempts.length, []);
-
-  const platformRevenue = useMemo(
-    () =>
-      allTxns
-        .filter((t) => t.type === "platform_revenue" && t.status === "success")
-        .reduce((sum, t) => sum + t.amount, 0),
-    [],
-  );
-
-  const totalTopUps = useMemo(
-    () =>
-      allTxns
-        .filter((t) => t.type === "deposit" && t.status === "success")
-        .reduce((sum, t) => sum + t.amount, 0),
-    [],
-  );
+  const totalTopUps = allTxns
+    .filter((t) => t.type === "topup" && t.status === "completed")
+    .reduce((sum, t) => sum + Number(t.amount), 0);
 
   // ── Pending items ──────────────────────────────────────────────────────────
 
-  const pendingApplications = useMemo(
-    () => allApplications.filter((a) => a.status === "pending").length,
-    [],
-  );
+  const pendingApplications = allApplications.filter((a) => a.status === "pending").length;
+  const pendingPayouts = allPayouts.filter((p) => p.status === "pending").length;
+  const openReports = allReports.filter((r) => r.status === "open").length;
 
-  const pendingPayouts = useMemo(
-    () => allPayouts.filter((p) => p.status === "pending").length,
-    [],
-  );
+  // ── Revenue trend (last 30 days, grouped by 4-day buckets) ─────────────────
 
-  const openReports = useMemo(
-    () =>
-      [...allReports, ...allCreatorReports.filter((r) => r.status === "open")]
-        .length,
-    [],
-  );
+  const now = new Date();
+  const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  // ── Revenue trend (last 30 days, grouped by week) ─────────────────────────
+  const byDay: Record<string, number> = {};
+  allTxns
+    .filter(
+      (t) =>
+        t.type === "platform_revenue" &&
+        t.status === "completed" &&
+        new Date(t.created_at) >= cutoff,
+    )
+    .forEach((t) => {
+      const day = t.created_at.slice(0, 10);
+      byDay[day] = (byDay[day] ?? 0) + Number(t.amount);
+    });
 
-  const revenueTrendData = useMemo(() => {
-    const now = new Date("2026-08-06T00:00:00Z"); // fixed to mock "today"
-    const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-    // Build daily buckets
-    const byDay: Record<string, number> = {};
-    allTxns
-      .filter(
-        (t) =>
-          t.type === "platform_revenue" &&
-          t.status === "success" &&
-          new Date(t.created_at) >= cutoff,
-      )
-      .forEach((t) => {
-        const day = t.created_at.slice(0, 10); // "YYYY-MM-DD"
-        byDay[day] = (byDay[day] ?? 0) + t.amount;
-      });
-
-    // Group into 4-day buckets for a clean chart (about 7 data points)
-    const buckets: { label: string; revenue: number }[] = [];
-    for (let i = 0; i < 30; i += 4) {
-      const start = new Date(cutoff.getTime() + i * 24 * 60 * 60 * 1000);
-      const end = new Date(
-        cutoff.getTime() + Math.min(i + 4, 30) * 24 * 60 * 60 * 1000,
-      );
-      const label = start.toLocaleDateString("en-NG", {
-        month: "short",
-        day: "numeric",
-      });
-      let total = 0;
-      for (const [dayStr, amt] of Object.entries(byDay)) {
-        const d = new Date(dayStr);
-        if (d >= start && d < end) total += amt;
-      }
-      buckets.push({ label, revenue: total });
+  const revenueTrendData: { label: string; revenue: number }[] = [];
+  for (let i = 0; i < 30; i += 4) {
+    const start = new Date(cutoff.getTime() + i * 24 * 60 * 60 * 1000);
+    const end = new Date(cutoff.getTime() + Math.min(i + 4, 30) * 24 * 60 * 60 * 1000);
+    const label = start.toLocaleDateString("en-NG", { month: "short", day: "numeric" });
+    let total = 0;
+    for (const [dayStr, amt] of Object.entries(byDay)) {
+      const d = new Date(dayStr);
+      if (d >= start && d < end) total += amt;
     }
-    return buckets;
-  }, []);
+    revenueTrendData.push({ label, revenue: total });
+  }
 
   // ── Activity feed ──────────────────────────────────────────────────────────
 
-  const activityFeed = useMemo<ActivityItem[]>(() => {
-    const items: ActivityItem[] = [];
+  const activityItems: ActivityItem[] = [];
 
-    // New user signups (use joined_at from profiles)
-    allProfiles
-      .filter((p) => p.role === "user" && p.joined_at)
-      .forEach((p) => {
-        items.push({
-          id: `signup-${p.id}`,
-          icon: Users,
-          iconTone: "bg-primary/10 text-primary",
-          label: `${p.full_name} joined`,
-          meta: "New user sign-up",
-          ts: p.joined_at!,
-        });
+  // New user signups
+  allProfiles
+    .filter((p) => p.role === "user" && p.created_at)
+    .forEach((p) => {
+      activityItems.push({
+        id: `signup-${p.id}`,
+        icon: Users,
+        iconTone: "bg-primary/10 text-primary",
+        label: `${p.full_name} joined`,
+        meta: "New user sign-up",
+        ts: p.created_at,
       });
+    });
 
-    // Creator approvals
-    allApplications
-      .filter((a) => a.status === "approved")
-      .forEach((a) => {
-        const profile = allProfiles.find((p) => p.id === a.user_id);
-        items.push({
-          id: `approved-${a.id}`,
-          icon: UserCheck,
-          iconTone: "bg-success-bg text-success",
-          label: `${profile?.full_name ?? "A creator"} approved as creator`,
-          meta: "Creator application approved",
-          ts: a.submitted_at,
-        });
+  // Creator approvals
+  allApplications
+    .filter((a) => a.status === "approved")
+    .forEach((a) => {
+      const profile = allProfiles.find((p) => p.id === a.user_id);
+      activityItems.push({
+        id: `approved-${a.id}`,
+        icon: UserCheck,
+        iconTone: "bg-success-bg text-success",
+        label: `${profile?.full_name ?? "A creator"} approved as creator`,
+        meta: "Creator application approved",
+        ts: a.submitted_at,
       });
+    });
 
-    // Published quizzes
-    allQuizzes
-      .filter((q) => q.is_published)
-      .slice(0, 6)
-      .forEach((q) => {
-        const creator = allProfiles.find((p) => p.id === q.creator_id);
-        items.push({
-          id: `quiz-${q.id}`,
-          icon: BookOpen,
-          iconTone: "bg-secondary/10 text-secondary",
-          label: `"${q.title.length > 40 ? q.title.slice(0, 40) + "…" : q.title}" published`,
-          meta: `by ${creator?.full_name ?? "Unknown"}`,
-          ts: q.created_at,
-        });
+  // Published quizzes
+  allQuizzes
+    .filter((q) => q.is_published)
+    .slice(0, 6)
+    .forEach((q) => {
+      const creator = allProfiles.find((p) => p.id === q.creator_id);
+      activityItems.push({
+        id: `quiz-${q.id}`,
+        icon: BookOpen,
+        iconTone: "bg-secondary/10 text-secondary",
+        label: `"${q.title.length > 40 ? q.title.slice(0, 40) + "…" : q.title}" published`,
+        meta: `by ${creator?.full_name ?? "Unknown"}`,
+        ts: q.created_at,
       });
+    });
 
-    // Paid payouts
-    allPayouts
-      .filter((p) => p.status === "paid" && p.processed_at)
-      .forEach((p) => {
-        const creator = allProfiles.find((pr) => pr.id === p.creator_id);
-        items.push({
-          id: `payout-${p.id}`,
-          icon: CreditCard,
-          iconTone: "bg-success-bg text-success",
-          label: `Payout of ${formatNaira(p.amount)} processed`,
-          meta: `to ${creator?.full_name ?? "creator"}`,
-          ts: p.processed_at!,
-        });
+  // Paid payouts
+  allPayouts
+    .filter((p) => p.status === "paid" && p.processed_at)
+    .forEach((p) => {
+      const creator = allProfiles.find((pr) => pr.id === p.creator_id);
+      activityItems.push({
+        id: `payout-${p.id}`,
+        icon: CreditCard,
+        iconTone: "bg-success-bg text-success",
+        label: `Payout of ${formatNaira(Number(p.amount))} processed`,
+        meta: `to ${creator?.full_name ?? "creator"}`,
+        ts: p.processed_at!,
       });
+    });
 
-    // Open reports
-    allCreatorReports
-      .filter((r) => r.status === "open")
-      .forEach((r) => {
-        items.push({
-          id: `report-${r.id}`,
-          icon: Flag,
-          iconTone: "bg-danger-bg text-danger",
-          label: `Report filed on "${r.quiz_title.length > 36 ? r.quiz_title.slice(0, 36) + "…" : r.quiz_title}"`,
-          meta: `Reason: ${r.reason.replace(/_/g, " ")}`,
-          ts: r.created_at,
-        });
+  // Open reports
+  allReports
+    .filter((r) => r.status === "open")
+    .forEach((r) => {
+      const quizTitle = (r as unknown as { quiz_title?: string }).quiz_title || "a quiz";
+      activityItems.push({
+        id: `report-${r.id}`,
+        icon: Flag,
+        iconTone: "bg-danger-bg text-danger",
+        label: `Report filed on "${quizTitle.length > 36 ? quizTitle.slice(0, 36) + "…" : quizTitle}"`,
+        meta: `Reason: ${r.reason.replace(/_/g, " ")}`,
+        ts: r.created_at,
       });
+    });
 
-    // Pending payout requests
-    allPayouts
-      .filter((p) => p.status === "pending")
-      .forEach((p) => {
-        const creator = allProfiles.find((pr) => pr.id === p.creator_id);
-        items.push({
-          id: `payout-req-${p.id}`,
-          icon: Wallet,
-          iconTone: "bg-warning-bg text-warning",
-          label: `Payout request: ${formatNaira(p.amount)}`,
-          meta: `from ${creator?.full_name ?? "creator"} — awaiting review`,
-          ts: p.requested_at,
-        });
+  // Pending payout requests
+  allPayouts
+    .filter((p) => p.status === "pending")
+    .forEach((p) => {
+      const creator = allProfiles.find((pr) => pr.id === p.creator_id);
+      activityItems.push({
+        id: `payout-req-${p.id}`,
+        icon: Wallet,
+        iconTone: "bg-warning-bg text-warning",
+        label: `Payout request: ${formatNaira(Number(p.amount))}`,
+        meta: `from ${creator?.full_name ?? "creator"} — awaiting review`,
+        ts: p.requested_at,
       });
+    });
 
-    // Sort by most recent first, take top 9
-    return items
-      .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
-      .slice(0, 9);
-  }, []);
+  // Sort by most recent first, take top 9
+  const activityFeed = activityItems
+    .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
+    .slice(0, 9);
 
   const hasPendingItems =
     pendingApplications > 0 || pendingPayouts > 0 || openReports > 0;
@@ -488,7 +492,7 @@ export function AdminDashboardPage() {
               Admin Dashboard
             </h1>
             <p className="mt-1.5 text-sm text-text-soft max-w-lg leading-relaxed">
-              Platform overview and pending items. All data is live from mock.
+              Platform overview and pending items. All data is live.
             </p>
           </div>
           {hasPendingItems && (
