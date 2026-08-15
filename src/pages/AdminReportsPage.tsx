@@ -28,15 +28,16 @@ import { Avatar } from "../components/Avatar";
 import { Toast, useToast } from "../components/Toast";
 import { DrawerShell } from "../components/DrawerShell";
 import { useAuth } from "../context/AuthContext";
+import type { DbReport, DbProfile, DbQuiz } from "../lib/supabase";
 import {
-  creatorReports,
-  updateCreatorReport,
-  quizzes as allQuizzes,
-  profiles,
+  useReports,
+  useProfiles,
+  useQuizzes,
+  adminResolveReport,
+  adminDismissReport,
   adminUnpublishQuiz,
-  type CreatorReport,
-  type Profile,
-} from "../mock";
+  AdminLoadingState,
+} from "../hooks/useAdminData";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -67,7 +68,7 @@ function formatDate(iso: string) {
   });
 }
 
-function StatusBadge({ status }: { status: CreatorReport["status"] }) {
+function StatusBadge({ status }: { status: string }) {
   if (status === "open")
     return (
       <Badge variant="warning" size="sm" dot>
@@ -97,9 +98,9 @@ function ReasonBadge({ reason }: { reason: string }) {
 }
 
 /** Count how many reports a given user filed in the current month. */
-function useRepeatReporterMap(reports: CreatorReport[], versionKey: number) {
+function useRepeatReporterMap(reports: DbReport[]) {
   return useMemo(() => {
-    const now = new Date("2026-08-06T00:00:00Z");
+    const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
     const countsByUser: Record<string, number> = {};
     reports.forEach((r) => {
@@ -108,8 +109,7 @@ function useRepeatReporterMap(reports: CreatorReport[], versionKey: number) {
       }
     });
     return countsByUser;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [versionKey]);
+  }, [reports]);
 }
 
 // ─── Review sheet ─────────────────────────────────────────────────────────────
@@ -117,28 +117,23 @@ function useRepeatReporterMap(reports: CreatorReport[], versionKey: number) {
 function ReportReviewSheet({
   report,
   reporter,
+  quiz,
+  quizCreator,
   reporterMonthlyCount,
   onClose,
   onResolved,
   onDismissed,
 }: {
-  report: CreatorReport;
-  reporter: Profile | undefined;
+  report: DbReport;
+  reporter: DbProfile | undefined;
+  quiz: DbQuiz | undefined;
+  quizCreator: DbProfile | undefined;
   reporterMonthlyCount: number;
   onClose: () => void;
   onResolved: (id: string) => void;
   onDismissed: (id: string) => void;
 }) {
   const isOpen = report.status === "open";
-
-  const quiz = useMemo(
-    () => allQuizzes.find((q) => q.id === report.quiz_id),
-    [report.quiz_id],
-  );
-  const quizCreator = useMemo(
-    () => (quiz ? profiles.find((p) => p.id === quiz.creator_id) : undefined),
-    [quiz],
-  );
 
   // Resolve flow
   const [showResolveForm, setShowResolveForm] = useState(false);
@@ -161,32 +156,21 @@ function ReportReviewSheet({
 
   async function handleResolve() {
     setResolving(true);
-    await new Promise((r) => setTimeout(r, 600));
-    updateCreatorReport(
-      report.id,
-      "resolved",
-      resolveNotes.trim() || undefined,
-    );
+    await adminResolveReport(report.id, resolveNotes.trim() || undefined);
     setResolving(false);
     onResolved(report.id);
   }
 
   async function handleDismiss() {
     setDismissing(true);
-    await new Promise((r) => setTimeout(r, 600));
-    updateCreatorReport(
-      report.id,
-      "dismissed",
-      dismissNotes.trim() || undefined,
-    );
+    await adminDismissReport(report.id, dismissNotes.trim() || undefined);
     setDismissing(false);
     onDismissed(report.id);
   }
 
   async function handleUnpublish() {
     setUnpublishing(true);
-    await new Promise((r) => setTimeout(r, 700));
-    if (quiz) adminUnpublishQuiz(quiz.id);
+    if (quiz) await adminUnpublishQuiz(quiz.id);
     setUnpublished(true);
     setUnpublishing(false);
     setShowUnpublish(false);
@@ -194,6 +178,7 @@ function ReportReviewSheet({
 
   const reporterName = reporter?.full_name ?? `User ${report.reporter_id}`;
   const isRepeatReporter = reporterMonthlyCount >= 3;
+  const quizTitle = report.quiz_title || quiz?.title || "Unknown quiz";
 
   return (
     <DrawerShell open={true} onClose={onClose} ariaLabel="Report review">
@@ -202,7 +187,7 @@ function ReportReviewSheet({
         iconClassName="bg-danger-bg text-danger"
         title={
           <h2 className="font-heading font-bold text-sm text-text leading-tight line-clamp-1">
-            {report.quiz_title}
+            {quizTitle}
           </h2>
         }
         statusBadge={<StatusBadge status={report.status} />}
@@ -219,7 +204,7 @@ function ReportReviewSheet({
               {reporterName}
             </p>
             <p className="text-xs text-muted">
-              {reporter?.email ?? report.reporter_id}
+              {report.reporter_id}
             </p>
           </div>
           {isRepeatReporter && (
@@ -258,7 +243,7 @@ function ReportReviewSheet({
               to={`/quiz/${report.quiz_id}`}
               className="text-sm text-primary hover:underline underline-offset-2 font-heading font-medium truncate"
             >
-              {report.quiz_title}
+              {quizTitle}
             </Link>
           </div>
           {quizCreator && (
@@ -289,32 +274,7 @@ function ReportReviewSheet({
         </div>
 
         {/* Resolution notes (decided) */}
-        {report.status !== "open" &&
-          report.other_text?.startsWith("Admin:") && (
-            <div
-              className={`flex items-start gap-2.5 px-4 py-3 rounded-2xl border ${
-                report.status === "resolved"
-                  ? "bg-success-bg border-success/20"
-                  : "bg-surface/40 border-border/40"
-              }`}
-            >
-              <Info
-                className={`w-4 h-4 shrink-0 mt-0.5 ${report.status === "resolved" ? "text-success" : "text-muted"}`}
-                strokeWidth={2}
-              />
-              <div>
-                <p className="text-xs font-heading font-semibold text-muted uppercase tracking-wider mb-0.5">
-                  Admin note
-                </p>
-                <p className="text-sm text-text leading-relaxed">
-                  {report.other_text
-                    .replace(/^Admin: /, "")
-                    .replace(/ \| Admin: .*$/, "")}
-                </p>
-              </div>
-            </div>
-          )}
-        {report.resolved_at && (
+        {report.status !== "open" && report.resolved_at && (
           <p className="text-xs text-muted flex items-center gap-1.5">
             <Clock className="w-3 h-3" strokeWidth={2} />
             {report.status === "resolved" ? "Resolved" : "Dismissed"}{" "}
@@ -328,7 +288,7 @@ function ReportReviewSheet({
             <p className="text-sm text-text leading-relaxed">
               Unpublish &ldquo;
               <span className="font-heading font-semibold">
-                {report.quiz_title}
+                {quizTitle}
               </span>
               &rdquo;? It will be hidden from Browse but existing owners keep
               access, per the pay-once policy.
@@ -538,11 +498,12 @@ function ReportRow({
   reporterMonthlyCount,
   onReview,
 }: {
-  report: CreatorReport;
-  reporter: Profile | undefined;
+  report: DbReport;
+  reporter: DbProfile | undefined;
   reporterMonthlyCount: number;
   onReview: () => void;
 }) {
+  const quizTitle = report.quiz_title || "Unknown quiz";
   return (
     <div className="flex items-center gap-3 sm:gap-4 py-3.5 px-5 border-b border-border/30 last:border-0 hover:bg-surface/20 transition-colors">
       {/* Reason icon */}
@@ -564,7 +525,7 @@ function ReportRow({
             className="font-heading font-semibold text-sm text-text hover:text-primary hover:underline underline-offset-2 transition-colors line-clamp-1"
             onClick={(e) => e.stopPropagation()}
           >
-            {report.quiz_title}
+            {quizTitle}
           </Link>
           <StatusBadge status={report.status} />
         </div>
@@ -640,53 +601,77 @@ export function AdminReportsPage() {
   const [toast, showToast, dismissToast] = useToast();
   const [activeTab, setActiveTab] = useState<FilterTab>("open");
   const [reviewingId, setReviewingId] = useState<string | null>(null);
-  const [version, setVersion] = useState(0);
 
   if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
 
+  const { data: allReports, loading: reportsLoading, refetch: refetchReports } = useReports();
+  const { data: allProfiles, loading: profilesLoading } = useProfiles();
+  const { data: allQuizzes, loading: quizzesLoading } = useQuizzes();
+
+  const loading = reportsLoading || profilesLoading || quizzesLoading;
+  const reports = allReports || [];
+  const profiles = allProfiles || [];
+  const quizzes = allQuizzes || [];
+
   const profilesById = useMemo(
     () => new Map(profiles.map((p) => [p.id, p])),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [version],
+    [profiles],
   );
 
-  const repeatMap = useRepeatReporterMap(creatorReports, version);
+  const quizzesById = useMemo(
+    () => new Map(quizzes.map((q) => [q.id, q])),
+    [quizzes],
+  );
+
+  const repeatMap = useRepeatReporterMap(reports);
 
   const filtered = useMemo(() => {
-    const sorted = [...creatorReports].sort(
+    const sorted = [...reports].sort(
       (a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
     if (activeTab === "all") return sorted;
     return sorted.filter((r) => r.status === activeTab);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, version]);
+  }, [reports, activeTab]);
 
   const counts = useMemo(
     () => ({
-      open: creatorReports.filter((r) => r.status === "open").length,
-      resolved: creatorReports.filter((r) => r.status === "resolved").length,
-      dismissed: creatorReports.filter((r) => r.status === "dismissed").length,
-      all: creatorReports.length,
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      open: reports.filter((r) => r.status === "open").length,
+      resolved: reports.filter((r) => r.status === "resolved").length,
+      dismissed: reports.filter((r) => r.status === "dismissed").length,
+      all: reports.length,
     }),
-    [version],
+    [reports],
   );
 
   const reviewingReport = reviewingId
-    ? creatorReports.find((r) => r.id === reviewingId)
+    ? reports.find((r) => r.id === reviewingId)
     : null;
+  const reviewingQuiz = reviewingReport
+    ? quizzesById.get(reviewingReport.quiz_id)
+    : undefined;
+  const reviewingQuizCreator = reviewingQuiz
+    ? profilesById.get(reviewingQuiz.creator_id)
+    : undefined;
 
-  function handleResolved(id: string) {
-    setVersion((v) => v + 1);
+  function handleResolved(_id: string) {
     setReviewingId(null);
     showToast({ message: "Report marked as resolved.", variant: "success" });
+    void refetchReports();
   }
 
-  function handleDismissed(id: string) {
-    setVersion((v) => v + 1);
+  function handleDismissed(_id: string) {
     setReviewingId(null);
     showToast({ message: "Report dismissed." });
+    void refetchReports();
+  }
+
+  if (loading) {
+    return (
+      <PageContainer className="max-w-240!">
+        <AdminLoadingState label="Loading reports…" />
+      </PageContainer>
+    );
   }
 
   return (
@@ -769,6 +754,8 @@ export function AdminReportsPage() {
         <ReportReviewSheet
           report={reviewingReport}
           reporter={profilesById.get(reviewingReport.reporter_id)}
+          quiz={reviewingQuiz}
+          quizCreator={reviewingQuizCreator}
           reporterMonthlyCount={repeatMap[reviewingReport.reporter_id] ?? 0}
           onClose={() => setReviewingId(null)}
           onResolved={handleResolved}

@@ -178,8 +178,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq("user_id", userId)
         .maybeSingle(),
     ]);
-    setWalletTxns(txnResult.data ?? []);
-    setUserBalance(Math.round(Number(balanceResult.data?.balance ?? 0) * 100));
+    const txns = txnResult.data ?? [];
+    setWalletTxns(txns);
+
+    if (balanceResult.data?.balance != null) {
+      setUserBalance(Math.round(Number(balanceResult.data.balance) * 100));
+    } else {
+      // Fallback: calculate balance from completed transactions directly if view is unaccessible
+      const computedNaira = txns
+        .filter((t) => t.status === "completed")
+        .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      setUserBalance(Math.round(computedNaira * 100));
+    }
   }, []);
 
   /* ----------------------- Derived: currentUser (old mock API shape) ----------------------- */

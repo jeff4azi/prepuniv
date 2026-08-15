@@ -29,41 +29,17 @@ import { Button } from "../components/Button";
 import { FieldWrapper } from "../components/Form";
 import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
+import type { DbUniversity } from "../lib/supabase";
 import {
-  universities,
-  courses,
-  quizzes,
-  profiles,
-  type University,
-} from "../mock";
-
-// ─── Mock mutations ───────────────────────────────────────────────────────────
-// The universities array is exported as a mutable reference from mock/universities.ts
-// so we can push/splice directly (same pattern as courses/quizzes).
-
-function addUniversity(uni: University): void {
-  universities.push(uni);
-}
-
-function updateUniversity(updated: University): void {
-  const idx = universities.findIndex((u) => u.id === updated.id);
-  if (idx !== -1) universities[idx] = updated;
-}
-
-function removeUniversity(id: string): void {
-  const idx = universities.findIndex((u) => u.id === id);
-  if (idx !== -1) universities.splice(idx, 1);
-}
-
-// ─── Dependency checks ────────────────────────────────────────────────────────
-
-function universityStats(uniId: string) {
-  return {
-    users: profiles.filter((p) => p.university_id === uniId).length,
-    courses: courses.filter((c) => c.university_id === uniId).length,
-    quizzes: quizzes.filter((q) => q.university_id === uniId).length,
-  };
-}
+  useUniversities,
+  useCourses,
+  useQuizzes,
+  useProfiles,
+  adminAddUniversity,
+  adminUpdateUniversity,
+  adminDeleteUniversity,
+  AdminLoadingState,
+} from "../hooks/useAdminData";
 
 // ─── Form values ──────────────────────────────────────────────────────────────
 
@@ -94,9 +70,9 @@ function UniversityModal({
   onClose,
   onSaved,
 }: {
-  existing?: University;
+  existing?: DbUniversity;
   onClose: () => void;
-  onSaved: (u: University) => void;
+  onSaved: (name: string, isEdit: boolean) => void;
 }) {
   const isEdit = Boolean(existing);
   const [values, setValues] = useState<UniversityFormValues>(
@@ -104,7 +80,7 @@ function UniversityModal({
       ? {
           name: existing.name,
           abbreviation: existing.abbreviation,
-          state: existing.state,
+          state: existing.state || "",
         }
       : EMPTY_FORM,
   );
@@ -123,17 +99,31 @@ function UniversityModal({
       return;
     }
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 400));
-    const saved: University = {
-      id: existing?.id ?? "uni_" + Math.random().toString(36).slice(2, 9),
-      name: values.name.trim(),
-      abbreviation: values.abbreviation.trim().toUpperCase(),
-      state: values.state.trim(),
-    };
-    if (isEdit) updateUniversity(saved);
-    else addUniversity(saved);
-    setSaving(false);
-    onSaved(saved);
+    if (isEdit && existing) {
+      const res = await adminUpdateUniversity(existing.id, {
+        name: values.name.trim(),
+        abbreviation: values.abbreviation.trim().toUpperCase(),
+        state: values.state.trim(),
+      });
+      setSaving(false);
+      if (res.error) {
+        alert(res.error);
+        return;
+      }
+      onSaved(values.abbreviation.trim().toUpperCase(), true);
+    } else {
+      const res = await adminAddUniversity({
+        name: values.name.trim(),
+        abbreviation: values.abbreviation.trim().toUpperCase(),
+        state: values.state.trim(),
+      });
+      setSaving(false);
+      if (res.error) {
+        alert(res.error);
+        return;
+      }
+      onSaved(values.name.trim(), false);
+    }
   }
 
   const inputBase =
@@ -262,7 +252,7 @@ function DeleteConfirm({
   onCancel,
   loading,
 }: {
-  university: University;
+  university: DbUniversity;
   onConfirm: () => void;
   onCancel: () => void;
   loading: boolean;
@@ -320,14 +310,15 @@ function DeleteConfirm({
 
 function UniversityRow({
   university,
+  stats,
   onEdit,
   onDelete,
 }: {
-  university: University;
+  university: DbUniversity;
+  stats: { users: number; courses: number; quizzes: number };
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const stats = useMemo(() => universityStats(university.id), [university.id]);
   const canDelete =
     stats.users === 0 && stats.courses === 0 && stats.quizzes === 0;
 
@@ -348,7 +339,7 @@ function UniversityRow({
             {university.abbreviation}
           </Badge>
         </div>
-        <p className="text-xs text-text-soft mt-0.5">{university.state}</p>
+        <p className="text-xs text-text-soft mt-0.5">{university.state || "—"}</p>
       </div>
 
       {/* Stats */}
@@ -430,39 +421,52 @@ export function AdminUniversitiesPage() {
   const { currentUser } = useAuth();
   const [toast, showToast, dismissToast] = useToast();
   const [modalMode, setModalMode] = useState<"add" | "edit" | null>(null);
-  const [editTarget, setEditTarget] = useState<University | undefined>();
-  const [deleteTarget, setDeleteTarget] = useState<University | undefined>();
+  const [editTarget, setEditTarget] = useState<DbUniversity | undefined>();
+  const [deleteTarget, setDeleteTarget] = useState<DbUniversity | undefined>();
   const [deleting, setDeleting] = useState(false);
-  const [version, setVersion] = useState(0);
+
+  const { data: universities, loading: unisLoading, refetch: refetchUnis } = useUniversities();
+  const { data: courses, loading: coursesLoading } = useCourses();
+  const { data: quizzes, loading: quizzesLoading } = useQuizzes();
+  const { data: profiles, loading: profilesLoading } = useProfiles();
 
   if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
 
-  // Re-derive the list on every version bump so mutations are reflected
+  const isLoading = unisLoading || coursesLoading || quizzesLoading || profilesLoading;
+
   const list = useMemo(
-    () => [...universities].sort((a, b) => a.name.localeCompare(b.name)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [version],
+    () => [...(universities || [])].sort((a, b) => a.name.localeCompare(b.name)),
+    [universities],
   );
+
+  const statsMap = useMemo(() => {
+    const map: Record<string, { users: number; courses: number; quizzes: number }> = {};
+    (universities || []).forEach((u) => {
+      map[u.id] = {
+        users: (profiles || []).filter((p) => p.university_id === u.id).length,
+        courses: (courses || []).filter((c) => c.university_id === u.id).length,
+        quizzes: (quizzes || []).filter((q) => q.university_id === u.id).length,
+      };
+    });
+    return map;
+  }, [universities, profiles, courses, quizzes]);
 
   function openAdd() {
     setEditTarget(undefined);
     setModalMode("add");
   }
 
-  function openEdit(u: University) {
+  function openEdit(u: DbUniversity) {
     setEditTarget(u);
     setModalMode("edit");
   }
 
-  function handleSaved(saved: University) {
+  function handleSaved(name: string, isEdit: boolean) {
     setModalMode(null);
     setEditTarget(undefined);
-    setVersion((v) => v + 1);
+    void refetchUnis();
     showToast({
-      message:
-        modalMode === "edit"
-          ? `${saved.abbreviation} has been updated.`
-          : `${saved.name} added successfully.`,
+      message: isEdit ? `${name} has been updated.` : `${name} added successfully.`,
       variant: "success",
     });
   }
@@ -470,13 +474,25 @@ export function AdminUniversitiesPage() {
   async function handleDeleteConfirm() {
     if (!deleteTarget) return;
     setDeleting(true);
-    await new Promise((r) => setTimeout(r, 450));
-    removeUniversity(deleteTarget.id);
+    const res = await adminDeleteUniversity(deleteTarget.id);
     setDeleting(false);
+    if (res.error) {
+      showToast({ message: res.error, variant: "danger" });
+      setDeleteTarget(undefined);
+      return;
+    }
     const name = deleteTarget.abbreviation;
     setDeleteTarget(undefined);
-    setVersion((v) => v + 1);
+    void refetchUnis();
     showToast({ message: `${name} has been removed.` });
+  }
+
+  if (isLoading) {
+    return (
+      <PageContainer className="max-w-290!">
+        <AdminLoadingState label="Loading universities…" />
+      </PageContainer>
+    );
   }
 
   return (
@@ -562,6 +578,7 @@ export function AdminUniversitiesPage() {
                 <UniversityRow
                   key={u.id}
                   university={u}
+                  stats={statsMap[u.id] || { users: 0, courses: 0, quizzes: 0 }}
                   onEdit={() => openEdit(u)}
                   onDelete={() => setDeleteTarget(u)}
                 />
@@ -600,3 +617,4 @@ export function AdminUniversitiesPage() {
     </>
   );
 }
+

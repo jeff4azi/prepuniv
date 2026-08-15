@@ -32,17 +32,18 @@ import { Button } from "../components/Button";
 import { Avatar } from "../components/Avatar";
 import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
+import { formatNaira } from "../components/QuizCard";
+import type { DbQuiz, DbCourse, DbProfile, DbWalletTxn, DbUniversity } from "../lib/supabase";
 import {
-  quizzes as allQuizzes,
-  courses as allCourses,
-  profiles as allProfiles,
-  walletTransactions as allTxns,
-  universities,
+  useQuizzes,
+  useCourses,
+  useProfiles,
+  useUniversities,
+  useWalletTransactions,
   adminUnpublishQuiz,
   adminRepublishQuiz,
-  type Quiz,
-} from "../mock";
-import { formatNaira } from "../components/QuizCard";
+  AdminLoadingState,
+} from "../hooks/useAdminData";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -61,13 +62,13 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 
 type QuizStatus = "published" | "unpublished_admin" | "unpublished_creator";
 
-function getQuizStatus(q: Quiz): QuizStatus {
+function getQuizStatus(q: DbQuiz): QuizStatus {
   if (q.unpublished_by_admin) return "unpublished_admin";
   if (!q.is_published) return "unpublished_creator";
   return "published";
 }
 
-function QuizStatusBadge({ quiz }: { quiz: Quiz }) {
+function QuizStatusBadge({ quiz }: { quiz: DbQuiz }) {
   const status = getQuizStatus(quiz);
   if (status === "published")
     return (
@@ -90,19 +91,6 @@ function QuizStatusBadge({ quiz }: { quiz: Quiz }) {
   );
 }
 
-// ─── Revenue helper ───────────────────────────────────────────────────────────
-
-function platformRevenueForQuiz(quizId: string): number {
-  return allTxns
-    .filter(
-      (t) =>
-        t.type === "platform_revenue" &&
-        t.status === "success" &&
-        t.related_quiz_id === quizId,
-    )
-    .reduce((s, t) => s + t.amount, 0);
-}
-
 // ─── Confirm modal ────────────────────────────────────────────────────────────
 
 function ConfirmModal({
@@ -112,7 +100,7 @@ function ConfirmModal({
   onCancel,
   loading,
 }: {
-  quiz: Quiz;
+  quiz: DbQuiz;
   action: "unpublish" | "republish";
   onConfirm: () => void;
   onCancel: () => void;
@@ -204,7 +192,7 @@ function QuizTableRow({
   platformRevenue,
   onAction,
 }: {
-  quiz: Quiz;
+  quiz: DbQuiz;
   courseName: string;
   creator: { id: string; full_name: string } | undefined;
   platformRevenue: number;
@@ -260,7 +248,7 @@ function QuizTableRow({
       {/* Attempts */}
       <td className="px-3 py-3.5 w-20 text-right">
         <span className="text-sm text-text">
-          {quiz.attempt_count.toLocaleString()}
+          {(quiz.attempt_count ?? 0).toLocaleString()}
         </span>
       </td>
       {/* Platform revenue */}
@@ -324,7 +312,7 @@ function QuizMobileCard({
   platformRevenue,
   onAction,
 }: {
-  quiz: Quiz;
+  quiz: DbQuiz;
   courseName: string;
   creator: { id: string; full_name: string } | undefined;
   platformRevenue: number;
@@ -358,7 +346,7 @@ function QuizMobileCard({
           </Link>
         )}
         <span>{formatNaira(quiz.price)}</span>
-        <span>{quiz.attempt_count.toLocaleString()} attempts</span>
+        <span>{(quiz.attempt_count ?? 0).toLocaleString()} attempts</span>
         {platformRevenue > 0 && (
           <span className="text-success font-heading font-semibold">
             {formatNaira(platformRevenue)} rev.
@@ -425,52 +413,72 @@ export function AdminQuizzesPage() {
   const [courseFilter, setCourseFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("newest");
-  const [activeUniId, setActiveUniId] = useState(universities[0].id);
+  const [activeUniId, setActiveUniId] = useState<string>("");
   const [actionTarget, setActionTarget] = useState<{
     id: string;
     action: "unpublish" | "republish";
   } | null>(null);
   const [acting, setActing] = useState(false);
-  const [version, setVersion] = useState(0);
 
   if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
 
+  const { data: allQuizzes, loading: quizzesLoading, refetch: refetchQuizzes } = useQuizzes();
+  const { data: allCourses, loading: coursesLoading } = useCourses();
+  const { data: allProfiles, loading: profilesLoading } = useProfiles();
+  const { data: allUniversities, loading: unisLoading } = useUniversities();
+  const { data: allTxns, loading: txnsLoading } = useWalletTransactions();
+
+  const loading = quizzesLoading || coursesLoading || profilesLoading || unisLoading || txnsLoading;
+  const quizzes = allQuizzes || [];
+  const courses = allCourses || [];
+  const profiles = allProfiles || [];
+  const universities = allUniversities || [];
+  const txns = allTxns || [];
+
+  // Set default uni ID once loaded
+  if (!activeUniId && universities.length > 0) {
+    setActiveUniId(universities[0].id);
+  }
+
   const coursesById = useMemo(
-    () => new Map(allCourses.map((c) => [c.id, c])),
-    [],
+    () => new Map(courses.map((c) => [c.id, c])),
+    [courses],
   );
   const profilesById = useMemo(
-    () => new Map(allProfiles.map((p) => [p.id, p])),
-    [],
+    () => new Map(profiles.map((p) => [p.id, p])),
+    [profiles],
   );
 
   const revenueMap = useMemo(() => {
     const m: Record<string, number> = {};
-    allQuizzes.forEach((q) => {
-      m[q.id] = platformRevenueForQuiz(q.id);
-    });
+    txns
+      .filter((t) => t.type === "platform_revenue" && t.status === "completed")
+      .forEach((t) => {
+        if (t.related_quiz_id) {
+          m[t.related_quiz_id] = (m[t.related_quiz_id] ?? 0) + Number(t.amount);
+        }
+      });
     return m;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version]);
+  }, [txns]);
 
   // Unique creator count
   const creatorCount = useMemo(
-    () => new Set(allQuizzes.map((q) => q.creator_id)).size,
-    [],
+    () => new Set(quizzes.map((q) => q.creator_id)).size,
+    [quizzes],
   );
 
   // Distinct departments for filter chips
   const departments = useMemo(() => {
     const s = new Set<string>();
-    allQuizzes.forEach((q) => {
+    quizzes.forEach((q) => {
       const c = coursesById.get(q.course_id);
       if (c) s.add(c.subject_area);
     });
     return Array.from(s).sort();
-  }, [coursesById]);
+  }, [quizzes, coursesById]);
 
   const filtered = useMemo(() => {
-    let list = [...allQuizzes].filter((q) => q.university_id === activeUniId);
+    let list = [...quizzes].filter((q) => q.university_id === activeUniId);
 
     // Status filter
     if (statusFilter === "published")
@@ -499,7 +507,7 @@ export function AdminQuizzesPage() {
     // Sort
     switch (sortKey) {
       case "attempts":
-        list.sort((a, b) => b.attempt_count - a.attempt_count);
+        list.sort((a, b) => (b.attempt_count ?? 0) - (a.attempt_count ?? 0));
         break;
       case "revenue":
         list.sort((a, b) => (revenueMap[b.id] ?? 0) - (revenueMap[a.id] ?? 0));
@@ -517,9 +525,8 @@ export function AdminQuizzesPage() {
         );
     }
     return list;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    allQuizzes,
+    quizzes,
     activeUniId,
     statusFilter,
     courseFilter,
@@ -528,7 +535,6 @@ export function AdminQuizzesPage() {
     coursesById,
     profilesById,
     revenueMap,
-    version,
   ]);
 
   const hasFilters =
@@ -539,13 +545,12 @@ export function AdminQuizzesPage() {
   async function handleConfirmAction() {
     if (!actionTarget) return;
     setActing(true);
-    await new Promise((r) => setTimeout(r, 600));
-    const quiz = allQuizzes.find((q) => q.id === actionTarget.id);
+    const quiz = quizzes.find((q) => q.id === actionTarget.id);
     if (actionTarget.action === "unpublish") {
-      adminUnpublishQuiz(actionTarget.id);
+      await adminUnpublishQuiz(actionTarget.id);
       showToast({ message: `"${quiz?.title}" unpublished.` });
     } else {
-      adminRepublishQuiz(actionTarget.id);
+      await adminRepublishQuiz(actionTarget.id);
       showToast({
         message: `"${quiz?.title}" republished.`,
         variant: "success",
@@ -553,12 +558,20 @@ export function AdminQuizzesPage() {
     }
     setActing(false);
     setActionTarget(null);
-    setVersion((v) => v + 1);
+    void refetchQuizzes();
   }
 
   const actionQuiz = actionTarget
-    ? allQuizzes.find((q) => q.id === actionTarget.id)
+    ? quizzes.find((q) => q.id === actionTarget.id)
     : null;
+
+  if (loading) {
+    return (
+      <PageContainer className="max-w-315!">
+        <AdminLoadingState label="Loading quizzes…" />
+      </PageContainer>
+    );
+  }
 
   return (
     <>
@@ -582,14 +595,14 @@ export function AdminQuizzesPage() {
               All Quizzes
             </h1>
             <p className="mt-1.5 text-sm text-text-soft">
-              {allQuizzes.length} total quizzes across {creatorCount} creators.
+              {quizzes.length} total quizzes across {creatorCount} creators.
             </p>
           </div>
 
           {/* University tabs */}
           <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 w-fit max-w-full overflow-x-auto no-scrollbar">
             {universities.map((uni) => {
-              const count = allQuizzes.filter(
+              const count = quizzes.filter(
                 (q) => q.university_id === uni.id,
               ).length;
               return (

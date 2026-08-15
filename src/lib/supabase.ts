@@ -141,14 +141,15 @@ export type DbPayoutRequest = {
   requested_at: string;
   processed_at: string | null;
   notes: string | null;
-  bank_account_number: string | null;
-  bank_code: string | null;
+  bank_account_number: string;
+  bank_code: string;
 };
 
 export type DbReport = {
   id: string;
   reporter_id: string;
   quiz_id: string;
+  quiz_title: string | null;
   reason: string;
   other_text: string | null;
   details: string | null;

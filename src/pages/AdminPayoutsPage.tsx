@@ -3,7 +3,7 @@
  *
  * Review, approve/reject, and monitor payout requests.
  * Filter tabs: Pending / Approved / Rejected / Paid / Failed / All
- * Simulates transfer processing (mostly-success, occasional failure path).
+ * Uses backend API for approve/reject operations.
  */
 import { useState, useMemo } from "react";
 import { Link, Navigate } from "react-router-dom";
@@ -30,16 +30,16 @@ import { Avatar } from "../components/Avatar";
 import { Toast, useToast } from "../components/Toast";
 import { DrawerShell } from "../components/DrawerShell";
 import { useAuth } from "../context/AuthContext";
-import {
-  payoutRequests,
-  updatePayoutRequest,
-  profiles,
-  getBankName,
-  maskAccountNumber,
-  type PayoutRequest,
-  type Profile,
-} from "../mock";
 import { formatNaira } from "../components/QuizCard";
+import { getBankName } from "../mock/banks";
+import type { DbPayoutRequest, DbProfile } from "../lib/supabase";
+import {
+  usePayoutRequests,
+  useProfiles,
+  adminApprovePayoutRequest,
+  adminRejectPayoutRequest,
+  AdminLoadingState,
+} from "../hooks/useAdminData";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -80,7 +80,7 @@ function formatDateTime(iso: string) {
   });
 }
 
-function StatusBadge({ status }: { status: PayoutRequest["status"] }) {
+function StatusBadge({ status }: { status: string }) {
   switch (status) {
     case "pending":
       return (
@@ -112,6 +112,8 @@ function StatusBadge({ status }: { status: PayoutRequest["status"] }) {
           Failed
         </Badge>
       );
+    default:
+      return null;
   }
 }
 
@@ -125,13 +127,12 @@ function PayoutReviewSheet({
   onClose,
   onUpdated,
 }: {
-  req: PayoutRequest;
-  creator: Profile | undefined;
+  req: DbPayoutRequest;
+  creator: DbProfile | undefined;
   onClose: () => void;
   onUpdated: (id: string, outcome: "paid" | "failed" | "rejected") => void;
 }) {
   const bankName = getBankName(req.bank_code);
-  const maskedAcct = maskAccountNumber(req.bank_account_number);
   const last4 = req.bank_account_number.slice(-4);
   const creatorName = creator?.full_name ?? "Unknown creator";
 
@@ -156,17 +157,16 @@ function PayoutReviewSheet({
 
   async function handleProcessTransfer() {
     setProcessingState("processing");
-    // Simulate ~1.5s network delay, then mostly-success (~85%), occasionally fail
-    await new Promise((r) => setTimeout(r, 1500));
-    const outcome: "paid" | "failed" = Math.random() < 0.85 ? "paid" : "failed";
-    const failureNote =
-      outcome === "failed"
-        ? "Transfer failed — receiving bank returned an error. No funds were deducted."
-        : undefined;
-    updatePayoutRequest(req.id, outcome, failureNote);
-    setTransferOutcome(outcome);
-    setProcessingState("done");
-    onUpdated(req.id, outcome);
+    const { error } = await adminApprovePayoutRequest(req.id);
+    if (error) {
+      setTransferOutcome("failed");
+      setProcessingState("done");
+      onUpdated(req.id, "failed");
+    } else {
+      setTransferOutcome("paid");
+      setProcessingState("done");
+      onUpdated(req.id, "paid");
+    }
   }
 
   async function handleReject() {
@@ -175,8 +175,7 @@ function PayoutReviewSheet({
       return;
     }
     setRejecting(true);
-    await new Promise((r) => setTimeout(r, 600));
-    updatePayoutRequest(req.id, "rejected", rejectNotes.trim());
+    await adminRejectPayoutRequest(req.id, rejectNotes.trim());
     setRejecting(false);
     onUpdated(req.id, "rejected");
   }
@@ -185,7 +184,7 @@ function PayoutReviewSheet({
     <DrawerShell open={true} onClose={onClose} ariaLabel="Payout review">
       <DrawerShell.Header
         icon={<CreditCard className="w-5 h-5" strokeWidth={2} />}
-        title={formatNaira(req.amount)}
+        title={formatNaira(Number(req.amount))}
         statusBadge={<StatusBadge status={req.status} />}
         meta={`Requested by ${creatorName} · ${formatDate(req.requested_at)}`}
         onClose={onClose}
@@ -199,7 +198,6 @@ function PayoutReviewSheet({
             <p className="font-heading font-semibold text-sm text-text leading-tight">
               {creatorName}
             </p>
-            <p className="text-xs text-muted">{creator?.email ?? ""}</p>
           </div>
           {creator && (
             <Link
@@ -260,7 +258,7 @@ function PayoutReviewSheet({
             Transfer amount
           </span>
           <span className="font-heading font-bold text-xl text-primary">
-            {formatNaira(req.amount)}
+            {formatNaira(Number(req.amount))}
           </span>
         </div>
 
@@ -323,7 +321,7 @@ function PayoutReviewSheet({
                 }`}
               >
                 {transferOutcome === "paid"
-                  ? `${formatNaira(req.amount)} sent successfully`
+                  ? `${formatNaira(Number(req.amount))} sent successfully`
                   : "Transfer failed"}
               </p>
               {transferOutcome === "failed" && (
@@ -342,7 +340,7 @@ function PayoutReviewSheet({
             <p className="text-sm text-text leading-relaxed">
               Send{" "}
               <span className="font-heading font-bold text-primary">
-                {formatNaira(req.amount)}
+                {formatNaira(Number(req.amount))}
               </span>{" "}
               to{" "}
               <span className="font-heading font-semibold">{creatorName}</span>
@@ -521,8 +519,8 @@ function PayoutRow({
   creator,
   onReview,
 }: {
-  req: PayoutRequest;
-  creator: Profile | undefined;
+  req: DbPayoutRequest;
+  creator: DbProfile | undefined;
   onReview: () => void;
 }) {
   const name = creator?.full_name ?? "Unknown";
@@ -558,7 +556,7 @@ function PayoutRow({
         </p>
       </div>
       <p className="font-heading font-bold text-sm text-text shrink-0 hidden sm:block">
-        {formatNaira(req.amount)}
+        {formatNaira(Number(req.amount))}
       </p>
       <button
         type="button"
@@ -601,62 +599,72 @@ export function AdminPayoutsPage() {
   const [toast, showToast, dismissToast] = useToast();
   const [activeTab, setActiveTab] = useState<FilterTab>("pending");
   const [reviewingId, setReviewingId] = useState<string | null>(null);
-  const [version, setVersion] = useState(0);
 
   if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
 
+  const { data: allPayouts, loading: payoutsLoading, refetch: refetchPayouts } = usePayoutRequests();
+  const { data: allProfiles, loading: profilesLoading } = useProfiles();
+
+  const loading = payoutsLoading || profilesLoading;
+  const payouts = allPayouts || [];
+  const profiles = allProfiles || [];
+
   const profilesById = useMemo(
     () => new Map(profiles.map((p) => [p.id, p])),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [version],
+    [profiles],
   );
 
   const filtered = useMemo(() => {
-    const reqs = [...payoutRequests].sort(
+    const reqs = [...payouts].sort(
       (a, b) =>
         new Date(b.requested_at).getTime() - new Date(a.requested_at).getTime(),
     );
     if (activeTab === "all") return reqs;
     return reqs.filter((r) => r.status === activeTab);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, version]);
+  }, [payouts, activeTab]);
 
   const counts = useMemo(
     () => ({
-      pending: payoutRequests.filter((r) => r.status === "pending").length,
-      approved: payoutRequests.filter((r) => r.status === "approved").length,
-      rejected: payoutRequests.filter((r) => r.status === "rejected").length,
-      paid: payoutRequests.filter((r) => r.status === "paid").length,
-      failed: payoutRequests.filter((r) => r.status === "failed").length,
-      all: payoutRequests.length,
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      pending: payouts.filter((r) => r.status === "pending").length,
+      approved: payouts.filter((r) => r.status === "approved").length,
+      rejected: payouts.filter((r) => r.status === "rejected").length,
+      paid: payouts.filter((r) => r.status === "paid").length,
+      failed: payouts.filter((r) => r.status === "failed").length,
+      all: payouts.length,
     }),
-    [version],
+    [payouts],
   );
 
   const reviewingReq = reviewingId
-    ? payoutRequests.find((r) => r.id === reviewingId)
+    ? payouts.find((r) => r.id === reviewingId)
     : null;
 
   function handleUpdated(id: string, outcome: "paid" | "failed" | "rejected") {
-    const req = payoutRequests.find((r) => r.id === id);
+    const req = payouts.find((r) => r.id === id);
     const creator = req ? profilesById.get(req.creator_id) : undefined;
     const name = creator?.full_name ?? "Creator";
-    setVersion((v) => v + 1);
     setReviewingId(null);
     if (outcome === "paid") {
       showToast({
-        message: `${formatNaira(req?.amount ?? 0)} sent to ${name}.`,
+        message: `${formatNaira(Number(req?.amount ?? 0))} sent to ${name}.`,
         variant: "success",
       });
     } else if (outcome === "failed") {
       showToast({
         message: `Transfer to ${name} failed. Marked as failed.`,
-        variant: "error",
       });
     } else {
       showToast({ message: `Payout request from ${name} rejected.` });
     }
+    void refetchPayouts();
+  }
+
+  if (loading) {
+    return (
+      <PageContainer className="max-w-240!">
+        <AdminLoadingState label="Loading payout requests…" />
+      </PageContainer>
+    );
   }
 
   return (

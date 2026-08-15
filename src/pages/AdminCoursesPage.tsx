@@ -24,23 +24,18 @@ import { FieldWrapper } from "../components/Form";
 import { FieldSelect } from "../components/CustomSelect";
 import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
+import type { DbCourse } from "../lib/supabase";
 import {
-  courses,
-  updateCourse,
-  quizzes as allQuizzes,
-  universities,
-  type Course,
-} from "../mock";
+  useCourses,
+  useQuizzes,
+  useUniversities,
+  adminUpdateCourse,
+  AdminLoadingState,
+} from "../hooks/useAdminData";
 import {
   COURSE_PREFIX_SUBJECT_AREA,
   suggestLevelFromCode,
 } from "../mock/courses";
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function quizCountForCourse(courseId: string): number {
-  return allQuizzes.filter((q) => q.course_id === courseId).length;
-}
 
 // ─── Edit modal (no Add modal — creation is creator-driven) ──────────────────
 
@@ -53,20 +48,20 @@ interface CourseFormValues {
 
 function CourseEditModal({
   existing,
+  quizCount,
   onClose,
   onSaved,
 }: {
-  existing: Course;
+  existing: DbCourse;
+  quizCount: number;
   onClose: () => void;
-  onSaved: (course: Course) => void;
+  onSaved: () => void;
 }) {
-  const quizCount = quizCountForCourse(existing.id);
-
   const [values, setValues] = useState<CourseFormValues>({
-    code: existing.code,
-    title: existing.title,
-    subject_area: existing.subject_area,
-    level: String(existing.level),
+    code: existing.code || "",
+    title: existing.name || "",
+    subject_area: existing.subject_area || "",
+    level: existing.level ? String(existing.level) : "100",
   });
   const [errors, setErrors] = useState<Partial<CourseFormValues>>({});
   const [saving, setSaving] = useState(false);
@@ -88,9 +83,6 @@ function CourseEditModal({
       code,
       level:
         v.level === "" && suggestedLevel ? String(suggestedLevel) : v.level,
-      // Don't auto-overwrite subject area on edit — admins are fixing
-      // existing metadata, not creating from scratch. If the subject was
-      // already filled, leave it alone.
       subject_area:
         !v.subject_area.trim() && suggestedDept
           ? suggestedDept
@@ -111,31 +103,19 @@ function CourseEditModal({
   async function handleSave() {
     if (!validate()) return;
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 450));
-    const levelNum = (parseInt(values.level, 10) || existing.level) as
-      | 100
-      | 200
-      | 300
-      | 400;
-    updateCourse({
-      id: existing.id,
+    const levelNum = parseInt(values.level, 10) || 100;
+    const res = await adminUpdateCourse(existing.id, {
       code: values.code.trim().toUpperCase(),
-      title: values.title.trim(),
+      name: values.title.trim(),
       subject_area: values.subject_area.trim(),
       level: levelNum,
-      // Preserve existing computational flag rather than reset it — admins
-      // don't need to control timing, but we shouldn't wipe the default
-      // that was inferred when the course was first created.
-      is_computational: existing.is_computational,
     });
     setSaving(false);
-    onSaved({
-      ...existing,
-      code: values.code.trim().toUpperCase(),
-      title: values.title.trim(),
-      subject_area: values.subject_area.trim(),
-      level: levelNum,
-    });
+    if (res.error) {
+      alert(res.error);
+      return;
+    }
+    onSaved();
   }
 
   const inputBase =
@@ -264,7 +244,7 @@ function CourseRow({
   quizCount,
   onEdit,
 }: {
-  course: Course;
+  course: DbCourse;
   quizCount: number;
   onEdit: () => void;
 }) {
@@ -276,16 +256,20 @@ function CourseRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-heading font-semibold text-sm text-text">
-            {course.code}
+            {course.code || "UNCATEGORIZED"}
           </span>
-          <Badge variant="muted" size="sm">
-            {course.level}L
-          </Badge>
-          <Badge variant="secondary" size="sm">
-            {course.subject_area}
-          </Badge>
+          {course.level && (
+            <Badge variant="muted" size="sm">
+              {course.level}L
+            </Badge>
+          )}
+          {course.subject_area && (
+            <Badge variant="secondary" size="sm">
+              {course.subject_area}
+            </Badge>
+          )}
         </div>
-        <p className="text-xs text-text-soft mt-0.5 truncate">{course.title}</p>
+        <p className="text-xs text-text-soft mt-0.5 truncate">{course.name}</p>
       </div>
       <div className="text-right shrink-0 hidden sm:block">
         <p className="font-heading font-semibold text-sm text-text">
@@ -330,45 +314,58 @@ function EmptyState() {
 export function AdminCoursesPage() {
   const { currentUser } = useAuth();
   const [toast, showToast, dismissToast] = useToast();
-  const [editingCourse, setEditingCourse] = useState<Course | undefined>();
-  const [version, setVersion] = useState(0);
-  const [activeUniId, setActiveUniId] = useState(universities[0].id);
+  const [editingCourse, setEditingCourse] = useState<DbCourse | undefined>();
+
+  const { data: courses, loading: coursesLoading, refetch: refetchCourses } = useCourses();
+  const { data: quizzes, loading: quizzesLoading } = useQuizzes();
+  const { data: universities, loading: unisLoading } = useUniversities();
+
+  const [activeUniId, setActiveUniId] = useState<string | null>(null);
 
   if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
 
+  const isLoading = coursesLoading || quizzesLoading || unisLoading;
+
+  const currentUniId = activeUniId || (universities && universities.length > 0 ? universities[0].id : "");
+
   const sortedCourses = useMemo(
     () =>
-      [...courses]
-        .filter((c) => c.university_id === activeUniId)
-        .sort((a, b) => a.code.localeCompare(b.code)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [version, activeUniId],
+      (courses || [])
+        .filter((c) => !currentUniId || c.university_id === currentUniId)
+        .sort((a, b) => (a.code || "").localeCompare(b.code || "")),
+    [courses, currentUniId],
   );
 
-  const quizCountMap = useMemo(
-    () => {
-      const m: Record<string, number> = {};
-      courses.forEach((c) => {
-        m[c.id] = quizCountForCourse(c.id);
-      });
-      return m;
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [version],
-  );
+  const quizCountMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    (quizzes || []).forEach((q) => {
+      if (q.course_id) {
+        m[q.course_id] = (m[q.course_id] || 0) + 1;
+      }
+    });
+    return m;
+  }, [quizzes]);
 
   const totalAttachedQuizzes = useMemo(
     () => sortedCourses.reduce((s, c) => s + (quizCountMap[c.id] ?? 0), 0),
     [sortedCourses, quizCountMap],
   );
 
-  function handleSaved(saved: Course) {
+  function handleSaved() {
     setEditingCourse(undefined);
-    setVersion((v) => v + 1);
+    void refetchCourses();
     showToast({
-      message: `${saved.code} has been updated.`,
+      message: `Course has been updated.`,
       variant: "success",
     });
+  }
+
+  if (isLoading) {
+    return (
+      <PageContainer className="max-w-290!">
+        <AdminLoadingState label="Loading courses…" />
+      </PageContainer>
+    );
   }
 
   return (
@@ -403,30 +400,33 @@ export function AdminCoursesPage() {
           </div>
 
           {/* University tabs */}
-          <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 w-fit max-w-full overflow-x-auto no-scrollbar">
-            {universities.map((uni) => {
-              const count = courses.filter(
-                (c) => c.university_id === uni.id,
-              ).length;
-              return (
-                <button
-                  key={uni.id}
-                  type="button"
-                  onClick={() => setActiveUniId(uni.id)}
-                  className={`h-9 px-3.5 rounded-xl text-xs font-heading font-semibold transition-all duration-150 flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
-                    activeUniId === uni.id
-                      ? "bg-cream shadow-soft text-text"
-                      : "text-text-soft hover:text-text"
-                  }`}
-                >
-                  {uni.abbreviation}
-                  <span className="inline-flex h-5 min-w-5 px-1 items-center justify-center rounded-full text-[10px] font-bold bg-border text-muted">
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          {universities && universities.length > 0 && (
+            <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 w-fit max-w-full overflow-x-auto no-scrollbar">
+              {universities.map((uni) => {
+                const count = (courses || []).filter(
+                  (c) => c.university_id === uni.id,
+                ).length;
+                const isActive = currentUniId === uni.id;
+                return (
+                  <button
+                    key={uni.id}
+                    type="button"
+                    onClick={() => setActiveUniId(uni.id)}
+                    className={`h-9 px-3.5 rounded-xl text-xs font-heading font-semibold transition-all duration-150 flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+                      isActive
+                        ? "bg-cream shadow-soft text-text"
+                        : "text-text-soft hover:text-text"
+                    }`}
+                  >
+                    {uni.abbreviation}
+                    <span className="inline-flex h-5 min-w-5 px-1 items-center justify-center rounded-full text-[10px] font-bold bg-border text-muted">
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Info note */}
           <div className="flex items-start gap-2.5 px-4 py-3 rounded-2xl bg-surface/50 border border-border/40">
@@ -477,6 +477,7 @@ export function AdminCoursesPage() {
       {editingCourse && (
         <CourseEditModal
           existing={editingCourse}
+          quizCount={quizCountMap[editingCourse.id] ?? 0}
           onClose={() => setEditingCourse(undefined)}
           onSaved={handleSaved}
         />
@@ -484,3 +485,4 @@ export function AdminCoursesPage() {
     </>
   );
 }
+
