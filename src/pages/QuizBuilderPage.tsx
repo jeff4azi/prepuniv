@@ -226,21 +226,44 @@ export function QuizBuilderPage() {
 
   const [detailErrors, setDetailErrors] = useState<Partial<QuizDetails>>({});
 
-  // ── Course autocomplete state (attached to Course Code field only) ──
-  const courseCodeInputRef = useRef<HTMLInputElement | null>(null);
-  const courseCodeWrapRef = useRef<HTMLDivElement | null>(null);
-  const [courseCodeAcOpen, setCourseCodeAcOpen] = useState(false);
-  const [courseCodeAcHoverIdx, setCourseCodeAcHoverIdx] = useState<number>(0);
-  const [courseAcVersion, setCourseAcVersion] = useState(0);
+  // ── Live Supabase course loading for autocomplete ──
+  const [dbCourses, setDbCourses] = useState<Course[]>([]);
+
+  useEffect(() => {
+    if (!currentUser.university_id) return;
+    supabase
+      .from("courses")
+      .select("*")
+      .eq("university_id", currentUser.university_id)
+      .then(({ data }) => {
+        if (data) {
+          setDbCourses(
+            data.map((row) => ({
+              id: row.id,
+              code: row.code || "",
+              title: row.name || "",
+              subject_area: row.subject_area || "",
+              level: (row.level as 100 | 200 | 300 | 400) || 100,
+              is_computational: !!row.is_computational,
+              university_id: row.university_id || "",
+            })),
+          );
+        }
+      });
+  }, [currentUser.university_id]);
 
   const matchedCourses = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const _v = courseAcVersion;
-    return findCoursesByQuery(details.course_code, {
-      limit: 6,
-      university_id: currentUser.university_id,
-    });
-  }, [details.course_code, courseAcVersion, currentUser.university_id]);
+    const q = details.course_code.trim().toLowerCase();
+    if (!q) return dbCourses.slice(0, 6);
+    return dbCourses
+      .filter(
+        (c) =>
+          c.code.toLowerCase().includes(q) ||
+          c.title.toLowerCase().includes(q) ||
+          c.subject_area.toLowerCase().includes(q),
+      )
+      .slice(0, 6);
+  }, [details.course_code, dbCourses]);
 
   function applyCourse(c: {
     id: string;
