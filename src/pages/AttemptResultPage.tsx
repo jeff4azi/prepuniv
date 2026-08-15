@@ -21,7 +21,7 @@ import { MathText } from "../components/MathText";
 import { ReportModal } from "../components/ReportModal";
 import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
-import type { AttemptResult, Quiz, Course, QuizAttempt } from "../mock/types";
+import type { AttemptResult, Quiz, Course, QuizAttempt } from "../types";
 import {
   fetchQuiz,
   fetchCourse,

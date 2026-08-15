@@ -31,7 +31,7 @@ import { FilterSelect, type SelectOption } from "../components/CustomSelect";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import { toAttempt } from "../lib/queries";
-import type { QuizAttempt } from "../mock/types";
+import type { QuizAttempt } from "../types";
 import { formatNaira } from "./CreatorDashboardPage";
 
 import { apiFetch } from "../lib/api";

@@ -7,7 +7,7 @@ import { Button } from "../components/Button";
 import { TextInput, validateFullName } from "../components/Form";
 import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
-import { getBankName } from "../mock/banks";
+import { getBankName, fetchBanksList, resolveAccountDetails } from "../lib/banks";
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 

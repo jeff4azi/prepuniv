@@ -14,14 +14,8 @@ import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { useAuth } from "../context/AuthContext";
-import {
-  creatorReports,
-  quizzes as allQuizzes,
-  courses as allCourses,
-  type CreatorReport,
-  type CreatorReportStatus,
-  type ReportReason,
-} from "../mock";
+import type { CreatorReport, CreatorReportStatus, ReportReason } from "../types";
+import { useReports, useQuizzes, useCourses, AdminLoadingState } from "../hooks/useAdminData";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -63,6 +57,14 @@ export function CreatorReportsPage() {
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
 
   // All hooks before gate
+  const { data: rawReports, loading: reportsLoading } = useReports();
+  const { data: rawQuizzes, loading: quizzesLoading } = useQuizzes();
+  const { data: rawCourses, loading: coursesLoading } = useCourses();
+
+  const allQuizzes = rawQuizzes || [];
+  const allCourses = rawCourses || [];
+  const reports = rawReports || [];
+
   const creatorQuizIds = useMemo(
     () =>
       new Set(
@@ -70,28 +72,39 @@ export function CreatorReportsPage() {
           .filter((q) => q.creator_id === currentUser.id)
           .map((q) => q.id),
       ),
-    [currentUser.id],
+    [allQuizzes, currentUser.id],
   );
 
   const coursesById = useMemo(
     () => new Map(allCourses.map((c) => [c.id, c])),
-    [],
+    [allCourses],
   );
   const quizzesById = useMemo(
     () => new Map(allQuizzes.map((q) => [q.id, q])),
-    [],
+    [allQuizzes],
   );
 
-  // Filter reports for this creator's quizzes
   const myReports = useMemo(
     () =>
-      creatorReports
+      reports
         .filter((r) => creatorQuizIds.has(r.quiz_id))
+        .map((r) => ({
+          id: r.id,
+          reporter_id: r.reporter_id || "",
+          quiz_id: r.quiz_id,
+          quiz_title: r.quiz_title || quizzesById.get(r.quiz_id)?.title || "Untitled Quiz",
+          reason: (r.reason as ReportReason) || "other",
+          other_text: r.other_text || undefined,
+          details: r.details || undefined,
+          status: (r.status as CreatorReportStatus) || "open",
+          created_at: r.created_at,
+          resolved_at: r.resolved_at || undefined,
+        }))
         .sort(
           (a, b) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
         ),
-    [creatorQuizIds],
+    [reports, creatorQuizIds, quizzesById],
   );
 
   const filtered = useMemo(
@@ -114,6 +127,14 @@ export function CreatorReportsPage() {
 
   if (!currentUser.is_approved_creator)
     return <Navigate to="/creator/apply" replace />;
+
+  if (reportsLoading || quizzesLoading || coursesLoading) {
+    return (
+      <PageContainer className="!max-w-[900px]">
+        <AdminLoadingState label="Loading reports…" />
+      </PageContainer>
+    );
+  }
 
   const tabs: { key: FilterTab; label: string; count: number }[] = [
     { key: "all", label: "All", count: counts.all },

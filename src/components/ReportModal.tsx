@@ -12,7 +12,7 @@ import { X, Flag } from "lucide-react";
 import { Button } from "./Button";
 import { FieldWrapper } from "./Form";
 import { FieldSelect } from "./CustomSelect";
-import type { ReportReason } from "../mock/types";
+import type { ReportReason } from "../types";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 

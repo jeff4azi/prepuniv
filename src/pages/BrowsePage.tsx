@@ -15,7 +15,7 @@ import { Button } from "../components/Button";
 import { QuizCard } from "../components/QuizCard";
 import { FilterSelect } from "../components/CustomSelect";
 import { useAuth } from "../context/AuthContext";
-import type { Quiz, Course } from "../mock/types";
+import type { Quiz, Course } from "../types";
 import type { DbProfile } from "../lib/supabase";
 import {
   fetchPublishedQuizzes,

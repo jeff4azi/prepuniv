@@ -42,16 +42,11 @@ import { Toast, useToast } from "../components/Toast";
 import { MathText } from "../components/MathText";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
-import {
-  findCoursesByQuery,
-  type Quiz,
-  type Question,
-  type QuestionType,
-} from "../mock";
+import type { Quiz, Question, QuestionType } from "../types";
 import {
   COURSE_PREFIX_SUBJECT_AREA,
   suggestLevelFromCode,
-} from "../mock/courses";
+} from "../lib/courses";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

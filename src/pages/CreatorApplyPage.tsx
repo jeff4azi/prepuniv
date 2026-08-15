@@ -1,27 +1,17 @@
 /**
  * /creator/apply — Become a Creator application page.
- *
- * Renders one of four states based on the current user's application:
- *   A  No application yet          → show the form
- *   B  Application pending          → status card (clock / amber)
- *   C  Application rejected         → status card (muted / terracotta) + re-apply
- *   D  Already approved creator     → redirect card to /creator dashboard
- *
- * A dev-only state switcher (inline, not the global role switcher) lets
- * you inject pending / rejected / no-app states for user_001 without
- * touching actual profile data.
  */
-import { useState, type FormEvent } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import {
   Sparkles,
   Clock,
   XCircle,
-  CheckCircle2,
   LayoutDashboard,
   ArrowRight,
   RotateCcw,
   BadgeCheck,
+  CheckCircle2,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -30,14 +20,8 @@ import { Button } from "../components/Button";
 import { FieldWrapper } from "../components/Form";
 import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
-import {
-  getApplicationByUserId,
-  addApplication,
-  type CreatorApplication,
-  type ApplicationStatus,
-} from "../mock";
-
-// ─── Shared input style (mirrors Form.tsx BASE_INPUT) ─────────────────────────
+import type { CreatorApplication, ApplicationStatus } from "../types";
+import { supabase } from "../lib/supabase";
 
 const BASE_INPUT =
   "w-full h-12 px-4 rounded-xl text-sm bg-cream text-text placeholder:text-muted/70 border border-border focus:outline-none ring-0 focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed";
@@ -48,8 +32,6 @@ const BASE_TEXTAREA =
 const ERROR_SUFFIX =
   " border-danger/60 bg-danger-bg/30 focus:ring-danger/30 focus:border-danger";
 
-// ─── Form field helpers ────────────────────────────────────────────────────────
-
 function FormTextarea({
   id,
   label,
@@ -58,7 +40,7 @@ function FormTextarea({
   value,
   onChange,
   error,
-  rows = 4,
+  rows = 3,
   required,
 }: {
   id: string;
@@ -72,7 +54,7 @@ function FormTextarea({
   required?: boolean;
 }) {
   return (
-    <FieldWrapper id={id} label={label} error={error} hint={hint}>
+    <FieldWrapper id={id} label={label} hint={hint} error={error}>
       <textarea
         id={id}
         placeholder={placeholder}
@@ -106,7 +88,7 @@ function FormInput({
   required?: boolean;
 }) {
   return (
-    <FieldWrapper id={id} label={label} error={error} hint={hint}>
+    <FieldWrapper id={id} label={label} hint={hint} error={error}>
       <input
         id={id}
         type="text"
@@ -120,12 +102,10 @@ function FormInput({
   );
 }
 
-// ─── Status cards ─────────────────────────────────────────────────────────────
-
 function PendingCard({ submittedAt }: { submittedAt: string }) {
   const date = new Date(submittedAt).toLocaleDateString("en-NG", {
     day: "numeric",
-    month: "long",
+    month: "short",
     year: "numeric",
   });
   return (
@@ -233,8 +213,6 @@ function ApprovedCard() {
   );
 }
 
-// ─── Application form (State A) ───────────────────────────────────────────────
-
 interface FormValues {
   courses: string;
   background: string;
@@ -297,27 +275,43 @@ function ApplicationForm({
       return;
     }
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 800));
+
+    const { data, error } = await supabase
+      .from("creator_applications")
+      .insert({
+        user_id: userId,
+        course_strengths: values.courses.trim(),
+        background: values.background.trim(),
+        quiz_plans: values.quiz_plans.trim(),
+        relevant_links: values.links.trim() || null,
+        status: "pending",
+      })
+      .select()
+      .single();
+
+    setSubmitting(false);
+
+    if (error || !data) {
+      alert("Failed to submit application: " + (error?.message || "Unknown error"));
+      return;
+    }
 
     const app: CreatorApplication = {
-      id: "app_" + Math.random().toString(36).slice(2, 10),
-      user_id: userId,
-      status: "pending",
-      courses: values.courses.trim(),
-      background: values.background.trim(),
-      quiz_plans: values.quiz_plans.trim(),
-      links: values.links.trim() || undefined,
-      submitted_at: new Date().toISOString(),
+      id: data.id,
+      user_id: data.user_id,
+      status: data.status,
+      courses: data.course_strengths || values.courses.trim(),
+      background: data.background || values.background.trim(),
+      quiz_plans: data.quiz_plans || values.quiz_plans.trim(),
+      links: data.relevant_links || values.links.trim(),
+      submitted_at: data.submitted_at || new Date().toISOString(),
     };
 
-    addApplication(app);
-    setSubmitting(false);
     onSubmitted(app);
   }
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-5">
-      {/* Revenue pitch card */}
       <Card className="bg-primary/5 border-primary/20">
         <div className="flex items-start gap-4">
           <div className="h-10 w-10 rounded-2xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
@@ -339,7 +333,6 @@ function ApplicationForm({
         </div>
       </Card>
 
-      {/* Form fields card */}
       <Card>
         <div className="space-y-5">
           <div>
@@ -395,7 +388,6 @@ function ApplicationForm({
               onChange={(v) => set("links", v)}
             />
 
-            {/* Copyright checkbox */}
             <div className="space-y-1.5">
               <label
                 htmlFor="apply-agree"
@@ -407,7 +399,6 @@ function ApplicationForm({
                       : "border-border/60 bg-surface/30 hover:border-border hover:bg-surface/50"
                 }`}
               >
-                {/* Custom checkbox */}
                 <div
                   className={`mt-0.5 h-5 w-5 rounded-md border-2 shrink-0 flex items-center justify-center transition-colors ${
                     values.agreed
@@ -471,15 +462,37 @@ function ApplicationForm({
   );
 }
 
-// ─── Main page ─────────────────────────────────────────────────────────────────
-
 export function CreatorApplyPage() {
   const { currentUser } = useAuth();
-
-  const realApp = getApplicationByUserId(currentUser.id);
+  const [realApp, setRealApp] = useState<CreatorApplication | null>(null);
   const [localApp, setLocalApp] = useState<CreatorApplication | null>(null);
   const [reApplying, setReApplying] = useState(false);
   const [toast, showToast, dismissToast] = useToast();
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    supabase
+      .from("creator_applications")
+      .select("*")
+      .eq("user_id", currentUser.id)
+      .order("submitted_at", { ascending: false })
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setRealApp({
+            id: data.id,
+            user_id: data.user_id,
+            status: data.status as ApplicationStatus,
+            courses: data.course_strengths || "",
+            background: data.background || "",
+            quiz_plans: data.quiz_plans || "",
+            links: data.relevant_links || "",
+            notes: data.notes || undefined,
+            submitted_at: data.submitted_at,
+          });
+        }
+      });
+  }, [currentUser?.id]);
 
   function effectiveStatus(): ApplicationStatus | "none" {
     if (localApp) return localApp.status;
@@ -529,7 +542,6 @@ export function CreatorApplyPage() {
 
       <PageContainer>
         <div className="max-w-2xl space-y-5">
-          {/* Page heading */}
           <div>
             <Badge variant="secondary" size="sm" dot className="mb-2">
               <Sparkles className="w-3 h-3" />

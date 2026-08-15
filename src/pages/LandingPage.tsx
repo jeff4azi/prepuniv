@@ -26,7 +26,7 @@ import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { Reveal } from "../hooks/useReveal";
 import { Avatar } from "../components/Avatar";
-import type { Quiz, Course, Profile } from "../mock/types";
+import type { Quiz, Course, Profile } from "../types";
 import {
   fetchPublishedQuizzes,
   fetchCourses,

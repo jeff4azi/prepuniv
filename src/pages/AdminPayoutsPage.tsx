@@ -31,7 +31,7 @@ import { Toast, useToast } from "../components/Toast";
 import { DrawerShell } from "../components/DrawerShell";
 import { useAuth } from "../context/AuthContext";
 import { formatNaira } from "../components/QuizCard";
-import { getBankName } from "../mock/banks";
+import { getBankName } from "../lib/banks";
 import type { DbPayoutRequest, DbProfile } from "../lib/supabase";
 import {
   usePayoutRequests,

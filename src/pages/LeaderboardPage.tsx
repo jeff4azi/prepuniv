@@ -16,7 +16,7 @@ import { Badge } from "../components/Badge";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { useAuth } from "../context/AuthContext";
-import type { Quiz, Course, QuizAttempt, Profile } from "../mock/types";
+import type { Quiz, Course, QuizAttempt, Profile } from "../types";
 import {
   fetchQuiz,
   fetchCourse,

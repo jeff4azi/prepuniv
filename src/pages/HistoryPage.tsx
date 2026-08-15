@@ -16,7 +16,7 @@ import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { FilterSelect } from "../components/CustomSelect";
 import { useAuth } from "../context/AuthContext";
-import type { Quiz, Course, QuizAttempt } from "../mock/types";
+import type { Quiz, Course, QuizAttempt } from "../types";
 import {
   fetchUserAttempts,
   fetchAllQuizzes,

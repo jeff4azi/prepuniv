@@ -32,7 +32,7 @@ import {
   fetchProfile,
   fetchUserAttempts,
 } from "../lib/queries";
-import type { Quiz, Course, Profile, QuizAttempt } from "../mock/types";
+import type { Quiz, Course, Profile, QuizAttempt } from "../types";
 import { formatNaira } from "../components/QuizCard";
 import { apiFetch } from "../lib/api";
 

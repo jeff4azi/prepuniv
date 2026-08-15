@@ -18,7 +18,7 @@ import type {
   PayoutRequest,
   CreatorReport,
   WalletTransaction,
-} from "../mock/types";
+} from "../types";
 
 // ─── Re-export University type for pages that need it ─────────────────────────
 export type { University };

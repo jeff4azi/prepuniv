@@ -22,7 +22,7 @@ import { Button } from "../components/Button";
 import { Avatar } from "../components/Avatar";
 import { FilterSelect } from "../components/CustomSelect";
 import { useAuth } from "../context/AuthContext";
-import type { Quiz, Course, Profile, QuizAttempt } from "../mock/types";
+import type { Quiz, Course, Profile, QuizAttempt } from "../types";
 import {
   fetchPublishedQuizzes,
   fetchCourses,

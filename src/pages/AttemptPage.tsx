@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "../components/Button";
 import { MathText } from "../components/MathText";
-import type { Question, AttemptResult, Quiz } from "../mock/types";
+import type { Question, AttemptResult, Quiz } from "../types";
 import { fetchQuiz, fetchQuestions } from "../lib/queries";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";

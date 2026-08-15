@@ -35,7 +35,7 @@ import {
 import {
   COURSE_PREFIX_SUBJECT_AREA,
   suggestLevelFromCode,
-} from "../mock/courses";
+} from "../lib/courses";
 
 // ─── Edit modal (no Add modal — creation is creator-driven) ──────────────────
 

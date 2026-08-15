@@ -43,7 +43,7 @@ import {
   fetchBanksList,
   resolveAccountDetails,
   type Bank,
-} from "../mock/banks";
+} from "../lib/banks";
 
 function computeEarningsBalance(userId: string, walletTxns: { user_id: string | null; type: string; status: string; amount: number }[]): number {
   const naira = walletTxns
