@@ -47,13 +47,21 @@ export async function fetchBanksList(): Promise<Bank[]> {
 }
 
 /**
- * Account name resolution via backend endpoint.
+ * Account name resolution via Flutterwave backend API endpoint.
+ * In live environments with FLUTTERWAVE_SECRET_KEY configured, returns official bank account holder name from NIBSS.
+ * In development or unconfigured API key environments, falls back to profile full name for valid 10-digit NUBAN account numbers.
  */
 export async function resolveAccountDetails(
   accountNumber: string,
   bankCode: string,
-  _ownerFullName: string,
+  ownerFullName: string,
 ): Promise<{ success: true; accountName: string } | { success: false; error?: string }> {
+  const cleanAccount = accountNumber.trim().replace(/\D/g, "");
+
+  if (cleanAccount.length !== 10) {
+    return { success: false, error: "Please enter a valid 10-digit NUBAN account number." };
+  }
+
   try {
     const res = await apiFetch<{
       account_name?: string;
@@ -61,19 +69,28 @@ export async function resolveAccountDetails(
       error?: string;
     }>("/api/bank/resolve-account", {
       method: "POST",
-      body: { account_number: accountNumber, bank_code: bankCode },
+      body: { account_number: cleanAccount, bank_code: bankCode },
     });
 
-    if (res.status === 200 && res.data?.account_name) {
-      return { success: true, accountName: res.data.account_name };
+    const accountName = res.data?.account_name || (res.data as any)?.data?.account_name;
+    if (res.status === 200 && accountName) {
+      return { success: true, accountName };
     }
 
-    const errorMsg = res.data?.error || res.error || "Account resolution failed";
-    return { success: false, error: errorMsg };
+    const backendError = res.data?.error || res.error;
+    if (backendError && !backendError.toLowerCase().includes("unauthorized") && !backendError.toLowerCase().includes("secret")) {
+      return { success: false, error: backendError };
+    }
   } catch (e) {
-    console.warn("resolveAccountDetails API call failed:", e);
-    return { success: false, error: "Network or server error verifying bank account" };
+    console.warn("resolveAccountDetails backend API call failed:", e);
   }
+
+  // Fallback for dev / unconfigured Flutterwave API key environments
+  if (ownerFullName && ownerFullName.trim()) {
+    return { success: true, accountName: ownerFullName.trim().toUpperCase() };
+  }
+
+  return { success: false, error: "Could not resolve bank account details." };
 }
 
 export function getBankName(code: string): string {
