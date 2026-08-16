@@ -670,7 +670,9 @@ export function QuizDetailPage() {
 
           {/* ── Report link (Only available to users who have purchased/unlocked the quiz, the creator, or admins) ── */}
           <div className="flex justify-center pb-2">
-            {isPurchased || currentUser.id === quiz.creator_id || currentUser.role === "admin" ? (
+            {isPurchased ||
+            currentUser.id === quiz.creator_id ||
+            currentUser.role === "admin" ? (
               <button
                 type="button"
                 onClick={() => setShowReport(true)}
