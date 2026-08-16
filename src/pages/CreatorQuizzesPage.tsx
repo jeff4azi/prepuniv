@@ -477,7 +477,13 @@ export function CreatorQuizzesPage() {
         </div>
       </PageContainer>
 
-      {toast && <Toast toast={toast} onClose={dismissToast} />}
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          onDismiss={dismissToast}
+        />
+      )}
 
       {confirmQuiz && (
         <PublishConfirmDialog

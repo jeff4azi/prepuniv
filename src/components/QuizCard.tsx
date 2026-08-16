@@ -300,7 +300,11 @@ export function QuizCard({
       <div className="px-5 pb-5 pt-1">
         {toast && (
           <div className="mb-3">
-            <Toast toast={toast} onClose={dismissToast} />
+            <Toast
+              message={toast.message}
+              variant={toast.variant}
+              onDismiss={dismissToast}
+            />
           </div>
         )}
         {ctaRow}
