@@ -40,6 +40,13 @@ export function RequireAuth({ children, role, redirectTo }: RequireAuthProps) {
     return <Navigate to={fallback} replace />;
   }
 
+  // Suspended users have no access to the app at all — hard redirect so it
+  // can't be bypassed by React Router's in-memory navigation.
+  if (currentUser.is_suspended) {
+    window.location.replace("/account-suspended");
+    return null;
+  }
+
   // Non-admin users must select a university before accessing the app
   if (
     currentUser.role !== "admin" &&

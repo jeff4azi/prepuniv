@@ -68,8 +68,9 @@ export function LoginPage() {
     });
 
     if (accountSuspended) {
-      navigate("/account-suspended", { replace: true });
-      setLoading(false);
+      // Use hard redirect instead of React Router navigate to avoid race
+      // conditions with onAuthStateChange clearing session state mid-render.
+      window.location.replace("/account-suspended");
       return;
     }
 
