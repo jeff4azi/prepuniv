@@ -353,7 +353,9 @@ export function AttemptPage() {
 
       const [q, dbQs] = await Promise.all([
         fetchQuiz(quizId),
-        versionQuestions ? Promise.resolve(versionQuestions) : fetchQuestions(quizId),
+        versionQuestions
+          ? Promise.resolve(versionQuestions)
+          : fetchQuestions(quizId),
       ]);
       if (cancelled) return;
 
@@ -566,12 +568,74 @@ export function AttemptPage() {
   // ── Loading / error fallback ────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="text-center space-y-4 w-full max-w-sm">
-          <div className="h-16 w-16 rounded-3xl bg-surface animate-pulse mx-auto" />
-          <div className="h-5 w-48 rounded-xl bg-surface animate-pulse mx-auto" />
-          <div className="h-4 w-64 rounded-lg bg-surface/60 animate-pulse mx-auto" />
-          <div className="h-64 rounded-3xl bg-surface/50 animate-pulse" />
+      <div className="min-h-dvh bg-background flex flex-col animate-pulse">
+        {/* Top bar skeleton — mirrors the real sticky header */}
+        <header className="sticky top-0 z-20 bg-background/95 border-b border-border/40">
+          <div className="max-w-2xl mx-auto px-4 h-14 flex items-center gap-3">
+            {/* X button */}
+            <div className="h-9 w-9 rounded-xl bg-surface shrink-0" />
+            {/* Progress center */}
+            <div className="flex-1 flex flex-col items-center gap-1.5">
+              <div className="h-3 w-28 rounded-full bg-surface" />
+              <div className="w-full max-w-50 h-1.5 rounded-full bg-surface" />
+            </div>
+            {/* Timer placeholder */}
+            <div className="h-7 w-20 rounded-xl bg-surface shrink-0" />
+          </div>
+        </header>
+
+        {/* Scrollable content skeleton */}
+        <main className="flex-1 overflow-y-auto pb-28 lg:pb-8">
+          <div className="max-w-2xl mx-auto px-4 py-6 lg:py-8 space-y-5">
+            {/* Question card */}
+            <div className="bg-cream rounded-3xl border border-border/40 shadow-card p-6 lg:p-8 space-y-6">
+              {/* Question number chip + type label */}
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-xl bg-surface" />
+                <div className="h-3.5 w-24 rounded-lg bg-surface" />
+              </div>
+              {/* Question text — two lines */}
+              <div className="space-y-2.5">
+                <div className="h-4 w-full rounded-lg bg-surface" />
+                <div className="h-4 w-4/5 rounded-lg bg-surface" />
+              </div>
+              {/* MCQ options */}
+              <div className="space-y-2.5">
+                {[0, 1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-14 rounded-2xl bg-surface border-2 border-border/30"
+                    style={{ opacity: 1 - i * 0.1 }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Navigator dots row */}
+            <div className="flex items-center gap-1 flex-wrap justify-center pt-1">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-8 w-8 rounded-xl bg-surface"
+                  style={{ opacity: i === 0 ? 1 : 0.4 }}
+                />
+              ))}
+            </div>
+
+            {/* Desktop prev/next buttons */}
+            <div className="hidden lg:flex items-center justify-between gap-3 mt-2">
+              <div className="h-11 w-28 rounded-2xl bg-surface" />
+              <div className="h-11 w-28 rounded-2xl bg-surface" />
+            </div>
+          </div>
+        </main>
+
+        {/* Mobile bottom nav skeleton */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20 bg-background/96 border-t border-border/40">
+          <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+            <div className="h-11 flex-1 rounded-2xl bg-surface" />
+            <div className="h-11 flex-1 rounded-2xl bg-surface" />
+          </div>
         </div>
       </div>
     );
