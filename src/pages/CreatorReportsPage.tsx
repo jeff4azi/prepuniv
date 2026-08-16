@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link, Navigate } from "react-router-dom";
 import {
   Flag,
@@ -14,8 +14,18 @@ import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { useAuth } from "../context/AuthContext";
-import type { CreatorReport, CreatorReportStatus, ReportReason } from "../types";
-import { useReports, useQuizzes, useCourses, AdminLoadingState } from "../hooks/useAdminData";
+import type {
+  CreatorReport,
+  CreatorReportStatus,
+  ReportReason,
+} from "../types";
+import {
+  useReports,
+  useQuizzes,
+  useCourses,
+  AdminLoadingState,
+} from "../hooks/useAdminData";
+import { markNavSectionViewed } from "../hooks/useNavBadges";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -61,6 +71,11 @@ export function CreatorReportsPage() {
   const { data: rawQuizzes, loading: quizzesLoading } = useQuizzes();
   const { data: rawCourses, loading: coursesLoading } = useCourses();
 
+  // Mark this section as viewed on mount so the nav badge clears
+  useEffect(() => {
+    void markNavSectionViewed(currentUser.id, "creator_reports");
+  }, [currentUser.id]);
+
   const allQuizzes = rawQuizzes || [];
   const allCourses = rawCourses || [];
   const reports = rawReports || [];
@@ -92,7 +107,10 @@ export function CreatorReportsPage() {
           id: r.id,
           reporter_id: r.reporter_id || "",
           quiz_id: r.quiz_id,
-          quiz_title: r.quiz_title || quizzesById.get(r.quiz_id)?.title || "Untitled Quiz",
+          quiz_title:
+            r.quiz_title ||
+            quizzesById.get(r.quiz_id)?.title ||
+            "Untitled Quiz",
           reason: (r.reason as ReportReason) || "other",
           other_text: r.other_text || undefined,
           details: r.details || undefined,

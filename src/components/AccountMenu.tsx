@@ -6,14 +6,13 @@
  *                  else is already visible in the sidebar)
  */
 import { useEffect, useRef } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   Settings,
   LogOut,
   LayoutDashboard,
   FileText,
   CreditCard,
-  BarChart3,
   ShieldCheck,
   ListChecks,
   BookOpen,
@@ -23,13 +22,13 @@ import {
   UserPlus,
   X,
   ChevronRight,
-  Wallet,
   Clock,
   GraduationCap,
 } from "lucide-react";
 import { useAuth, type UserRole } from "../context/AuthContext";
 import { Avatar } from "./Avatar";
 import { Badge } from "./Badge";
+import { useNavBadges, formatBadgeCount } from "../hooks/useNavBadges";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -49,6 +48,17 @@ function formatNaira(n: number) {
   return n < 0 ? "-" + base : base;
 }
 
+// ─── Badge pill (matches sidebar NavBadgePill) ────────────────────────────────
+
+function NavBadgePill({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span className="inline-flex h-5 min-w-5 px-1 items-center justify-center rounded-full text-[10px] font-heading font-bold bg-warning text-cream shrink-0">
+      {formatBadgeCount(count)}
+    </span>
+  );
+}
+
 // ─── Shared nav-link style helpers ───────────────────────────────────────────
 
 const linkCls =
@@ -62,6 +72,7 @@ function NavItem({
   icon: Icon,
   label,
   iconClass = "",
+  badge = 0,
   onClose,
   end,
 }: {
@@ -69,6 +80,7 @@ function NavItem({
   icon: React.ElementType;
   label: string;
   iconClass?: string;
+  badge?: number;
   onClose: () => void;
   end?: boolean;
 }) {
@@ -81,7 +93,8 @@ function NavItem({
     >
       <Icon className={`w-4.5 h-4.5 shrink-0 ${iconClass}`} strokeWidth={2.1} />
       <span className="flex-1">{label}</span>
-      <ChevronRight className="w-4 h-4 opacity-40" />
+      <NavBadgePill count={badge} />
+      <ChevronRight className="w-4 h-4 opacity-40 shrink-0" />
     </NavLink>
   );
 }
@@ -164,8 +177,16 @@ function DesktopMenuBody({ onClose }: { onClose: () => void }) {
 function MobileMenuBody({ onClose }: { onClose: () => void }) {
   const { currentUser, logOut } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const role = currentUser.role;
   const isApproved = currentUser.is_approved_creator;
+
+  const badges = useNavBadges({
+    userId: currentUser.id,
+    role,
+    isApprovedCreator: isApproved,
+    pathname,
+  });
 
   function handleLogOut() {
     logOut();
@@ -215,6 +236,7 @@ function MobileMenuBody({ onClose }: { onClose: () => void }) {
               to="/creator/payouts"
               icon={CreditCard}
               label="Payouts"
+              badge={badges.creatorPayouts}
               onClose={onClose}
               end
             />
@@ -222,6 +244,7 @@ function MobileMenuBody({ onClose }: { onClose: () => void }) {
               to="/creator/reports"
               icon={FileText}
               label="Reports"
+              badge={badges.creatorReports}
               onClose={onClose}
               end
             />
@@ -260,6 +283,7 @@ function MobileMenuBody({ onClose }: { onClose: () => void }) {
               to="/admin/applications"
               icon={ListChecks}
               label="Applications"
+              badge={badges.adminApplications}
               onClose={onClose}
               end
             />
@@ -267,6 +291,7 @@ function MobileMenuBody({ onClose }: { onClose: () => void }) {
               to="/admin/payouts"
               icon={CreditCard}
               label="Payouts"
+              badge={badges.adminPayouts}
               onClose={onClose}
               end
             />
@@ -274,6 +299,7 @@ function MobileMenuBody({ onClose }: { onClose: () => void }) {
               to="/admin/reports"
               icon={FileText}
               label="Reports"
+              badge={badges.adminReports}
               onClose={onClose}
               end
             />

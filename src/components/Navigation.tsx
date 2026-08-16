@@ -20,12 +20,13 @@ import {
   UserPlus,
   GraduationCap,
 } from "lucide-react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import type { UserRole } from "../context/AuthContext";
 import { Avatar } from "./Avatar";
 import { Badge } from "./Badge";
 import { AccountSheet, AccountPopover } from "./AccountMenu";
+import { useNavBadges, formatBadgeCount } from "../hooks/useNavBadges";
 
 // ─── Types & shared data ──────────────────────────────────────────────────────
 
@@ -150,12 +151,31 @@ function filterByRole(
   });
 }
 
+// ─── Badge pill component ─────────────────────────────────────────────────────
+
+function NavBadgePill({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span className="ml-auto inline-flex h-5 min-w-5 px-1 items-center justify-center rounded-full text-[10px] font-heading font-bold bg-warning text-cream shrink-0">
+      {formatBadgeCount(count)}
+    </span>
+  );
+}
+
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
 
 export function Sidebar() {
   const { currentUser, walletBalance } = useAuth();
+  const { pathname } = useLocation();
   const role = currentUser.role;
   const isApproved = currentUser.is_approved_creator;
+
+  const badges = useNavBadges({
+    userId: currentUser.id,
+    role,
+    isApprovedCreator: isApproved,
+    pathname,
+  });
 
   const userNav = USER_NAV.filter((i) => !i.roles || i.roles.includes(role));
   const creatorNav = filterByRole(CREATOR_NAV, role, isApproved);
@@ -230,6 +250,12 @@ export function Sidebar() {
             <nav className="space-y-1">
               {creatorNav.map((item) => {
                 const Icon = item.icon;
+                const badgeCount =
+                  item.to === "/creator/payouts"
+                    ? badges.creatorPayouts
+                    : item.to === "/creator/reports"
+                      ? badges.creatorReports
+                      : 0;
                 return (
                   <NavLink
                     key={item.to}
@@ -238,7 +264,8 @@ export function Sidebar() {
                     className={navLinkClass}
                   >
                     <Icon className="w-4.5 h-4.5 shrink-0" strokeWidth={2.1} />
-                    <span>{item.label}</span>
+                    <span className="flex-1">{item.label}</span>
+                    <NavBadgePill count={badgeCount} />
                   </NavLink>
                 );
               })}
@@ -257,6 +284,14 @@ export function Sidebar() {
             <nav className="space-y-1">
               {adminNav.map((item) => {
                 const Icon = item.icon;
+                const badgeCount =
+                  item.to === "/admin/applications"
+                    ? badges.adminApplications
+                    : item.to === "/admin/payouts"
+                      ? badges.adminPayouts
+                      : item.to === "/admin/reports"
+                        ? badges.adminReports
+                        : 0;
                 return (
                   <NavLink
                     key={item.to}
@@ -265,7 +300,8 @@ export function Sidebar() {
                     className={navLinkClass}
                   >
                     <Icon className="w-4.5 h-4.5 shrink-0" strokeWidth={2.1} />
-                    <span>{item.label}</span>
+                    <span className="flex-1">{item.label}</span>
+                    <NavBadgePill count={badgeCount} />
                   </NavLink>
                 );
               })}

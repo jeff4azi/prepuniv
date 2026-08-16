@@ -29,6 +29,7 @@ import { useAuth } from "../context/AuthContext";
 import { supabase, type DbPayoutRequest } from "../lib/supabase";
 import { apiFetch } from "../lib/api";
 import { formatNaira } from "./CreatorDashboardPage";
+import { markNavSectionViewed } from "../hooks/useNavBadges";
 
 const MINIMUM_PAYOUT_THRESHOLD = 200000;
 const PAYOUT_FREQUENCY_CAP_MS = 7 * 24 * 60 * 60 * 1000;
@@ -45,7 +46,15 @@ import {
   type Bank,
 } from "../lib/banks";
 
-function computeEarningsBalance(userId: string, walletTxns: { user_id: string | null; type: string; status: string; amount: number }[]): number {
+function computeEarningsBalance(
+  userId: string,
+  walletTxns: {
+    user_id: string | null;
+    type: string;
+    status: string;
+    amount: number;
+  }[],
+): number {
   const naira = walletTxns
     .filter(
       (t) =>
@@ -85,7 +94,13 @@ const STATUS_CONFIG: Record<
 };
 
 export function CreatorPayoutsPage() {
-  const { currentUser, updateBankDetails, resolvedAccountName, walletTxns, refreshProfile } = useAuth();
+  const {
+    currentUser,
+    updateBankDetails,
+    resolvedAccountName,
+    walletTxns,
+    refreshProfile,
+  } = useAuth();
 
   const earningsBalance = useMemo(
     () => computeEarningsBalance(currentUser.id, walletTxns),
@@ -101,7 +116,9 @@ export function CreatorPayoutsPage() {
     fetchBanksList().then(() => {
       if (!cancelled) setBanksReady(true);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const loadPayoutRequests = useCallback(async () => {
@@ -119,6 +136,11 @@ export function CreatorPayoutsPage() {
   useEffect(() => {
     void loadPayoutRequests();
   }, [loadPayoutRequests]);
+
+  // Mark this section as viewed so the nav badge clears
+  useEffect(() => {
+    void markNavSectionViewed(currentUser.id, "creator_payouts");
+  }, [currentUser.id]);
 
   const [bankSheetOpen, setBankSheetOpen] = useState(false);
   const [payoutSheetOpen, setPayoutSheetOpen] = useState(false);
@@ -164,7 +186,10 @@ export function CreatorPayoutsPage() {
       bank_account_name: resolvedName,
     }).then(({ error }) => {
       if (error) {
-        showToast({ message: "Failed to update bank details.", variant: "danger" });
+        showToast({
+          message: "Failed to update bank details.",
+          variant: "danger",
+        });
         return;
       }
       setBankSheetOpen(false);
@@ -265,7 +290,8 @@ export function CreatorPayoutsPage() {
                 </p>
                 <p className="mt-1.5 text-[12px] text-cream/70 leading-relaxed max-w-xs">
                   Net of paid-out amounts. Request a partial payout or withdraw
-                  everything — minimum is {formatNaira(MINIMUM_PAYOUT_THRESHOLD)}.
+                  everything — minimum is{" "}
+                  {formatNaira(MINIMUM_PAYOUT_THRESHOLD)}.
                 </p>
               </div>
               <div className="shrink-0">
@@ -750,9 +776,7 @@ function PayoutRequestSheet({
         </div>
         <div className="px-5 sm:px-6 lg:px-7 pt-3 lg:pt-5 pb-3 flex items-center justify-between">
           <p className="font-heading font-bold text-lg text-text">
-            {step === "amount"
-              ? "Request payout"
-              : "Review & confirm payout"}
+            {step === "amount" ? "Request payout" : "Review & confirm payout"}
           </p>
           {!submitting && (
             <button
