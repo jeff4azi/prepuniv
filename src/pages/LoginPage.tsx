@@ -62,10 +62,16 @@ export function LoginPage() {
     if (!validateAll()) return;
     setLoading(true);
 
-    const { error, emailNotConfirmed } = await logIn({
+    const { error, emailNotConfirmed, accountSuspended } = await logIn({
       email: email.trim(),
       password,
     });
+
+    if (accountSuspended) {
+      navigate("/account-suspended", { replace: true });
+      setLoading(false);
+      return;
+    }
 
     if (emailNotConfirmed) {
       setUnconfirmedId(email.trim());

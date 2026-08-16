@@ -89,10 +89,11 @@ interface AuthContextValue {
     password: string;
   }) => Promise<{ error: AuthError | null; needsConfirmation: boolean }>;
 
-  logIn: (args: {
-    email: string;
-    password: string;
-  }) => Promise<{ error: AuthError | null; emailNotConfirmed: boolean }>;
+  logIn: (args: { email: string; password: string }) => Promise<{
+    error: AuthError | null;
+    emailNotConfirmed: boolean;
+    accountSuspended: boolean;
+  }>;
 
   logOut: () => Promise<void>;
 
@@ -271,7 +272,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .filter(
         (t) =>
           t.user_id === uid &&
-          (t.type === "creator_earning" || t.type === "payout" || t.type === "withdrawal") &&
+          (t.type === "creator_earning" ||
+            t.type === "payout" ||
+            t.type === "withdrawal") &&
           (t.status === "completed" || t.status === "success"),
       )
       .reduce((sum, t) => sum + Number(t.amount || 0), 0);
@@ -348,6 +351,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
+    // ── Mid-session suspension handler ─────────────────────────────────────
+    // When apiFetch receives a 403 account_suspended response it fires this
+    // custom event. We sign out here and redirect to the suspended screen so
+    // the user can't keep browsing with their existing in-memory state.
+    const handleSuspended = async () => {
+      await supabase.auth.signOut();
+      // Use window.location so the redirect works even if React Router isn't
+      // mounted in this context (e.g. during an in-flight API call).
+      if (typeof window !== "undefined") {
+        window.location.replace("/account-suspended");
+      }
+    };
+    window.addEventListener("prepuniv:account_suspended", handleSuspended);
+
     /**
      * Real-time listener for wallet_transactions on the current user —
      * so top-up webhooks and quiz payments reflect instantly without
@@ -377,6 +394,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      window.removeEventListener("prepuniv:account_suspended", handleSuspended);
       if (channel) void supabase.removeChannel(channel);
     };
   }, [fetchProfile, loadWalletData]);
@@ -407,15 +425,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logIn = useCallback(
     async (args: { email: string; password: string }) => {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: args.email,
-        password: args.password,
-      });
+      const { data: signInData, error } =
+        await supabase.auth.signInWithPassword({
+          email: args.email,
+          password: args.password,
+        });
+
       const emailNotConfirmed =
         !!error &&
         (error.message.toLowerCase().includes("email not confirmed") ||
           error?.code === "email_not_confirmed");
-      return { error, emailNotConfirmed: !!emailNotConfirmed };
+
+      if (!error && signInData?.user) {
+        // Check suspension before letting the session persist in the app.
+        // If suspended: sign back out immediately and surface a distinct error.
+        const { data: profileRow } = await supabase
+          .from("profiles")
+          .select("is_suspended")
+          .eq("id", signInData.user.id)
+          .maybeSingle();
+
+        if (profileRow?.is_suspended === true) {
+          await supabase.auth.signOut();
+          return {
+            error: {
+              message: "account_suspended",
+              code: "account_suspended",
+            } as AuthError,
+            emailNotConfirmed: false,
+            accountSuspended: true,
+          };
+        }
+      }
+
+      return {
+        error,
+        emailNotConfirmed: !!emailNotConfirmed,
+        accountSuspended: false,
+      };
     },
     [],
   );

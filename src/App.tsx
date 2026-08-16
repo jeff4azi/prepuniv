@@ -36,6 +36,7 @@ import {
   AdminUniversitiesPage,
 } from "./pages";
 import { AdminQuizContentPage } from "./pages/AdminQuizContentPage";
+import { AccountSuspendedPage } from "./pages/AccountSuspendedPage";
 import { LandingPage } from "./pages/LandingPage";
 import { SignupPage } from "./pages/SignupPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -400,6 +401,7 @@ function PublicRoutes() {
       <Route path="/confirm-email" element={<ConfirmEmailPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/account-suspended" element={<AccountSuspendedPage />} />
     </Routes>
   );
 }
@@ -418,6 +420,7 @@ function RoutingSwitch() {
     "/privacy",
     "/terms/",
     "/privacy/",
+    "/account-suspended",
   ];
   const isPublic = publicPaths.includes(loc.pathname);
   const isAttempt = /^\/attempt\//.test(loc.pathname);

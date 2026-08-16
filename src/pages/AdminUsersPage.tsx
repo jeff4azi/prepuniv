@@ -34,7 +34,12 @@ import { UniversitySelect } from "../components/UniversitySelect";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import type { DbUniversity, DbWalletTxn } from "../lib/supabase";
-import { useAdminUsers, adminSuspendUser, AdminLoadingState, type AdminProfile } from "../hooks/useAdminData";
+import {
+  useAdminUsers,
+  adminSuspendUser,
+  AdminLoadingState,
+  type AdminProfile,
+} from "../hooks/useAdminData";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -83,16 +88,21 @@ function RoleBadge({ profile }: { profile: AdminProfile }) {
 
 function SuspendConfirm({
   profile,
+  publishedQuizCount,
   onConfirm,
   onCancel,
   loading,
 }: {
   profile: AdminProfile;
+  publishedQuizCount: number;
   onConfirm: () => void;
   onCancel: () => void;
   loading: boolean;
 }) {
   const isSuspended = profile.is_suspended;
+  const isCreatorWithLiveQuizzes =
+    !isSuspended && profile.is_approved_creator && publishedQuizCount > 0;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
@@ -126,6 +136,25 @@ function SuspendConfirm({
               : "They won't be able to log in or take any actions on PrepUniv until unsuspended."}
           </p>
         </div>
+
+        {/* Creator-specific quiz impact warning */}
+        {isCreatorWithLiveQuizzes && (
+          <div className="flex items-start gap-2.5 px-4 py-3 rounded-2xl bg-warning-bg border border-warning/25">
+            <AlertCircle
+              className="w-4 h-4 text-warning shrink-0 mt-0.5"
+              strokeWidth={2}
+            />
+            <p className="text-[13px] text-text leading-relaxed">
+              This will also stop new purchases of their{" "}
+              <span className="font-heading font-semibold">
+                {publishedQuizCount} published{" "}
+                {publishedQuizCount === 1 ? "quiz" : "quizzes"}
+              </span>
+              . Existing buyers keep access.
+            </p>
+          </div>
+        )}
+
         <div className="flex gap-2.5">
           <Button
             variant="ghost"
@@ -376,7 +405,24 @@ export function AdminUsersPage() {
   const [uniFilter, setUniFilter] = useState<string>("all");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [suspendId, setSuspendId] = useState<string | null>(null);
+  const [suspendCreatorPublishedCount, setSuspendCreatorPublishedCount] =
+    useState<number>(0);
   const [suspending, setSuspending] = useState(false);
+
+  // Helper: open the suspend confirm modal and pre-fetch published quiz count
+  // for creators so the warning message can show an accurate number.
+  const openSuspendConfirm = useCallback(async (profile: AdminProfile) => {
+    setSuspendCreatorPublishedCount(0);
+    setSuspendId(profile.id);
+    if (!profile.is_suspended && profile.is_approved_creator) {
+      const { count } = await supabase
+        .from("quizzes")
+        .select("*", { count: "exact", head: true })
+        .eq("creator_id", profile.id)
+        .eq("is_published", true);
+      setSuspendCreatorPublishedCount(count ?? 0);
+    }
+  }, []);
 
   if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
 
@@ -386,27 +432,39 @@ export function AdminUsersPage() {
 
   const [universities, setUniversities] = useState<DbUniversity[]>([]);
   const [txns, setTxns] = useState<DbWalletTxn[]>([]);
-  const [attemptCounts, setAttemptCounts] = useState<Record<string, number>>({});
+  const [attemptCounts, setAttemptCounts] = useState<Record<string, number>>(
+    {},
+  );
 
   useEffect(() => {
     // Fetch universities
-    supabase.from("universities").select("*").order("name").then(({ data }) => {
-      if (data) setUniversities(data);
-    });
+    supabase
+      .from("universities")
+      .select("*")
+      .order("name")
+      .then(({ data }) => {
+        if (data) setUniversities(data);
+      });
     // Fetch wallet transactions for top-up totals
-    supabase.from("wallet_transactions").select("*").then(({ data }) => {
-      if (data) setTxns(data);
-    });
+    supabase
+      .from("wallet_transactions")
+      .select("*")
+      .then(({ data }) => {
+        if (data) setTxns(data);
+      });
     // Fetch attempt counts grouped by user
-    supabase.from("quiz_attempts").select("user_id").then(({ data }) => {
-      if (data) {
-        const counts: Record<string, number> = {};
-        data.forEach((a: { user_id: string }) => {
-          counts[a.user_id] = (counts[a.user_id] || 0) + 1;
-        });
-        setAttemptCounts(counts);
-      }
-    });
+    supabase
+      .from("quiz_attempts")
+      .select("user_id")
+      .then(({ data }) => {
+        if (data) {
+          const counts: Record<string, number> = {};
+          data.forEach((a: { user_id: string }) => {
+            counts[a.user_id] = (counts[a.user_id] || 0) + 1;
+          });
+          setAttemptCounts(counts);
+        }
+      });
   }, []);
 
   const profiles = allUsers || [];
@@ -440,7 +498,8 @@ export function AdminUsersPage() {
   const counts = useMemo(
     () => ({
       all: profiles.length,
-      users: profiles.filter((p) => p.role === "user" && !p.is_suspended).length,
+      users: profiles.filter((p) => p.role === "user" && !p.is_suspended)
+        .length,
       creators: profiles.filter((p) => p.role === "creator").length,
       admins: profiles.filter((p) => p.role === "admin").length,
       suspended: profiles.filter((p) => p.is_suspended).length,
@@ -455,7 +514,9 @@ export function AdminUsersPage() {
     ? profiles.find((p) => p.id === detailId)
     : null;
 
-  const detailAttemptCount = detailTarget ? (attemptCounts[detailTarget.id] || 0) : 0;
+  const detailAttemptCount = detailTarget
+    ? attemptCounts[detailTarget.id] || 0
+    : 0;
   const detailTopUpTotal = detailTarget
     ? txns
         .filter(
@@ -615,7 +676,7 @@ export function AdminUsersPage() {
                   profile={p}
                   onDetail={() => setDetailId(p.id)}
                   onSuspend={() => {
-                    if (p.role !== "admin") setSuspendId(p.id);
+                    if (p.role !== "admin") void openSuspendConfirm(p);
                   }}
                 />
               ))
@@ -639,7 +700,7 @@ export function AdminUsersPage() {
           onClose={() => setDetailId(null)}
           onSuspendClick={() => {
             if (detailTarget.role !== "admin") {
-              setSuspendId(detailTarget.id);
+              void openSuspendConfirm(detailTarget);
               setDetailId(null);
             }
           }}
@@ -650,6 +711,7 @@ export function AdminUsersPage() {
       {suspendTarget && (
         <SuspendConfirm
           profile={suspendTarget}
+          publishedQuizCount={suspendCreatorPublishedCount}
           onConfirm={handleSuspendConfirm}
           onCancel={() => setSuspendId(null)}
           loading={suspending}

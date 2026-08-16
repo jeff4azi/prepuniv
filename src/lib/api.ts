@@ -3,7 +3,9 @@ import { supabase } from "./supabase";
 const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
 
 if (!API_BASE) {
-  console.warn("VITE_API_BASE_URL is not set — money-moving endpoints will fail.");
+  console.warn(
+    "VITE_API_BASE_URL is not set — money-moving endpoints will fail.",
+  );
 }
 
 type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -40,7 +42,10 @@ export async function apiFetch<T = unknown>(
   } = await supabase.auth.getSession();
 
   // If token is missing, expired, or expiring within 60s, refresh session
-  if (!session || (session.expires_at && Date.now() / 1000 >= session.expires_at - 60)) {
+  if (
+    !session ||
+    (session.expires_at && Date.now() / 1000 >= session.expires_at - 60)
+  ) {
     const { data: refreshData } = await supabase.auth.refreshSession();
     if (refreshData?.session) {
       session = refreshData.session;
@@ -81,7 +86,18 @@ export async function apiFetch<T = unknown>(
     const errMsg =
       (json && typeof json === "object" && "error" in json
         ? (json as { error: string }).error
-        : null) || resp.statusText || `HTTP ${resp.status}`;
+        : null) ||
+      resp.statusText ||
+      `HTTP ${resp.status}`;
+
+    // Global mid-session suspension handler.
+    // When the backend returns { error: 'account_suspended' } (403), fire a
+    // browser-level custom event. AuthContext listens for this and signs the
+    // user out, redirecting to /account-suspended.
+    if (errMsg === "account_suspended" && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("prepuniv:account_suspended"));
+    }
+
     return { data: null, error: errMsg, status: resp.status };
   }
 
