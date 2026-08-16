@@ -160,19 +160,38 @@ export function useNavBadges({
           .in("status", ["approved", "paid", "rejected", "failed"])
           .gt("processed_at", lastViewedPayouts),
 
-        // Open reports on creator's quizzes filed after last visit
+        // Reports that need the creator's attention since their last visit:
+        //   1. New open reports filed after last visit, OR
+        //   2. Reports that moved to resolved/dismissed (with resolution_notes)
+        //      after last visit — i.e. resolved_at > lastViewedReports
+        // We run two counts and sum them.
         quizIds.length > 0
-          ? supabase
-              .from("reports")
-              .select("*", { count: "exact", head: true })
-              .in("quiz_id", quizIds)
-              .eq("status", "open")
-              .gt("created_at", lastViewedReports)
-          : Promise.resolve({ count: 0, data: null, error: null }),
+          ? Promise.all([
+              // New open reports
+              supabase
+                .from("reports")
+                .select("*", { count: "exact", head: true })
+                .in("quiz_id", quizIds)
+                .eq("status", "open")
+                .gt("created_at", lastViewedReports),
+              // Resolved/dismissed with feedback since last visit
+              supabase
+                .from("reports")
+                .select("*", { count: "exact", head: true })
+                .in("quiz_id", quizIds)
+                .in("status", ["resolved", "dismissed"])
+                .not("resolution_notes", "is", null)
+                .gt("resolved_at", lastViewedReports),
+            ])
+          : Promise.resolve(null),
       ]);
 
       creatorPayouts = payoutCountRes.count ?? 0;
-      creatorReports = reportCountRes.count ?? 0;
+
+      if (reportCountRes) {
+        const [openRes, resolvedRes] = reportCountRes;
+        creatorReports = (openRes.count ?? 0) + (resolvedRes.count ?? 0);
+      }
     }
 
     setBadges({

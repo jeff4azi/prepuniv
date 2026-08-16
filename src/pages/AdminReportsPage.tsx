@@ -4,6 +4,7 @@
  * Review, resolve, dismiss, and optionally unpublish quizzes from reports.
  * Filter tabs: Open / Resolved / Dismissed / All
  * Repeat-reporter detection: reporters with 3+ reports this month get a tag.
+ * Shows creator_acknowledged ("Fixed by creator") indicator where applicable.
  */
 import { useState, useMemo } from "react";
 import { Link, Navigate } from "react-router-dom";
@@ -16,9 +17,10 @@ import {
   ShieldCheck,
   Clock,
   EyeOff,
-  Info,
   BookOpen,
   User,
+  CheckCheck,
+  MessageSquare,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -68,19 +70,33 @@ function formatDate(iso: string) {
   });
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({
+  status,
+  creatorAcknowledged = false,
+}: {
+  status: string;
+  creatorAcknowledged?: boolean;
+}) {
   if (status === "open")
     return (
       <Badge variant="warning" size="sm" dot>
         Open
       </Badge>
     );
-  if (status === "resolved")
+  if (status === "resolved") {
+    if (creatorAcknowledged)
+      return (
+        <Badge variant="success" size="sm" className="gap-1">
+          <CheckCheck className="w-3 h-3" />
+          Fixed by creator
+        </Badge>
+      );
     return (
       <Badge variant="success" size="sm" dot>
         Resolved
       </Badge>
     );
+  }
   return (
     <Badge variant="muted" size="sm" dot>
       Dismissed
@@ -274,11 +290,35 @@ function ReportReviewSheet({
 
         {/* Resolution notes (decided) */}
         {report.status !== "open" && report.resolved_at && (
-          <p className="text-xs text-muted flex items-center gap-1.5">
-            <Clock className="w-3 h-3" strokeWidth={2} />
-            {report.status === "resolved" ? "Resolved" : "Dismissed"}{" "}
-            {formatDate(report.resolved_at)}
-          </p>
+          <div className="space-y-2">
+            <p className="text-xs text-muted flex items-center gap-1.5">
+              <Clock className="w-3 h-3" strokeWidth={2} />
+              {report.status === "resolved" ? "Resolved" : "Dismissed"}{" "}
+              {formatDate(report.resolved_at)}
+            </p>
+            {report.resolution_notes && (
+              <div className="rounded-xl bg-surface/40 border border-border/40 px-4 py-3 space-y-1">
+                <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted flex items-center gap-1.5">
+                  <MessageSquare className="w-3 h-3" strokeWidth={2} />
+                  Your resolution note
+                </p>
+                <p className="text-sm text-text leading-relaxed">
+                  {report.resolution_notes}
+                </p>
+              </div>
+            )}
+            {report.creator_acknowledged && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-success-bg/60 border border-success/20">
+                <CheckCheck
+                  className="w-3.5 h-3.5 text-success shrink-0"
+                  strokeWidth={2.2}
+                />
+                <p className="text-[12px] font-heading font-semibold text-success">
+                  Creator marked this as fixed
+                </p>
+              </div>
+            )}
+          </div>
         )}
 
         {/* ── Unpublish confirm ── */}
@@ -525,7 +565,10 @@ function ReportRow({
           >
             {quizTitle}
           </Link>
-          <StatusBadge status={report.status} />
+          <StatusBadge
+            status={report.status}
+            creatorAcknowledged={report.creator_acknowledged}
+          />
         </div>
         <div className="flex items-center gap-2 flex-wrap mt-0.5">
           <ReasonBadge reason={report.reason} />

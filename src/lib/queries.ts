@@ -186,6 +186,8 @@ function toReport(row: any): CreatorReport {
     reason: row.reason as CreatorReport["reason"],
     other_text: row.other_text ?? undefined,
     details: row.details ?? undefined,
+    resolution_notes: row.resolution_notes ?? undefined,
+    creator_acknowledged: !!row.creator_acknowledged,
     status: (row.status ?? "open") as CreatorReport["status"],
     created_at: row.created_at,
     resolved_at: row.resolved_at ?? undefined,
@@ -381,8 +383,7 @@ export async function fetchAttemptAnswers(
         return questions.map((q: any) => {
           const given = (userAnswers[q.id] ?? "").trim();
           const correct = String(q.correct_answer ?? "").trim();
-          const is_correct =
-            given.toLowerCase() === correct.toLowerCase();
+          const is_correct = given.toLowerCase() === correct.toLowerCase();
           return {
             question_id: q.id,
             question_text: q.question_text ?? "",

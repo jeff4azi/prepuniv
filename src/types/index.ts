@@ -201,6 +201,8 @@ export interface CreatorReport {
   reason: ReportReason;
   other_text?: string;
   details?: string;
+  resolution_notes?: string;
+  creator_acknowledged: boolean;
   status: CreatorReportStatus;
   created_at: string;
   resolved_at?: string;

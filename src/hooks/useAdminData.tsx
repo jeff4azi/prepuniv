@@ -5,7 +5,17 @@
  * for all admin pages. Replaces mock imports with real Supabase queries.
  */
 import { useState, useEffect, useCallback } from "react";
-import { supabase, type DbProfile, type DbQuiz, type DbCourse, type DbUniversity, type DbWalletTxn, type DbPayoutRequest, type DbReport, type DbCreatorApplication } from "../lib/supabase";
+import {
+  supabase,
+  type DbProfile,
+  type DbQuiz,
+  type DbCourse,
+  type DbUniversity,
+  type DbWalletTxn,
+  type DbPayoutRequest,
+  type DbReport,
+  type DbCreatorApplication,
+} from "../lib/supabase";
 import { apiFetch } from "../lib/api";
 
 // ─── Enriched types (DB types + joined fields) ───────────────────────────────
@@ -50,7 +60,8 @@ export function useSupabaseFetch<T>(
 export function useAdminUsers() {
   return useSupabaseFetch<AdminProfile[]>(async () => {
     const res = await apiFetch<{ users: AdminProfile[] }>("/api/admin/users");
-    if (res.error || !res.data?.users) throw new Error(res.error || "Failed to fetch users");
+    if (res.error || !res.data?.users)
+      throw new Error(res.error || "Failed to fetch users");
     return res.data.users;
   });
 }
@@ -207,16 +218,25 @@ export async function adminDismissReport(reportId: string, notes?: string) {
 }
 
 export async function adminApproveApplication(applicationId: string) {
-  return apiFetch("/api/admin/creator-applications/" + applicationId + "/approve", {
-    method: "POST",
-  });
+  return apiFetch(
+    "/api/admin/creator-applications/" + applicationId + "/approve",
+    {
+      method: "POST",
+    },
+  );
 }
 
-export async function adminRejectApplication(applicationId: string, notes?: string) {
-  return apiFetch("/api/admin/creator-applications/" + applicationId + "/reject", {
-    method: "POST",
-    body: { notes },
-  });
+export async function adminRejectApplication(
+  applicationId: string,
+  notes?: string,
+) {
+  return apiFetch(
+    "/api/admin/creator-applications/" + applicationId + "/reject",
+    {
+      method: "POST",
+      body: { notes },
+    },
+  );
 }
 
 export async function adminApprovePayoutRequest(payoutId: string) {
@@ -225,28 +245,46 @@ export async function adminApprovePayoutRequest(payoutId: string) {
   });
 }
 
-export async function adminRejectPayoutRequest(payoutId: string, notes?: string) {
+export async function adminRejectPayoutRequest(
+  payoutId: string,
+  notes?: string,
+) {
   return apiFetch("/api/admin/payout-requests/" + payoutId + "/reject", {
     method: "POST",
     body: { notes },
   });
 }
 
-export async function adminUpdateCourse(courseId: string, updates: Partial<{ code: string; name: string; subject_area: string; level: number }>) {
+export async function adminUpdateCourse(
+  courseId: string,
+  updates: Partial<{
+    code: string;
+    name: string;
+    subject_area: string;
+    level: number;
+  }>,
+) {
   return apiFetch("/api/admin/courses/" + courseId, {
     method: "PUT",
     body: updates,
   });
 }
 
-export async function adminAddUniversity(uni: { name: string; abbreviation: string; state?: string }) {
+export async function adminAddUniversity(uni: {
+  name: string;
+  abbreviation: string;
+  state?: string;
+}) {
   return apiFetch<{ university: DbUniversity }>("/api/admin/universities", {
     method: "POST",
     body: uni,
   });
 }
 
-export async function adminUpdateUniversity(id: string, updates: Partial<{ name: string; abbreviation: string; state: string }>) {
+export async function adminUpdateUniversity(
+  id: string,
+  updates: Partial<{ name: string; abbreviation: string; state: string }>,
+) {
   return apiFetch("/api/admin/universities/" + id, {
     method: "PUT",
     body: updates,
@@ -261,7 +299,11 @@ export async function adminDeleteUniversity(id: string) {
 
 // ─── Loading spinner component ────────────────────────────────────────────────
 
-export function AdminLoadingState({ label = "Loading\u2026" }: { label?: string }) {
+export function AdminLoadingState({
+  label = "Loading\u2026",
+}: {
+  label?: string;
+}) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <div className="h-10 w-10 rounded-2xl bg-primary/10 flex items-center justify-center mb-3 animate-pulse">

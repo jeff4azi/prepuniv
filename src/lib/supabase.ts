@@ -153,6 +153,8 @@ export type DbReport = {
   reason: string;
   other_text: string | null;
   details: string | null;
+  resolution_notes: string | null;
+  creator_acknowledged: boolean;
   status: "open" | "resolved" | "dismissed";
   created_at: string;
   resolved_at: string | null;
