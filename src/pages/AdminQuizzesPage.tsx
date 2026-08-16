@@ -33,7 +33,13 @@ import { Avatar } from "../components/Avatar";
 import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
 import { formatNaira } from "../components/QuizCard";
-import type { DbQuiz, DbCourse, DbProfile, DbWalletTxn, DbUniversity } from "../lib/supabase";
+import type {
+  DbQuiz,
+  DbCourse,
+  DbProfile,
+  DbWalletTxn,
+  DbUniversity,
+} from "../lib/supabase";
 import {
   useQuizzes,
   useCourses,
@@ -208,7 +214,7 @@ function QuizTableRow({
       <td className="pl-5 pr-3 py-3.5 min-w-55">
         <div className="space-y-1">
           <Link
-            to={`/quiz/${quiz.id}`}
+            to={`/admin/quizzes/${quiz.id}/content`}
             className="font-heading font-semibold text-sm text-text hover:text-primary hover:underline underline-offset-2 transition-colors line-clamp-2 leading-snug block"
           >
             {quiz.title}
@@ -271,11 +277,12 @@ function QuizTableRow({
       <td className="pl-3 pr-5 py-3.5 w-36">
         <div className="flex items-center justify-end gap-1.5">
           <Link
-            to={`/quiz/${quiz.id}`}
-            className="h-8 w-8 rounded-xl flex items-center justify-center text-muted hover:text-primary hover:bg-primary/8 transition-colors"
-            aria-label="View quiz"
+            to={`/admin/quizzes/${quiz.id}/content`}
+            className="h-8 px-2.5 rounded-xl text-[11px] font-heading font-semibold border border-border/50 text-text-soft hover:text-primary hover:bg-primary/8 hover:border-primary/30 transition-colors flex items-center gap-1"
+            aria-label="View quiz content"
           >
             <Eye className="w-3.5 h-3.5" />
+            Review
           </Link>
           {canUnpublish && (
             <button
@@ -327,7 +334,7 @@ function QuizMobileCard({
             {courseName}
           </span>
           <Link
-            to={`/quiz/${quiz.id}`}
+            to={`/admin/quizzes/${quiz.id}/content`}
             className="block font-heading font-semibold text-sm text-text hover:text-primary transition-colors leading-snug"
           >
             {quiz.title}
@@ -355,11 +362,11 @@ function QuizMobileCard({
       </div>
       <div className="flex items-center gap-2">
         <Link
-          to={`/quiz/${quiz.id}`}
+          to={`/admin/quizzes/${quiz.id}/content`}
           className="h-8 px-3 rounded-xl text-xs font-heading font-semibold border border-border/60 text-text hover:border-primary/40 hover:text-primary transition-all flex items-center gap-1.5"
         >
           <Eye className="w-3.5 h-3.5" />
-          View
+          Review
         </Link>
         {status === "published" && (
           <button
@@ -422,13 +429,22 @@ export function AdminQuizzesPage() {
 
   if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
 
-  const { data: allQuizzes, loading: quizzesLoading, refetch: refetchQuizzes } = useQuizzes();
+  const {
+    data: allQuizzes,
+    loading: quizzesLoading,
+    refetch: refetchQuizzes,
+  } = useQuizzes();
   const { data: allCourses, loading: coursesLoading } = useCourses();
   const { data: allProfiles, loading: profilesLoading } = useProfiles();
   const { data: allUniversities, loading: unisLoading } = useUniversities();
   const { data: allTxns, loading: txnsLoading } = useWalletTransactions();
 
-  const loading = quizzesLoading || coursesLoading || profilesLoading || unisLoading || txnsLoading;
+  const loading =
+    quizzesLoading ||
+    coursesLoading ||
+    profilesLoading ||
+    unisLoading ||
+    txnsLoading;
   const quizzes = allQuizzes || [];
   const courses = allCourses || [];
   const profiles = allProfiles || [];

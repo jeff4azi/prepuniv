@@ -35,6 +35,7 @@ import {
   AdminQuizzesPage,
   AdminUniversitiesPage,
 } from "./pages";
+import { AdminQuizContentPage } from "./pages/AdminQuizContentPage";
 import { LandingPage } from "./pages/LandingPage";
 import { SignupPage } from "./pages/SignupPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -315,6 +316,14 @@ function AppShell() {
                 element={
                   <RequireAuth role="admin">
                     <AdminUniversitiesPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/admin/quizzes/:id/content"
+                element={
+                  <RequireAuth role="admin">
+                    <AdminQuizContentPage />
                   </RequireAuth>
                 }
               />

@@ -203,9 +203,7 @@ function ReportReviewSheet({
             <p className="font-heading font-semibold text-sm text-text leading-tight">
               {reporterName}
             </p>
-            <p className="text-xs text-muted">
-              {report.reporter_id}
-            </p>
+            <p className="text-xs text-muted">{report.reporter_id}</p>
           </div>
           {isRepeatReporter && (
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-warning-bg border border-warning/20 text-[10px] font-heading font-semibold text-warning shrink-0">
@@ -240,7 +238,8 @@ function ReportReviewSheet({
               Quiz
             </span>
             <Link
-              to={`/quiz/${report.quiz_id}`}
+              to={`/admin/quizzes/${report.quiz_id}/content`}
+              state={{ from: "reports" }}
               className="text-sm text-primary hover:underline underline-offset-2 font-heading font-medium truncate"
             >
               {quizTitle}
@@ -287,9 +286,7 @@ function ReportReviewSheet({
           <div className="rounded-2xl border border-warning/25 bg-warning-bg/40 p-4 space-y-3">
             <p className="text-sm text-text leading-relaxed">
               Unpublish &ldquo;
-              <span className="font-heading font-semibold">
-                {quizTitle}
-              </span>
+              <span className="font-heading font-semibold">{quizTitle}</span>
               &rdquo;? It will be hidden from Browse but existing owners keep
               access, per the pay-once policy.
             </p>
@@ -521,7 +518,8 @@ function ReportRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <Link
-            to={`/quiz/${report.quiz_id}`}
+            to={`/admin/quizzes/${report.quiz_id}/content`}
+            state={{ from: "reports" }}
             className="font-heading font-semibold text-sm text-text hover:text-primary hover:underline underline-offset-2 transition-colors line-clamp-1"
             onClick={(e) => e.stopPropagation()}
           >
@@ -604,7 +602,11 @@ export function AdminReportsPage() {
 
   if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
 
-  const { data: allReports, loading: reportsLoading, refetch: refetchReports } = useReports();
+  const {
+    data: allReports,
+    loading: reportsLoading,
+    refetch: refetchReports,
+  } = useReports();
   const { data: allProfiles, loading: profilesLoading } = useProfiles();
   const { data: allQuizzes, loading: quizzesLoading } = useQuizzes();
 
