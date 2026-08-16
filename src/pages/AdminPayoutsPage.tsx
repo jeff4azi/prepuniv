@@ -184,7 +184,7 @@ function PayoutReviewSheet({
     <DrawerShell open={true} onClose={onClose} ariaLabel="Payout review">
       <DrawerShell.Header
         icon={<CreditCard className="w-5 h-5" strokeWidth={2} />}
-        title={formatNaira(Number(req.amount))}
+        title={formatNaira(Math.round(Number(req.amount) * 100))}
         statusBadge={<StatusBadge status={req.status} />}
         meta={`Requested by ${creatorName} · ${formatDate(req.requested_at)}`}
         onClose={onClose}
@@ -258,7 +258,7 @@ function PayoutReviewSheet({
             Transfer amount
           </span>
           <span className="font-heading font-bold text-xl text-primary">
-            {formatNaira(Number(req.amount))}
+            {formatNaira(Math.round(Number(req.amount) * 100))}
           </span>
         </div>
 
@@ -321,7 +321,7 @@ function PayoutReviewSheet({
                 }`}
               >
                 {transferOutcome === "paid"
-                  ? `${formatNaira(Number(req.amount))} sent successfully`
+                  ? `${formatNaira(Math.round(Number(req.amount) * 100))} sent successfully`
                   : "Transfer failed"}
               </p>
               {transferOutcome === "failed" && (
@@ -340,7 +340,7 @@ function PayoutReviewSheet({
             <p className="text-sm text-text leading-relaxed">
               Send{" "}
               <span className="font-heading font-bold text-primary">
-                {formatNaira(Number(req.amount))}
+                {formatNaira(Math.round(Number(req.amount) * 100))}
               </span>{" "}
               to{" "}
               <span className="font-heading font-semibold">{creatorName}</span>
@@ -556,7 +556,7 @@ function PayoutRow({
         </p>
       </div>
       <p className="font-heading font-bold text-sm text-text shrink-0 hidden sm:block">
-        {formatNaira(Number(req.amount))}
+        {formatNaira(Math.round(Number(req.amount) * 100))}
       </p>
       <button
         type="button"
@@ -602,7 +602,11 @@ export function AdminPayoutsPage() {
 
   if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
 
-  const { data: allPayouts, loading: payoutsLoading, refetch: refetchPayouts } = usePayoutRequests();
+  const {
+    data: allPayouts,
+    loading: payoutsLoading,
+    refetch: refetchPayouts,
+  } = usePayoutRequests();
   const { data: allProfiles, loading: profilesLoading } = useProfiles();
 
   const loading = payoutsLoading || profilesLoading;
@@ -646,7 +650,7 @@ export function AdminPayoutsPage() {
     setReviewingId(null);
     if (outcome === "paid") {
       showToast({
-        message: `${formatNaira(Number(req?.amount ?? 0))} sent to ${name}.`,
+        message: `${formatNaira(Math.round(Number(req?.amount ?? 0) * 100))} sent to ${name}.`,
         variant: "success",
       });
     } else if (outcome === "failed") {
