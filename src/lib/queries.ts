@@ -217,6 +217,17 @@ export async function fetchPublishedQuizzes(
   return (data ?? []).map(toQuiz);
 }
 
+/**
+ * Fetch quizzes by explicit IDs — used by Library to load purchased quizzes
+ * regardless of is_published state (creator-unpublished quizzes remain visible
+ * to buyers who already paid; admin-unpublished are blocked by RLS).
+ */
+export async function fetchQuizzesByIds(ids: string[]): Promise<Quiz[]> {
+  if (ids.length === 0) return [];
+  const { data } = await supabase.from("quizzes").select("*").in("id", ids);
+  return (data ?? []).map(toQuiz);
+}
+
 /** All quizzes (admin view) */
 export async function fetchAllQuizzes(): Promise<Quiz[]> {
   const { data } = await supabase

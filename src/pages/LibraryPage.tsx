@@ -24,7 +24,7 @@ import { FilterSelect } from "../components/CustomSelect";
 import { useAuth } from "../context/AuthContext";
 import type { Quiz, Course, Profile, QuizAttempt } from "../types";
 import {
-  fetchPublishedQuizzes,
+  fetchQuizzesByIds,
   fetchCourses,
   fetchAllProfiles,
   fetchUserAttempts,
@@ -224,22 +224,12 @@ function LibraryCard({ quiz, course, creator, stats }: LibraryCardProps) {
           className="block"
         >
           {attempted ? (
-            <Button
-              fullWidth
-              variant="primary"
-              size="md"
-              className="h-11"
-            >
+            <Button fullWidth variant="primary" size="md" className="h-11">
               <RotateCcw className="w-4 h-4" />
               Retake
             </Button>
           ) : (
-            <Button
-              fullWidth
-              variant="primary"
-              size="md"
-              className="h-11"
-            >
+            <Button fullWidth variant="primary" size="md" className="h-11">
               <PlayCircle className="w-4 h-4" />
               Start Attempt
             </Button>
@@ -406,7 +396,7 @@ export function LibraryPage() {
     let cancelled = false;
     setLoading(true);
     Promise.all([
-      fetchPublishedQuizzes(currentUser.university_id || undefined),
+      fetchQuizzesByIds(purchasedQuizIds),
       fetchCourses(currentUser.university_id || undefined),
       fetchAllProfiles(),
       fetchUserAttempts(currentUser.id),
@@ -421,7 +411,7 @@ export function LibraryPage() {
     return () => {
       cancelled = true;
     };
-  }, [currentUser.id, currentUser.university_id]);
+  }, [currentUser.id, currentUser.university_id, purchasedQuizIds]);
 
   // Debounce search
   useEffect(() => {

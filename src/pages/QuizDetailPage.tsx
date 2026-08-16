@@ -206,6 +206,8 @@ export function QuizDetailPage() {
   }
 
   if (quiz === null) {
+    // Check if they purchased it — if so, it's likely admin-blocked
+    const wasPurchased = hasPurchasedQuiz(id ?? "");
     return (
       <PageContainer>
         <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
@@ -213,10 +215,12 @@ export function QuizDetailPage() {
             <FileQuestion className="w-8 h-8 text-muted" strokeWidth={1.8} />
           </div>
           <h2 className="font-heading font-bold text-xl text-text">
-            Quiz not found
+            {wasPurchased ? "Quiz temporarily unavailable" : "Quiz not found"}
           </h2>
-          <p className="text-sm text-text-soft">
-            This quiz doesn't exist or has been removed.
+          <p className="text-sm text-text-soft max-w-sm leading-relaxed">
+            {wasPurchased
+              ? "This quiz has been taken offline by the PrepUniv team. Your purchase is safe — it will be accessible again if the quiz is reinstated."
+              : "This quiz doesn't exist or has been removed."}
           </p>
           <Button variant="outline" onClick={goBack}>
             <ArrowLeft className="w-4 h-4" />
