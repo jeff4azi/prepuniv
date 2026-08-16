@@ -668,83 +668,90 @@ export function QuizDetailPage() {
             </div>
           </Card>
 
-          {/* ── Report link ── */}
+          {/* ── Report link (Only available to users who have purchased/unlocked the quiz, the creator, or admins) ── */}
           <div className="flex justify-center pb-2">
-            <button
-              type="button"
-              onClick={() => setShowReport(true)}
-              className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-text-soft transition-colors font-heading"
-            >
-              <Flag className="w-3.5 h-3.5" />
-              Report this quiz
-            </button>
+            {isPurchased || currentUser.id === quiz.creator_id || currentUser.role === "admin" ? (
+              <button
+                type="button"
+                onClick={() => setShowReport(true)}
+                className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-text-soft transition-colors font-heading"
+              >
+                <Flag className="w-3.5 h-3.5" />
+                Report this quiz
+              </button>
+            ) : (
+              <p className="text-[11px] text-muted/80 font-heading text-center">
+                Unlock this quiz to submit feedback or report issues.
+              </p>
+            )}
           </div>
         </div>
       </PageContainer>
 
-      {/* ── Sticky CTA bar (mobile) ── */}
-      {/* z-50 puts it above BottomNav (z-40). bottom-14 clears the nav bar height. */}
-      <div className="lg:hidden fixed bottom-14 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50">
-        <div className="px-4 pt-3 pb-3 max-w-[720px] mx-auto">
-          {isPurchased ? (
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              isLoading={isStarting}
-              onClick={handleStartAttempt}
-            >
-              {!isStarting && <PlayCircle className="w-5 h-5" />}
-              Start Attempt{" "}
-              <span className="font-normal opacity-75 text-sm">
-                ({timingChoice === "timed" ? "Timed" : "Untimed"})
-              </span>
-            </Button>
-          ) : showConfirm ? (
-            <div className="space-y-2.5">
-              <p className="text-xs text-text-soft text-center leading-relaxed">
-                Confirm payment of{" "}
-                <span className="font-heading font-bold text-primary">
-                  {formatNaira(quiz.price)}
-                </span>{" "}
-                for "{quiz.title}"?
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="primary"
-                  size="lg"
-                  className="flex-1"
-                  isLoading={isPaying}
-                  onClick={handlePayAndStart}
-                >
-                  {!isPaying && <CheckCircle2 className="w-5 h-5" />}
-                  Confirm & Pay
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="lg"
-                  onClick={() => setShowConfirm(false)}
-                  disabled={isPaying}
-                  className="!w-auto px-4"
-                >
-                  Cancel
-                </Button>
+      {/* ── Sticky CTA bar (mobile) — hidden when ReportModal is open ── */}
+      {!showReport && (
+        <div className="lg:hidden fixed bottom-14 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50">
+          <div className="px-4 pt-3 pb-3 max-w-[720px] mx-auto">
+            {isPurchased ? (
+              <Button
+                variant="primary"
+                size="lg"
+                fullWidth
+                isLoading={isStarting}
+                onClick={handleStartAttempt}
+              >
+                {!isStarting && <PlayCircle className="w-5 h-5" />}
+                Start Attempt{" "}
+                <span className="font-normal opacity-75 text-sm">
+                  ({timingChoice === "timed" ? "Timed" : "Untimed"})
+                </span>
+              </Button>
+            ) : showConfirm ? (
+              <div className="space-y-2.5">
+                <p className="text-xs text-text-soft text-center leading-relaxed">
+                  Confirm payment of{" "}
+                  <span className="font-heading font-bold text-primary">
+                    {formatNaira(quiz.price)}
+                  </span>{" "}
+                  for "{quiz.title}"?
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    className="flex-1"
+                    isLoading={isPaying}
+                    onClick={handlePayAndStart}
+                  >
+                    {!isPaying && <CheckCircle2 className="w-5 h-5" />}
+                    Confirm & Pay
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="lg"
+                    onClick={() => setShowConfirm(false)}
+                    disabled={isPaying}
+                    className="!w-auto px-4"
+                  >
+                    Cancel
+                  </Button>
+                </div>
               </div>
-            </div>
-          ) : (
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              onClick={handlePayAndStart}
-              disabled={isPaying}
-            >
-              <Lock className="w-5 h-5" />
-              Pay &amp; Start — {formatNaira(quiz.price)}
-            </Button>
-          )}
+            ) : (
+              <Button
+                variant="primary"
+                size="lg"
+                fullWidth
+                onClick={handlePayAndStart}
+                disabled={isPaying}
+              >
+                <Lock className="w-5 h-5" />
+                Pay &amp; Start — {formatNaira(quiz.price)}
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Desktop inline CTA (below mode selector, above about) ── */}
       <div className="hidden lg:block fixed bottom-6 right-6 z-30">

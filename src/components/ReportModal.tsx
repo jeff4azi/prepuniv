@@ -4,10 +4,10 @@
  * Desktop: centred modal (flex items-center)
  * Mobile:  bottom sheet (items-end → slides up from bottom)
  *
- * On submit: mock-inserts into reports store, closes itself, fires onSuccess
- * so the parent can show a toast.
+ * Uses React Portal with z-[100] to sit above sticky mobile bars and navigation.
  */
 import { useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import { X, Flag } from "lucide-react";
 import { Button } from "./Button";
 import { FieldWrapper } from "./Form";
@@ -124,6 +124,7 @@ export function ReportModal({
   const [otherText, setOtherText] = useState("");
   const [details, setDetails] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ reason?: string; otherText?: string }>(
     {},
   );
@@ -141,11 +142,12 @@ export function ReportModal({
     e.preventDefault();
     if (!validate()) return;
     setSubmitting(true);
+    setSubmitError(null);
 
-    // Simulate async network delay
     const { error } = await supabase.from("reports").insert({
       reporter_id: currentUser.id,
       quiz_id: quizId,
+      quiz_title: quizTitle,
       reason: reason as ReportReason,
       other_text: reason === "other" ? otherText.trim() || null : null,
       details: details.trim() || null,
@@ -153,29 +155,28 @@ export function ReportModal({
     });
 
     setSubmitting(false);
-    if (!error) {
-      onSuccess();
-      onClose();
+
+    if (error) {
+      console.error("Report submit error:", error.message);
+      setSubmitError("Failed to submit report. Please try again.");
     } else {
-      console.error("Report submit failed:", error.message);
-      // still close modal — user shouldn't see a hard error for a report
       onSuccess();
       onClose();
     }
   }
 
-  return (
-    /* Overlay */
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  return createPortal(
+    /* Overlay with z-[100] to sit above all sticky footers and bottom nav */
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-text/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-text/50 backdrop-blur-sm transition-opacity"
         onClick={onClose}
         aria-hidden
       />
 
       {/* Panel — bottom sheet on mobile, modal on sm+ */}
-      <div className="relative w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl bg-cream shadow-elevated flex flex-col max-h-[92vh] overflow-hidden">
+      <div className="relative w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl bg-cream shadow-elevated flex flex-col max-h-[90vh] overflow-hidden z-[101]">
         {/* Drag handle (mobile only) */}
         <div className="sm:hidden pt-2.5 pb-1 flex justify-center shrink-0">
           <div className="h-1 w-10 rounded-full bg-border" />
@@ -213,6 +214,12 @@ export function ReportModal({
           className="overflow-y-auto no-scrollbar flex-1"
         >
           <div className="px-5 py-4 space-y-4">
+            {submitError && (
+              <div className="p-3 rounded-xl bg-danger-bg/50 border border-danger/30 text-xs text-danger font-medium">
+                {submitError}
+              </div>
+            )}
+
             {/* Reason */}
             <ReasonSelect
               value={reason}
@@ -258,7 +265,7 @@ export function ReportModal({
           </div>
 
           {/* Sticky footer */}
-          <div className="px-5 pb-5 sm:pb-5 pt-2 border-t border-border/40 flex gap-2.5 shrink-0">
+          <div className="px-5 pb-5 sm:pb-5 pt-3 border-t border-border/40 flex gap-2.5 shrink-0 bg-cream">
             <Button
               type="button"
               variant="outline"
@@ -282,6 +289,7 @@ export function ReportModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
