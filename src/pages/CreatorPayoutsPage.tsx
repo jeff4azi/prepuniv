@@ -38,7 +38,6 @@ type PayoutRequestStatus = DbPayoutRequest["status"];
 type PayoutRequest = DbPayoutRequest;
 
 import {
-  NIGERIAN_BANKS,
   getBankName,
   maskAccountNumber,
   fetchBanksList,
@@ -401,7 +400,7 @@ function BankAccountCard({
   bankCode,
   accountNumber,
   resolvedName,
-  banksReady: _banksReady,
+  banksReady,
   onAdd,
   onEdit,
 }: {
@@ -447,9 +446,15 @@ function BankAccountCard({
     );
   }
 
+  // banksReady is used as a render dependency — once the list loads
+  // getBankName will return the real name instead of the raw code.
   const bankName = getBankName(bankCode);
   const masked = maskAccountNumber(accountNumber);
-  const bankInitial = bankName.charAt(0).toUpperCase();
+  // Use first letter of bank name, but fall back to "#" while loading
+  const bankInitial =
+    banksReady && bankName !== bankCode
+      ? bankName.charAt(0).toUpperCase()
+      : (bankCode?.charAt(0)?.toUpperCase() ?? "#");
 
   return (
     <Card padded>
@@ -474,9 +479,13 @@ function BankAccountCard({
           {bankInitial}
         </div>
         <div className="min-w-0">
-          <p className="font-heading font-semibold text-[15px] text-text leading-tight">
-            {bankName}
-          </p>
+          {banksReady ? (
+            <p className="font-heading font-semibold text-[15px] text-text leading-tight">
+              {bankName}
+            </p>
+          ) : (
+            <div className="h-4 w-32 rounded-lg bg-surface animate-pulse mb-1" />
+          )}
           <p className="text-[13px] text-text-soft mt-0.5 font-mono tracking-wider">
             {masked}
           </p>
@@ -1121,7 +1130,7 @@ function BankAccountSetupSheet({
     return () => document.removeEventListener("mousedown", h);
   }, [bankDropOpen]);
 
-  const [banksList, setBanksList] = useState<Bank[]>(NIGERIAN_BANKS);
+  const [banksList, setBanksList] = useState<Bank[]>([]);
 
   useEffect(() => {
     let cancelled = false;
