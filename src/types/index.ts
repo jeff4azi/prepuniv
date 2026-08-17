@@ -174,10 +174,11 @@ export interface CreatorApplication {
 
 export type PayoutRequestStatus =
   | "pending"
-  | "approved"
-  | "rejected"
+  | "processing"
   | "paid"
-  | "failed";
+  | "failed"
+  | "rejected"
+  | "reversed";
 
 export interface PayoutRequest {
   id: string;
@@ -189,6 +190,9 @@ export interface PayoutRequest {
   notes?: string;
   bank_account_number: string;
   bank_code: string;
+  flutterwave_reference?: string | null;
+  flutterwave_transfer_id?: string | null;
+  failure_reason?: string | null;
 }
 
 export type CreatorReportStatus = "open" | "resolved" | "dismissed";

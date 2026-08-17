@@ -2,10 +2,10 @@
  * AdminPayoutsPage — /admin/payouts
  *
  * Review, approve/reject, and monitor payout requests.
- * Filter tabs: Pending / Approved / Rejected / Paid / Failed / All
- * Uses backend API for approve/reject operations.
+ * Reflects the real async lifecycle: pending → processing → paid (or → failed, or paid → reversed).
+ * Uses 5s polling while any row is in 'processing' for live status updates.
  */
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Link, Navigate } from "react-router-dom";
 import {
   CreditCard,
@@ -21,6 +21,7 @@ import {
   BadgeCheck,
   ExternalLink,
   Info,
+  AlertTriangle,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -45,18 +46,20 @@ import {
 
 type FilterTab =
   | "pending"
-  | "approved"
+  | "processing"
   | "rejected"
   | "paid"
   | "failed"
+  | "reversed"
   | "all";
 
 const TABS: { value: FilterTab; label: string }[] = [
   { value: "pending", label: "Pending" },
-  { value: "approved", label: "Approved" },
+  { value: "processing", label: "Processing" },
   { value: "rejected", label: "Rejected" },
   { value: "paid", label: "Paid" },
   { value: "failed", label: "Failed" },
+  { value: "reversed", label: "Reversed" },
   { value: "all", label: "All" },
 ];
 
@@ -88,10 +91,11 @@ function StatusBadge({ status }: { status: string }) {
           Pending
         </Badge>
       );
-    case "approved":
+    case "processing":
       return (
         <Badge variant="primary" size="sm" dot>
-          Approved
+          <Loader2 className="w-3 h-3 animate-spin inline-block -mt-0.5 mr-1" />
+          Processing
         </Badge>
       );
     case "paid":
@@ -112,6 +116,13 @@ function StatusBadge({ status }: { status: string }) {
           Failed
         </Badge>
       );
+    case "reversed":
+      return (
+        <Badge variant="warning" size="sm" dot className="!bg-amber-100 !text-amber-800 !border-amber-200">
+          <AlertTriangle className="w-3 h-3 inline-block -mt-0.5 mr-1" />
+          Reversed
+        </Badge>
+      );
     default:
       return null;
   }
@@ -130,7 +141,11 @@ function PayoutReviewSheet({
   req: DbPayoutRequest;
   creator: DbProfile | undefined;
   onClose: () => void;
-  onUpdated: (id: string, outcome: "paid" | "failed" | "rejected") => void;
+  onUpdated: (
+    id: string,
+    outcome: "processing" | "paid" | "failed" | "rejected" | "reversed",
+    message?: string,
+  ) => void;
 }) {
   const bankName = getBankName(req.bank_code);
   const last4 = req.bank_account_number.slice(-4);
@@ -138,17 +153,17 @@ function PayoutReviewSheet({
 
   const isPending = req.status === "pending";
   const isFailed = req.status === "failed";
-  const canAct = isPending || isFailed;
+  const isReversed = req.status === "reversed";
+  const canAct = isPending || isFailed || isReversed;
 
-  // Approve/process flow
   const [confirmApprove, setConfirmApprove] = useState(false);
   const [processingState, setProcessingState] =
     useState<ProcessingState>("idle");
-  const [transferOutcome, setTransferOutcome] = useState<
-    "paid" | "failed" | null
+  const [lastInitiateResult, setLastInitiateResult] = useState<
+    "processing" | "failed" | null
   >(null);
+  const [initiateMessage, setInitiateMessage] = useState<string>("");
 
-  // Reject flow
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectNotes, setRejectNotes] = useState("");
   const [rejectNotesError, setRejectNotesError] = useState("");
@@ -157,15 +172,35 @@ function PayoutReviewSheet({
 
   async function handleProcessTransfer() {
     setProcessingState("processing");
-    const { error } = await adminApprovePayoutRequest(req.id);
-    if (error) {
-      setTransferOutcome("failed");
+    setLastInitiateResult(null);
+    setInitiateMessage("");
+    const result = await adminApprovePayoutRequest(req.id);
+    const respData = (result?.data as Record<string, unknown>) || {};
+    const returnedStatus = (respData.status as string) || null;
+
+    if (result.error) {
+      if (result.error.includes("already been processed") || result.error.includes("409")) {
+        setInitiateMessage("This payout was already processed — try refreshing.");
+      } else {
+        setInitiateMessage(result.error);
+      }
+      setLastInitiateResult("failed");
       setProcessingState("done");
-      onUpdated(req.id, "failed");
+      onUpdated(req.id, "failed", result.error);
+    } else if (returnedStatus === "processing") {
+      setLastInitiateResult("processing");
+      setProcessingState("done");
+      onUpdated(req.id, "processing");
+    } else if (returnedStatus === "failed") {
+      const msg = (respData.message as string) || "Transfer initiation failed";
+      setInitiateMessage(msg);
+      setLastInitiateResult("failed");
+      setProcessingState("done");
+      onUpdated(req.id, "failed", msg);
     } else {
-      setTransferOutcome("paid");
+      setLastInitiateResult("processing");
       setProcessingState("done");
-      onUpdated(req.id, "paid");
+      onUpdated(req.id, "processing");
     }
   }
 
@@ -191,7 +226,6 @@ function PayoutReviewSheet({
       />
 
       <DrawerShell.Body>
-        {/* Creator */}
         <div className="flex items-center gap-3 p-4 rounded-2xl bg-surface/40 border border-border/40">
           <Avatar name={creatorName} size="sm" />
           <div className="flex-1 min-w-0">
@@ -210,7 +244,6 @@ function PayoutReviewSheet({
           )}
         </div>
 
-        {/* Bank details */}
         <div className="rounded-2xl border border-border/50 bg-surface/20 divide-y divide-border/30 overflow-hidden">
           <div className="flex items-center gap-3 px-4 py-3">
             <Building2
@@ -247,12 +280,14 @@ function PayoutReviewSheet({
               Holder
             </span>
             <span className="text-sm font-heading font-semibold text-text uppercase">
-              {creatorName.split(" ").reverse().join(" ").toUpperCase()}
+              {creator?.bank_account_name ||
+                (creator
+                  ? creatorName.split(" ").reverse().join(" ").toUpperCase()
+                  : "—")}
             </span>
           </div>
         </div>
 
-        {/* Amount highlight */}
         <div className="flex items-center justify-between px-4 py-3.5 rounded-2xl bg-primary/6 border border-primary/15">
           <span className="text-sm text-text-soft font-heading">
             Transfer amount
@@ -262,7 +297,6 @@ function PayoutReviewSheet({
           </span>
         </div>
 
-        {/* Timestamps */}
         {req.processed_at && (
           <div className="flex items-center gap-2 text-xs text-muted">
             <Clock className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
@@ -271,70 +305,130 @@ function PayoutReviewSheet({
                 ? "Paid"
                 : req.status === "failed"
                   ? "Failed"
-                  : "Processed"}{" "}
+                  : req.status === "reversed"
+                    ? "Reversed"
+                    : req.status === "processing"
+                      ? "Initiated"
+                      : "Processed"}{" "}
               {formatDateTime(req.processed_at)}
             </span>
           </div>
         )}
 
-        {/* Notes / failure reason */}
-        {req.notes && (
+        {(req.failure_reason || req.notes) && (
           <div
             className={`flex items-start gap-2.5 px-4 py-3 rounded-2xl border ${
-              req.status === "paid" || req.status === "approved"
-                ? "bg-success-bg border-success/20"
-                : "bg-danger-bg/30 border-danger/20"
+              req.status === "paid" || req.status === "rejected"
+                ? req.status === "paid"
+                  ? "bg-success-bg border-success/20"
+                  : "bg-danger-bg/30 border-danger/20"
+                : req.status === "reversed"
+                  ? "bg-amber-50 border-amber-200"
+                  : "bg-danger-bg/30 border-danger/20"
             }`}
           >
             <Info
-              className={`w-4 h-4 shrink-0 mt-0.5 ${req.status === "paid" ? "text-success" : "text-danger"}`}
+              className={`w-4 h-4 shrink-0 mt-0.5 ${
+                req.status === "paid"
+                  ? "text-success"
+                  : req.status === "reversed"
+                    ? "text-amber-600"
+                    : "text-danger"
+              }`}
               strokeWidth={2}
             />
-            <p className="text-sm text-text leading-relaxed">{req.notes}</p>
-          </div>
-        )}
-
-        {/* ── Transfer outcome (after processing) ── */}
-        {processingState === "done" && transferOutcome && (
-          <div
-            className={`flex items-start gap-2.5 px-4 py-3 rounded-2xl border ${
-              transferOutcome === "paid"
-                ? "bg-success-bg border-success/20"
-                : "bg-danger-bg/30 border-danger/20"
-            }`}
-          >
-            {transferOutcome === "paid" ? (
-              <CheckCircle2
-                className="w-4 h-4 text-success shrink-0 mt-0.5"
-                strokeWidth={2}
-              />
-            ) : (
-              <AlertCircle
-                className="w-4 h-4 text-danger shrink-0 mt-0.5"
-                strokeWidth={2}
-              />
-            )}
-            <div>
-              <p
-                className={`text-sm font-heading font-semibold leading-tight ${
-                  transferOutcome === "paid" ? "text-success" : "text-danger"
-                }`}
-              >
-                {transferOutcome === "paid"
-                  ? `${formatNaira(Math.round(Number(req.amount) * 100))} sent successfully`
-                  : "Transfer failed"}
-              </p>
-              {transferOutcome === "failed" && (
-                <p className="text-xs text-danger/80 mt-0.5">
-                  Receiving bank returned an error. No funds were deducted. The
-                  creator can retry.
+            <div className="space-y-1 flex-1 min-w-0">
+              {req.failure_reason && (
+                <p
+                  className={`text-sm font-heading font-semibold leading-tight ${
+                    req.status === "reversed" ? "text-amber-800" : "text-danger"
+                  }`}
+                >
+                  {req.status === "reversed"
+                    ? "This payout was later reversed"
+                    : "Transfer failed"}
                 </p>
+              )}
+              {req.failure_reason && (
+                <p className="text-sm text-text leading-relaxed">
+                  {req.failure_reason}
+                </p>
+              )}
+              {req.notes && (
+                <p className="text-sm text-text leading-relaxed">{req.notes}</p>
               )}
             </div>
           </div>
         )}
 
-        {/* ── Confirm approve ── */}
+        {req.status === "processing" && !lastInitiateResult && (
+          <div className="flex items-start gap-2.5 px-4 py-3 rounded-2xl border border-primary/20 bg-primary/5">
+            <Loader2
+              className="w-4 h-4 text-primary shrink-0 mt-0.5 animate-spin"
+              strokeWidth={2}
+            />
+            <div>
+              <p className="text-sm font-heading font-semibold leading-tight text-primary">
+                Transfer initiated — awaiting confirmation
+              </p>
+              <p className="text-xs text-text-soft mt-0.5 leading-relaxed">
+                The transfer is being processed by the bank. This page will
+                auto-update once it completes.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {processingState === "processing" && (
+          <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-primary/6 border border-primary/15">
+            <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+            <span className="text-sm font-heading font-medium text-primary">
+              Processing transfer…
+            </span>
+          </div>
+        )}
+
+        {processingState === "done" && lastInitiateResult === "processing" && (
+          <div className="flex items-start gap-2.5 px-4 py-3 rounded-2xl border border-primary/20 bg-primary/5">
+            <Clock
+              className="w-4 h-4 text-primary shrink-0 mt-0.5"
+              strokeWidth={2}
+            />
+            <div>
+              <p className="text-sm font-heading font-semibold leading-tight text-primary">
+                Transfer initiated — awaiting confirmation
+              </p>
+              <p className="text-xs text-text-soft mt-0.5 leading-relaxed">
+                {formatNaira(Math.round(Number(req.amount) * 100))} has been
+                queued for sending. Status will update live once the bank
+                confirms it.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {processingState === "done" && lastInitiateResult === "failed" && (
+          <div className="flex items-start gap-2.5 px-4 py-3 rounded-2xl border border-danger/25 bg-danger-bg/30">
+            <AlertCircle
+              className="w-4 h-4 text-danger shrink-0 mt-0.5"
+              strokeWidth={2}
+            />
+            <div>
+              <p className="text-sm font-heading font-semibold leading-tight text-danger">
+                Transfer could not be initiated
+              </p>
+              {initiateMessage && (
+                <p className="text-xs text-danger/80 mt-0.5 leading-relaxed">
+                  {initiateMessage}
+                </p>
+              )}
+              <p className="text-xs text-text-soft mt-1 leading-relaxed">
+                No funds were deducted. You can retry.
+              </p>
+            </div>
+          </div>
+        )}
+
         {canAct && confirmApprove && processingState === "idle" && (
           <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-3">
             <p className="text-sm text-text leading-relaxed">
@@ -345,8 +439,9 @@ function PayoutReviewSheet({
               to{" "}
               <span className="font-heading font-semibold">{creatorName}</span>
               &apos;s {bankName} account ending{" "}
-              <span className="font-mono font-semibold">{last4}</span>? This
-              cannot be undone.
+              <span className="font-mono font-semibold">{last4}</span>? The
+              transfer will be queued immediately — final outcome will arrive
+              from the bank asynchronously.
             </p>
             <div className="flex items-center gap-2.5">
               <Button
@@ -362,23 +457,14 @@ function PayoutReviewSheet({
                 onClick={handleProcessTransfer}
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                Confirm & send
+                {isFailed || isReversed
+                  ? "Confirm retry &amp; send"
+                  : "Confirm &amp; send"}
               </Button>
             </div>
           </div>
         )}
 
-        {/* ── Processing spinner ── */}
-        {processingState === "processing" && (
-          <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-primary/6 border border-primary/15">
-            <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
-            <span className="text-sm font-heading font-medium text-primary">
-              Processing transfer…
-            </span>
-          </div>
-        )}
-
-        {/* ── Reject form ── */}
         {canAct && showRejectForm && !confirmReject && (
           <div className="rounded-2xl border border-border/50 bg-surface/30 p-4 space-y-3">
             <p className="text-sm font-heading font-semibold text-text">
@@ -428,7 +514,6 @@ function PayoutReviewSheet({
           </div>
         )}
 
-        {/* ── Confirm reject ── */}
         {canAct && showRejectForm && confirmReject && (
           <div className="rounded-2xl border border-danger/25 bg-danger-bg/30 p-4 space-y-3">
             <p className="text-sm text-text leading-relaxed">
@@ -460,7 +545,6 @@ function PayoutReviewSheet({
         )}
       </DrawerShell.Body>
 
-      {/* Footer */}
       {canAct &&
         processingState === "idle" &&
         !showRejectForm &&
@@ -487,7 +571,7 @@ function PayoutReviewSheet({
                   Approve &amp; Process
                 </Button>
               )}
-              {isFailed && (
+              {(isFailed || isReversed) && (
                 <Button
                   variant="primary"
                   size="md"
@@ -501,7 +585,7 @@ function PayoutReviewSheet({
             </div>
           </DrawerShell.Footer>
         )}
-      {(!canAct || processingState === "done") && (
+      {(!canAct || processingState !== "idle") && (
         <DrawerShell.Footer>
           <Button variant="outline" size="md" fullWidth onClick={onClose}>
             Close
@@ -574,10 +658,11 @@ function PayoutRow({
 function EmptyState({ tab }: { tab: FilterTab }) {
   const msgs: Record<FilterTab, string> = {
     pending: "No pending payout requests — all clear.",
-    approved: "No approved requests yet.",
+    processing: "No in-flight transfers right now.",
     rejected: "No rejected requests.",
     paid: "No completed payouts yet.",
     failed: "No failed transfers — good sign.",
+    reversed: "No reversed payouts — good sign.",
     all: "No payout requests on record yet.",
   };
   return (
@@ -602,8 +687,6 @@ export function AdminPayoutsPage() {
 
   if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
 
-  // Ensure the bank list is loaded so getBankName resolves codes to names.
-  // banksReady triggers a re-render once the list lands, replacing raw codes.
   const [banksReady, setBanksReady] = useState(false);
   useEffect(() => {
     let cancelled = false;
@@ -613,19 +696,47 @@ export function AdminPayoutsPage() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const {
     data: allPayouts,
     loading: payoutsLoading,
     refetch: refetchPayouts,
+    setData: setPayoutsData,
   } = usePayoutRequests();
   const { data: allProfiles, loading: profilesLoading } = useProfiles();
 
   const loading = payoutsLoading || profilesLoading;
   const payouts = allPayouts || [];
   const profiles = allProfiles || [];
+
+  const anyProcessing = useMemo(
+    () => payouts.some((r) => r.status === "processing"),
+    [payouts],
+  );
+
+  // ── Live polling: while any payout is 'processing', refetch every 5s ──
+  const pollRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!anyProcessing) {
+      if (pollRef.current) {
+        window.clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      return;
+    }
+    if (pollRef.current === null) {
+      pollRef.current = window.setInterval(() => {
+        void refetchPayouts();
+      }, 5000);
+    }
+    return () => {
+      if (pollRef.current) {
+        window.clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [anyProcessing, refetchPayouts]);
 
   const profilesById = useMemo(
     () => new Map(profiles.map((p) => [p.id, p])),
@@ -644,10 +755,11 @@ export function AdminPayoutsPage() {
   const counts = useMemo(
     () => ({
       pending: payouts.filter((r) => r.status === "pending").length,
-      approved: payouts.filter((r) => r.status === "approved").length,
+      processing: payouts.filter((r) => r.status === "processing").length,
       rejected: payouts.filter((r) => r.status === "rejected").length,
       paid: payouts.filter((r) => r.status === "paid").length,
       failed: payouts.filter((r) => r.status === "failed").length,
+      reversed: payouts.filter((r) => r.status === "reversed").length,
       all: payouts.length,
     }),
     [payouts],
@@ -657,19 +769,30 @@ export function AdminPayoutsPage() {
     ? payouts.find((r) => r.id === reviewingId)
     : null;
 
-  function handleUpdated(id: string, outcome: "paid" | "failed" | "rejected") {
+  function handleUpdated(
+    id: string,
+    outcome: "processing" | "paid" | "failed" | "rejected" | "reversed",
+    message?: string,
+  ) {
     const req = payouts.find((r) => r.id === id);
     const creator = req ? profilesById.get(req.creator_id) : undefined;
     const name = creator?.full_name ?? "Creator";
     setReviewingId(null);
-    if (outcome === "paid") {
+    if (outcome === "processing") {
+      showToast({
+        message: `${formatNaira(Math.round(Number(req?.amount ?? 0) * 100))} transfer to ${name} initiated — awaiting bank confirmation.`,
+        variant: "success",
+      });
+    } else if (outcome === "paid") {
       showToast({
         message: `${formatNaira(Math.round(Number(req?.amount ?? 0) * 100))} sent to ${name}.`,
         variant: "success",
       });
     } else if (outcome === "failed") {
       showToast({
-        message: `Transfer to ${name} failed. Marked as failed.`,
+        message: message
+          ? `Transfer to ${name} failed: ${message}`
+          : `Transfer to ${name} failed — marked as failed.`,
       });
     } else {
       showToast({ message: `Payout request from ${name} rejected.` });
@@ -697,7 +820,6 @@ export function AdminPayoutsPage() {
 
       <PageContainer className="max-w-240!">
         <div className="space-y-5 lg:space-y-6">
-          {/* Header */}
           <div>
             <Badge variant="warning" size="sm" dot className="mb-2">
               <ShieldCheck className="w-3 h-3" />
@@ -707,13 +829,18 @@ export function AdminPayoutsPage() {
               Payout Requests
             </h1>
             <p className="mt-1.5 text-sm text-text-soft leading-relaxed">
-              {counts.pending > 0
-                ? `${counts.pending} request${counts.pending !== 1 ? "s" : ""} pending review.`
+              {counts.pending > 0 || counts.processing > 0
+                ? `${counts.pending} pending, ${counts.processing} in flight.`
                 : "All payout requests are up to date."}
+              {anyProcessing && (
+                <span className="block mt-1 text-xs text-primary font-heading font-medium">
+                  <Loader2 className="w-3 h-3 inline-block mr-1.5 -mt-0.5 animate-spin" />
+                  Auto-updating live until all transfers complete.
+                </span>
+              )}
             </p>
           </div>
 
-          {/* Filter tabs */}
           <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 w-fit max-w-full overflow-x-auto no-scrollbar">
             {TABS.map((tab) => (
               <button
@@ -732,11 +859,19 @@ export function AdminPayoutsPage() {
                     className={`inline-flex h-5 min-w-5 px-1 items-center justify-center rounded-full text-[10px] font-bold ${
                       tab.value === "pending" && activeTab === "pending"
                         ? "bg-warning text-cream"
-                        : tab.value === "failed"
-                          ? activeTab === "failed"
-                            ? "bg-danger text-cream"
-                            : "bg-danger/15 text-danger"
-                          : "bg-border text-muted"
+                        : tab.value === "processing"
+                          ? activeTab === "processing"
+                            ? "bg-primary text-cream"
+                            : "bg-primary/15 text-primary"
+                          : tab.value === "failed"
+                            ? activeTab === "failed"
+                              ? "bg-danger text-cream"
+                              : "bg-danger/15 text-danger"
+                            : tab.value === "reversed"
+                              ? activeTab === "reversed"
+                                ? "bg-amber-500 text-cream"
+                                : "bg-amber-100 text-amber-700"
+                              : "bg-border text-muted"
                     }`}
                   >
                     {counts[tab.value]}
@@ -746,7 +881,6 @@ export function AdminPayoutsPage() {
             ))}
           </div>
 
-          {/* List */}
           <Card padded={false} className="overflow-hidden">
             {filtered.length === 0 ? (
               <EmptyState tab={activeTab} />

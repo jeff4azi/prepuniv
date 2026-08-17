@@ -58,7 +58,9 @@ function computeEarningsBalance(
     .filter(
       (t) =>
         t.user_id === userId &&
-        (t.type === "creator_earning" || t.type === "payout") &&
+        (t.type === "creator_earning" ||
+          t.type === "payout" ||
+          t.type === "reversal") &&
         t.status === "completed",
     )
     .reduce((sum, t) => sum + t.amount, 0);
@@ -86,10 +88,15 @@ const STATUS_CONFIG: Record<
   }
 > = {
   pending: { label: "Pending review", variant: "warning", icon: Clock },
-  approved: { label: "Approved", variant: "primary", icon: CheckCircle2 },
+  processing: {
+    label: "Your payout is on its way",
+    variant: "primary",
+    icon: Clock,
+  },
   rejected: { label: "Rejected", variant: "danger", icon: XCircle },
   paid: { label: "Paid", variant: "success", icon: CheckCircle2 },
   failed: { label: "Transfer failed", variant: "danger", icon: AlertCircle },
+  reversed: { label: "Reversed", variant: "warning", icon: AlertTriangle },
 };
 
 export function CreatorPayoutsPage() {
@@ -153,7 +160,7 @@ export function CreatorPayoutsPage() {
   const nextEligibleDate =
     mostRecentRequest &&
     (mostRecentRequest.status === "pending" ||
-      mostRecentRequest.status === "approved")
+      mostRecentRequest.status === "processing")
       ? null
       : mostRecentRequest
         ? addMs(mostRecentRequest.requested_at, PAYOUT_FREQUENCY_CAP_MS)
@@ -164,9 +171,33 @@ export function CreatorPayoutsPage() {
   const frequencyCapped = nextEligibleDate !== null && nextEligibleDate > now;
   const hasPendingRequest =
     mostRecentRequest?.status === "pending" ||
-    mostRecentRequest?.status === "approved";
+    mostRecentRequest?.status === "processing";
   const canRequest =
     meetsThreshold && !frequencyCapped && hasBankDetails && !hasPendingRequest;
+
+  const anyProcessing = payoutList.some((r) => r.status === "processing");
+
+  const pollRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!anyProcessing) {
+      if (pollRef.current) {
+        window.clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      return;
+    }
+    if (pollRef.current === null) {
+      pollRef.current = window.setInterval(() => {
+        void loadPayoutRequests();
+      }, 5000);
+    }
+    return () => {
+      if (pollRef.current) {
+        window.clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [anyProcessing, loadPayoutRequests]);
 
   const thresholdPct = Math.min(
     100,
@@ -321,6 +352,7 @@ export function CreatorPayoutsPage() {
             thresholdPct={thresholdPct}
             hasBankDetails={hasBankDetails}
             hasPendingRequest={hasPendingRequest}
+            pendingStatus={mostRecentRequest?.status}
             frequencyCapped={frequencyCapped}
             nextEligibleDate={nextEligibleDate}
             canRequest={canRequest}
@@ -338,6 +370,12 @@ export function CreatorPayoutsPage() {
                 {payoutList.length !== 1 ? "s" : ""}
                 {loadingPayouts && " — loading…"}
               </p>
+              {anyProcessing && !loadingPayouts && (
+                <p className="text-xs text-primary font-heading font-medium mt-1 flex items-center gap-1.5">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Auto-updating live until all payouts complete.
+                </p>
+              )}
             </div>
 
             {payoutList.length === 0 ? (
@@ -359,7 +397,11 @@ export function CreatorPayoutsPage() {
                 className="overflow-hidden divide-y divide-border/40"
               >
                 {payoutList.map((req) => (
-                  <PayoutRow key={req.id} request={req} />
+                  <PayoutRow
+                    key={req.id}
+                    request={req}
+                    onFixBank={() => setBankSheetOpen(true)}
+                  />
                 ))}
               </Card>
             )}
@@ -512,6 +554,7 @@ function EligibilityCard({
   thresholdPct,
   hasBankDetails,
   hasPendingRequest,
+  pendingStatus,
   frequencyCapped,
   nextEligibleDate,
   canRequest,
@@ -523,6 +566,7 @@ function EligibilityCard({
   thresholdPct: number;
   hasBankDetails: boolean;
   hasPendingRequest: boolean;
+  pendingStatus?: string;
   frequencyCapped: boolean;
   nextEligibleDate: Date | null;
   canRequest: boolean;
@@ -555,18 +599,35 @@ function EligibilityCard({
   }
 
   if (hasPendingRequest) {
+    const isProcessing = pendingStatus === "processing";
     return (
       <Card padded className="flex items-start gap-3.5">
-        <div className="h-10 w-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-          <Clock className="w-5 h-5" strokeWidth={2} />
+        <div
+          className={`h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 ${
+            isProcessing
+              ? "bg-primary/10 text-primary"
+              : "bg-warning/12 text-warning"
+          }`}
+        >
+          {isProcessing ? (
+            <Loader2
+              className="w-5 h-5 animate-spin"
+              strokeWidth={2}
+            />
+          ) : (
+            <Clock className="w-5 h-5" strokeWidth={2} />
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-heading font-semibold text-[15px] text-text">
-            Request in progress
+            {isProcessing
+              ? "Your payout is on its way"
+              : "Awaiting admin review"}
           </p>
           <p className="mt-1 text-sm text-text-soft leading-relaxed">
-            You have a payout request being reviewed. You can submit another
-            once it's processed.
+            {isProcessing
+              ? "Your transfer has been initiated — the bank will confirm it shortly. Status updates automatically here."
+              : "Your payout request is being reviewed by our team. You can submit another once it's processed."}
           </p>
         </div>
       </Card>
@@ -663,49 +724,144 @@ function EligibilityCard({
   );
 }
 
-function PayoutRow({ request }: { request: PayoutRequest }) {
+function PayoutRow({
+  request,
+  onFixBank,
+}: {
+  request: PayoutRequest;
+  onFixBank?: () => void;
+}) {
   const cfg = STATUS_CONFIG[request.status];
   const StatusIcon = cfg.icon;
 
+  const isProcessing = request.status === "processing";
+  const isPaid = request.status === "paid";
+  const isRejected = request.status === "rejected";
+  const isFailed = request.status === "failed";
+  const isReversed = request.status === "reversed";
+  const isBadEnd = isFailed || isRejected || isReversed;
+
+  const failureMsg = request.failure_reason || request.notes;
+  const isBankIssue = failureMsg
+    ? /bank|account|name|nuban|verify|detail|invalid|incorrect|not.*match/i.test(
+        failureMsg,
+      )
+    : false;
+
   return (
-    <div className="px-5 py-4 flex items-start gap-3.5 min-w-0">
+    <div
+      className={`px-5 py-4 flex items-start gap-3.5 min-w-0 ${
+        isProcessing ? "bg-primary/3" : ""
+      }`}
+    >
       <div
         className={`h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 shadow-card ring-1 ring-border/40 ${
-          request.status === "paid"
+          isPaid
             ? "bg-success/10 text-success"
-            : request.status === "pending" || request.status === "approved"
-              ? "bg-primary/10 text-primary"
-              : "bg-danger-bg text-danger"
+            : isRejected || isFailed
+              ? "bg-danger-bg text-danger"
+              : isReversed
+                ? "bg-amber-100 text-amber-700 ring-amber-200"
+                : "bg-primary/10 text-primary"
         }`}
       >
-        <StatusIcon className="w-5 h-5" strokeWidth={2} />
+        {isProcessing ? (
+          <Loader2 className="w-5 h-5 animate-spin" strokeWidth={2} />
+        ) : (
+          <StatusIcon className="w-5 h-5" strokeWidth={2} />
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="font-heading font-bold text-[15px] text-text leading-tight">
             {formatNaira(Math.round(Number(request.amount) * 100))}
           </p>
-          <Badge variant={cfg.variant} size="sm" dot>
+          <Badge
+            variant={isReversed ? "warning" : cfg.variant}
+            size="sm"
+            dot
+            className={
+              isReversed
+                ? "!bg-amber-100 !text-amber-800 !border-amber-200"
+                : undefined
+            }
+          >
             {cfg.label}
           </Badge>
         </div>
         <p className="mt-0.5 text-[12px] text-text-soft">
           Requested {formatDate(request.requested_at)}
           {request.processed_at &&
-            ` · Processed ${formatDate(request.processed_at)}`}
+            (isPaid
+              ? ` · Paid ${formatDate(request.processed_at)}`
+              : isFailed
+                ? ` · Failed ${formatDate(request.processed_at)}`
+                : isReversed
+                  ? ` · Reversed ${formatDate(request.processed_at)}`
+                  : isRejected
+                    ? ` · Rejected ${formatDate(request.processed_at)}`
+                    : isProcessing
+                      ? ` · Initiated ${formatDate(request.processed_at)}`
+                      : ` · Processed ${formatDate(request.processed_at)}`)}
         </p>
-        {(request.status === "failed" || request.status === "rejected") &&
-          request.notes && (
-            <div className="mt-2 flex items-start gap-2 px-3 py-2 rounded-xl bg-danger-bg/40 border border-danger/20">
-              <AlertTriangle
-                className="w-3.5 h-3.5 text-danger shrink-0 mt-0.5"
-                strokeWidth={2}
-              />
-              <p className="text-[12px] text-danger leading-relaxed flex-1">
-                {request.notes}
+        {isProcessing && (
+          <div className="mt-2 flex items-start gap-2 px-3 py-2 rounded-xl border border-primary/20 bg-primary/5">
+            <Info
+              className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5"
+              strokeWidth={2}
+            />
+            <div>
+              <p className="text-[12px] text-primary font-heading font-semibold leading-tight">
+                Your payout is on its way
+              </p>
+              <p className="text-[11px] text-text-soft leading-relaxed mt-0.5">
+                Bank transfers can take a few minutes. This page will update
+                automatically.
               </p>
             </div>
-          )}
+          </div>
+        )}
+        {isBadEnd && failureMsg && (
+          <div
+            className={`mt-2 flex items-start gap-2 px-3 py-2.5 rounded-xl border ${
+              isReversed
+                ? "bg-amber-50 border-amber-200"
+                : "bg-danger-bg/40 border-danger/20"
+            }`}
+          >
+            <AlertTriangle
+              className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
+                isReversed ? "text-amber-600" : "text-danger"
+              }`}
+              strokeWidth={2}
+            />
+            <div className="flex-1 min-w-0">
+              {isReversed && (
+                <p className="text-[12px] font-heading font-semibold leading-tight text-amber-800 mb-0.5">
+                  This payout was later reversed by your bank.
+                </p>
+              )}
+              <p
+                className={`text-[12px] leading-relaxed ${
+                  isReversed ? "text-amber-800/90" : "text-danger"
+                }`}
+              >
+                {failureMsg}
+              </p>
+              {(isFailed || isReversed) && isBankIssue && onFixBank && (
+                <button
+                  type="button"
+                  onClick={onFixBank}
+                  className="mt-2 inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-secondary/12 text-secondary text-[11px] font-heading font-semibold hover:bg-secondary/20 transition-colors active:scale-[0.98]"
+                >
+                  <Edit2 className="w-3 h-3" strokeWidth={2.2} />
+                  Fix bank details &amp; re-request
+                </button>
+              )}
+              {isRejected && request.notes && !request.failure_reason && null}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

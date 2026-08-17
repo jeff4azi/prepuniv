@@ -94,7 +94,8 @@ export type DbWalletTxn = {
     | "quiz_payment"
     | "creator_earning"
     | "platform_revenue"
-    | "payout";
+    | "payout"
+    | "reversal";
   reference: string | null;
   related_quiz_id: string | null;
   related_attempt_id: string | null;
@@ -137,12 +138,21 @@ export type DbPayoutRequest = {
   id: string;
   creator_id: string;
   amount: number;
-  status: "pending" | "approved" | "rejected" | "paid" | "failed";
+  status:
+    | "pending"
+    | "processing"
+    | "paid"
+    | "failed"
+    | "rejected"
+    | "reversed";
   requested_at: string;
   processed_at: string | null;
   notes: string | null;
   bank_account_number: string;
   bank_code: string;
+  flutterwave_reference: string | null;
+  flutterwave_transfer_id: string | null;
+  failure_reason: string | null;
 };
 
 export type DbReport = {
