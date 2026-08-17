@@ -32,7 +32,7 @@ import { Toast, useToast } from "../components/Toast";
 import { DrawerShell } from "../components/DrawerShell";
 import { useAuth } from "../context/AuthContext";
 import { formatNaira } from "../components/QuizCard";
-import { getBankName, fetchBanksList } from "../lib/banks";
+import { getBankName, fetchBanksListSimple } from "../lib/banks";
 import type { DbPayoutRequest, DbProfile } from "../lib/supabase";
 import {
   usePayoutRequests,
@@ -210,8 +210,27 @@ function PayoutReviewSheet({
       return;
     }
     setRejecting(true);
-    await adminRejectPayoutRequest(req.id, rejectNotes.trim());
+    const result = await adminRejectPayoutRequest(req.id, rejectNotes.trim());
     setRejecting(false);
+    if (result.error) {
+      if (
+        result.status === 409 ||
+        result.error.includes("Cannot reject") ||
+        result.error.includes("already")
+      ) {
+        setInitiateMessage(
+          result.error ||
+            "This payout has already been processed — try refreshing.",
+        );
+        setLastInitiateResult("failed");
+        setProcessingState("done");
+      } else {
+        setInitiateMessage(result.error);
+        setLastInitiateResult("failed");
+        setProcessingState("done");
+      }
+      return;
+    }
     onUpdated(req.id, "rejected");
   }
 
@@ -690,8 +709,8 @@ export function AdminPayoutsPage() {
   const [banksReady, setBanksReady] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    fetchBanksList().then(() => {
-      if (!cancelled) setBanksReady(true);
+    fetchBanksListSimple().then((banks) => {
+      if (!cancelled && banks.length > 0) setBanksReady(true);
     });
     return () => {
       cancelled = true;

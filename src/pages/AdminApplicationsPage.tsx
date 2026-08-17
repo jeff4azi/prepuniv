@@ -20,6 +20,7 @@ import {
   Link as LinkIcon,
   ShieldCheck,
   AlertCircle,
+  AlertTriangle,
   Info,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
@@ -132,25 +133,40 @@ function ReviewSheet({
   const [confirmReject, setConfirmReject] = useState(false);
   const [rejecting, setRejecting] = useState(false);
 
+  // Shared action error state (surfaces 409 conflicts etc.)
+  const [actionError, setActionError] = useState<string | null>(null);
+
   async function handleApprove() {
     setApproving(true);
-    const { error } = await adminApproveApplication(app.id);
+    setActionError(null);
+    const result = await adminApproveApplication(app.id);
     setApproving(false);
-    if (error) {
-      console.error("Approve failed:", error);
+    if (result.error) {
+      setActionError(
+        result.error.includes("already") || result.status === 409
+          ? result.error
+          : result.error,
+      );
+      return;
     }
     onApproved(app.id);
   }
 
   async function handleReject() {
     setRejecting(true);
-    const { error } = await adminRejectApplication(
+    setActionError(null);
+    const result = await adminRejectApplication(
       app.id,
       rejectNotes.trim() || undefined,
     );
     setRejecting(false);
-    if (error) {
-      console.error("Reject failed:", error);
+    if (result.error) {
+      setActionError(
+        result.error.includes("already") || result.status === 409
+          ? result.error
+          : result.error,
+      );
+      return;
     }
     onRejected(app.id);
   }
@@ -246,6 +262,30 @@ function ReviewSheet({
                   : "Rejection reason"}
               </p>
               <p className="text-sm text-text leading-relaxed">{app.notes}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Action error banner (e.g. 409 conflict, double-processing) */}
+        {actionError && (
+          <div className="flex items-start gap-2.5 px-4 py-3 rounded-2xl border border-danger/25 bg-danger-bg/30">
+            <AlertTriangle
+              className="w-4 h-4 text-danger shrink-0 mt-0.5"
+              strokeWidth={2}
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-heading font-semibold leading-tight text-danger">
+                Couldn&apos;t process this application
+              </p>
+              <p className="text-xs text-danger/80 mt-0.5 leading-relaxed">
+                {actionError}
+              </p>
+              <button
+                onClick={() => setActionError(null)}
+                className="mt-2 text-xs font-heading font-semibold text-primary hover:underline"
+              >
+                Dismiss
+              </button>
             </div>
           </div>
         )}

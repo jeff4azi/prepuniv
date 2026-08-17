@@ -284,15 +284,12 @@ export function WalletPage() {
     }
 
     const { payment_link, tx_ref } = data;
-    const isMock = payment_link.includes("mock_payment=1");
-
-    if (isMock) {
-      await pollForCompletion(tx_ref, 15);
-      setSuccessAmount(selectedAmountKobo);
-      setTopUpStep("success");
-    } else {
-      window.location.href = payment_link;
+    if (!payment_link) {
+      setTopupError("Unable to start payment, please try again");
+      setTopUpStep("amount");
+      return;
     }
+    window.location.href = payment_link;
   };
 
   const handleSuccessClose = () => {

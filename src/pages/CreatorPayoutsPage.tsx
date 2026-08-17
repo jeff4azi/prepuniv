@@ -18,6 +18,7 @@ import {
   ChevronDown,
   Edit2,
   Shield,
+  RotateCcw,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { PageContainer } from "../components/PageContainer";
@@ -119,8 +120,8 @@ export function CreatorPayoutsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchBanksList().then(() => {
-      if (!cancelled) setBanksReady(true);
+    fetchBanksList().then((res) => {
+      if (!cancelled && res.ok) setBanksReady(true);
     });
     return () => {
       cancelled = true;
@@ -1287,14 +1288,36 @@ function BankAccountSetupSheet({
   }, [bankDropOpen]);
 
   const [banksList, setBanksList] = useState<Bank[]>([]);
+  const [banksLoading, setBanksLoading] = useState(true);
+  const [banksError, setBanksError] = useState<string | null>(null);
+
+  async function loadBanks() {
+    setBanksLoading(true);
+    setBanksError(null);
+    const res = await fetchBanksList();
+    if (res.ok) {
+      setBanksList(res.banks);
+      setBanksLoading(false);
+    } else {
+      setBanksError(res.error);
+      setBanksList([]);
+      setBanksLoading(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
-    fetchBanksList().then((list) => {
-      if (!cancelled && list && list.length > 0) {
-        setBanksList(list);
+    void (async () => {
+      setBanksLoading(true);
+      const res = await fetchBanksList();
+      if (cancelled) return;
+      if (res.ok) {
+        setBanksList(res.banks);
+      } else {
+        setBanksError(res.error);
       }
-    });
+      setBanksLoading(false);
+    })();
     return () => {
       cancelled = true;
     };
@@ -1311,7 +1334,8 @@ function BankAccountSetupSheet({
   );
 
   const accountValid = /^\d{10}$/.test(accountNumber);
-  const canVerify = selectedBankCode !== "" && accountValid;
+  const canVerify =
+    selectedBankCode !== "" && accountValid && !banksLoading && !banksError;
 
   const selectedBank = banksList.find((b) => b.code === selectedBankCode);
 
@@ -1319,11 +1343,7 @@ function BankAccountSetupSheet({
     if (!canVerify) return;
     setVerifyError("");
     setStep("verifying");
-    const result = await resolveAccountDetails(
-      accountNumber,
-      selectedBankCode,
-      ownerName,
-    );
+    const result = await resolveAccountDetails(accountNumber, selectedBankCode);
     if (result.success) {
       setResolvedName(result.accountName);
       setStep("confirm");
@@ -1417,61 +1437,99 @@ function BankAccountSetupSheet({
                 <label className="block mb-1.5 text-xs sm:text-[13px] font-heading font-semibold text-text-soft tracking-tight">
                   Bank
                 </label>
-                <div className="relative" ref={bankDropRef}>
-                  <button
-                    type="button"
-                    onClick={() => setBankDropOpen((v) => !v)}
-                    className={`${inputBase} text-left flex items-center justify-between pr-10 ${selectedBank ? "text-text" : "text-muted"}`}
+
+                {banksLoading && (
+                  <div
+                    className={`${inputBase} flex items-center justify-center gap-2 text-muted`}
                   >
-                    <span>
-                      {selectedBank ? selectedBank.name : "Select your bank…"}
-                    </span>
-                    <ChevronDown
-                      className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none transition-transform ${bankDropOpen ? "rotate-180" : ""}`}
+                    <Loader2
+                      className="w-4 h-4 animate-spin"
+                      strokeWidth={2}
                     />
-                  </button>
-                  {bankDropOpen && (
-                    <div className="mt-2 bg-cream border border-border/70 rounded-2xl shadow-sm overflow-hidden transition-all">
-                      <div className="p-3 border-b border-border/40 bg-surface/30">
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
-                          <input
-                            type="text"
-                            placeholder="Search banks…"
-                            value={bankSearch}
-                            onChange={(e) => setBankSearch(e.target.value)}
-                            autoFocus
-                            className="w-full h-9 pl-8 pr-3 rounded-xl bg-cream border border-border/50 text-sm font-heading text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30"
-                          />
-                        </div>
-                      </div>
-                      <ul className="max-h-52 sm:max-h-56 overflow-y-auto divide-y divide-border/20">
-                        {filteredBanks.length === 0 ? (
-                          <li className="px-4 py-3 text-sm text-muted text-center">
-                            No banks found
-                          </li>
-                        ) : (
-                          filteredBanks.map((b) => (
-                            <li key={b.code}>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedBankCode(b.code);
-                                  setBankDropOpen(false);
-                                  setBankSearch("");
-                                  setVerifyError("");
-                                }}
-                                className={`w-full text-left px-4 py-3 text-sm font-heading font-medium transition-colors hover:bg-surface/60 ${selectedBankCode === b.code ? "bg-primary/10 text-primary font-bold" : "text-text"}`}
-                              >
-                                {b.name}
-                              </button>
-                            </li>
-                          ))
-                        )}
-                      </ul>
+                    <span className="text-sm font-heading">Loading banks…</span>
+                  </div>
+                )}
+
+                {banksError && !banksLoading && (
+                  <div className="rounded-2xl border border-danger/25 bg-danger-bg/30 px-4 py-3.5 space-y-2.5">
+                    <div className="flex items-start gap-2.5">
+                      <AlertCircle
+                        className="w-4 h-4 text-danger shrink-0 mt-0.5"
+                        strokeWidth={2}
+                      />
+                      <p className="text-[12px] text-danger leading-relaxed flex-1">
+                        {banksError}
+                      </p>
                     </div>
-                  )}
-                </div>
+                    <button
+                      type="button"
+                      onClick={loadBanks}
+                      className="w-full h-9 rounded-xl bg-danger/10 text-danger text-xs font-heading font-semibold hover:bg-danger/15 active:scale-[0.98] transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" strokeWidth={2} />
+                      Retry loading banks
+                    </button>
+                  </div>
+                )}
+
+                {!banksLoading && !banksError && (
+                  <div className="relative" ref={bankDropRef}>
+                    <button
+                      type="button"
+                      onClick={() => setBankDropOpen((v) => !v)}
+                      disabled={!canVerify && selectedBankCode === ""}
+                      className={`${inputBase} text-left flex items-center justify-between pr-10 ${selectedBank ? "text-text" : "text-muted"} disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      <span>
+                        {selectedBank ? selectedBank.name : "Select your bank…"}
+                      </span>
+                      <ChevronDown
+                        className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none transition-transform ${bankDropOpen ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                    {bankDropOpen && (
+                      <div className="mt-2 bg-cream border border-border/70 rounded-2xl shadow-sm overflow-hidden transition-all">
+                        <div className="p-3 border-b border-border/40 bg-surface/30">
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
+                            <input
+                              type="text"
+                              placeholder="Search banks…"
+                              value={bankSearch}
+                              onChange={(e) => setBankSearch(e.target.value)}
+                              autoFocus
+                              className="w-full h-9 pl-8 pr-3 rounded-xl bg-cream border border-border/50 text-sm font-heading text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            />
+                          </div>
+                        </div>
+                        <ul className="max-h-52 sm:max-h-56 overflow-y-auto divide-y divide-border/20">
+                          {filteredBanks.length === 0 ? (
+                            <li className="px-4 py-3 text-sm text-muted text-center">
+                              No banks found
+                            </li>
+                          ) : (
+                            filteredBanks.map((b) => (
+                              <li key={b.code}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedBankCode(b.code);
+                                    setBankDropOpen(false);
+                                    setBankSearch("");
+                                    setVerifyError("");
+                                  }}
+                                  className={`w-full text-left px-4 py-3 text-sm font-heading font-medium transition-colors hover:bg-surface/60 ${selectedBankCode === b.code ? "bg-primary/10 text-primary font-bold" : "text-text"}`}
+                                >
+                                  {b.name}
+                                </button>
+                              </li>
+                            ))
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>

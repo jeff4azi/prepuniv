@@ -5,6 +5,10 @@ export interface Bank {
   name: string;
 }
 
+export type BanksFetchResult =
+  | { ok: true; banks: Bank[]; cached: boolean }
+  | { ok: false; error: string };
+
 // ─── Module-level cache ───────────────────────────────────────────────────────
 // Persists for the lifetime of the browser tab — avoids re-fetching on every
 // page visit. Populated on first call to fetchBanksList().
@@ -19,10 +23,14 @@ let cachedBanksClient: Bank[] | null = null;
  * lifetime so subsequent calls are instant.
  *
  * Backend returns: { status: "success", data: Bank[], source: "..." }
+ *
+ * Returns a discriminated union so callers can distinguish between
+ * "successfully loaded empty list" (impossible here but typed) and a
+ * network/gateway failure (new behavior — previously silently returned []).
  */
-export async function fetchBanksList(): Promise<Bank[]> {
+export async function fetchBanksList(): Promise<BanksFetchResult> {
   if (cachedBanksClient && cachedBanksClient.length > 0) {
-    return cachedBanksClient;
+    return { ok: true, banks: cachedBanksClient, cached: true };
   }
   try {
     const res = await apiFetch<{
@@ -37,13 +45,40 @@ export async function fetchBanksList(): Promise<Bank[]> {
       res.data.data.length > 0
     ) {
       cachedBanksClient = res.data.data;
-      return cachedBanksClient;
+      return { ok: true, banks: cachedBanksClient, cached: false };
     }
+    const err =
+      res.error ||
+      (res.status === 502
+        ? "Could not load banks from payment gateway. Please try again later."
+        : res.status === 503
+          ? "Payment gateway not configured — cannot load banks."
+          : res.status === 0
+            ? "Network error — please check your connection and retry."
+            : `Could not load banks (HTTP ${res.status}). Please try again.`);
+    return { ok: false, error: err };
   } catch (e) {
     console.warn("fetchBanksList error:", e);
+    return {
+      ok: false,
+      error:
+        e instanceof Error
+          ? e.message
+          : "Could not load banks. Please try again.",
+    };
   }
-  // Fallback: fetch failed or returned empty — return empty so callers know
-  // they need to handle the case gracefully
+}
+
+/**
+ * Convenience wrapper that returns just an array (for existing callers that
+ * don't need retry/error UI). Returns [] on failure. Replaces the old
+ * fetchBanksList() signature for backward compatibility in non-critical
+ * callers (e.g. AdminPayoutsPage read-only views that just want a display
+ * name fallback).
+ */
+export async function fetchBanksListSimple(): Promise<Bank[]> {
+  const res = await fetchBanksList();
+  if (res.ok) return res.banks;
   return [];
 }
 
@@ -74,11 +109,13 @@ export function getCachedBanks(): Bank[] {
  * Resolve account holder name via backend → Flutterwave.
  * Backend endpoint: POST /api/banks/resolve
  * Body: { accountNumber, bankCode }   (camelCase — matches backend)
+ *
+ * No fabricated fallback: if the backend can't verify, success=false is
+ * returned and the caller must surface the error to the user.
  */
 export async function resolveAccountDetails(
   accountNumber: string,
   bankCode: string,
-  ownerFullName: string,
 ): Promise<
   { success: true; accountName: string } | { success: false; error?: string }
 > {
@@ -106,23 +143,32 @@ export async function resolveAccountDetails(
       return { success: true, accountName: res.data.accountName };
     }
 
-    const backendError = res.data?.error || res.error;
-    if (backendError) {
-      return { success: false, error: backendError };
-    }
+    const backendError =
+      res.data?.error ||
+      res.error ||
+      (res.status === 503
+        ? "Payment gateway not configured — cannot verify account."
+        : res.status === 502
+          ? "Could not verify — payment gateway unavailable, please try again later."
+          : res.status === 0
+            ? "Network error — please check your connection."
+            : null);
+    return {
+      success: false,
+      error:
+        backendError ||
+        "Could not verify this account — please check the account number and bank selected.",
+    };
   } catch (e) {
     console.warn("resolveAccountDetails error:", e);
+    return {
+      success: false,
+      error:
+        e instanceof Error
+          ? e.message
+          : "Could not verify this account. Please try again.",
+    };
   }
-
-  // Fallback for dev / unconfigured Flutterwave key
-  if (ownerFullName && ownerFullName.trim()) {
-    return { success: true, accountName: ownerFullName.trim().toUpperCase() };
-  }
-
-  return {
-    success: false,
-    error: "Could not resolve bank account details.",
-  };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
