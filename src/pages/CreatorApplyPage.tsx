@@ -283,7 +283,7 @@ function ApplicationForm({
         course_strengths: values.courses.trim(),
         background: values.background.trim(),
         quiz_plans: values.quiz_plans.trim(),
-        relevant_links: values.links.trim() || null,
+        links: values.links.trim() || null,
         status: "pending",
       })
       .select()
@@ -303,7 +303,7 @@ function ApplicationForm({
       courses: data.course_strengths || values.courses.trim(),
       background: data.background || values.background.trim(),
       quiz_plans: data.quiz_plans || values.quiz_plans.trim(),
-      links: data.relevant_links || values.links.trim(),
+      links: data.links || values.links.trim(),
       submitted_at: data.submitted_at || new Date().toISOString(),
     };
 
@@ -486,7 +486,7 @@ export function CreatorApplyPage() {
             courses: data.course_strengths || "",
             background: data.background || "",
             quiz_plans: data.quiz_plans || "",
-            links: data.relevant_links || "",
+            links: data.links || "",
             notes: data.notes || undefined,
             submitted_at: data.submitted_at,
           });
