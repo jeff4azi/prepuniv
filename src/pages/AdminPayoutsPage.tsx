@@ -128,7 +128,12 @@ function StatusBadge({
         );
       case "reversed":
         return (
-          <Badge variant="warning" size="sm" dot className="!bg-amber-100 !text-amber-800 !border-amber-200">
+          <Badge
+            variant="warning"
+            size="sm"
+            dot
+            className="!bg-amber-100 !text-amber-800 !border-amber-200"
+          >
             <AlertTriangle className="w-3 h-3 inline-block -mt-0.5 mr-1" />
             Reversed
           </Badge>
@@ -142,7 +147,11 @@ function StatusBadge({
     return (
       <div className="flex items-center gap-1.5 flex-wrap">
         {badge}
-        <Badge variant="muted" size="sm" className="!bg-stone-100 !text-stone-600 !border-stone-200">
+        <Badge
+          variant="muted"
+          size="sm"
+          className="!bg-stone-100 !text-stone-600 !border-stone-200"
+        >
           <UserCheck className="w-3 h-3 inline-block -mt-0.5 mr-1" />
           Paid manually
         </Badge>
@@ -212,8 +221,13 @@ function PayoutReviewSheet({
     const returnedStatus = (respData.status as string) || null;
 
     if (result.error) {
-      if (result.error.includes("already been processed") || result.error.includes("409")) {
-        setInitiateMessage("This payout was already processed — try refreshing.");
+      if (
+        result.error.includes("already been processed") ||
+        result.error.includes("409")
+      ) {
+        setInitiateMessage(
+          "This payout was already processed — try refreshing.",
+        );
       } else {
         setInitiateMessage(result.error);
       }
@@ -269,9 +283,7 @@ function PayoutReviewSheet({
 
   async function handleMarkPaidManually() {
     if (!manualReference.trim()) {
-      setManualReferenceError(
-        "Reference / proof of transfer is required.",
-      );
+      setManualReferenceError("Reference / proof of transfer is required.");
       return;
     }
     setSubmittingManual(true);
@@ -766,14 +778,27 @@ function PayoutReviewSheet({
                 onClick={handleMarkPaidManually}
                 className="bg-stone-700! text-cream! border-stone-700! hover:bg-stone-800!"
               >
-                {!submittingManual && (
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                )}
+                {!submittingManual && <CheckCircle2 className="w-3.5 h-3.5" />}
                 Confirm — Mark as Paid
               </Button>
             </div>
           </div>
         )}
+
+        {canAct &&
+          processingState === "idle" &&
+          !showRejectForm &&
+          !confirmApprove &&
+          !showManualForm && (
+            <button
+              type="button"
+              onClick={() => setShowManualForm(true)}
+              className="w-full h-10 rounded-xl text-xs font-heading font-semibold text-muted hover:text-stone-700 hover:bg-stone-100 border border-transparent hover:border-stone-200 transition-all flex items-center justify-center gap-1.5"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              Mark as Paid Manually (sent outside platform)
+            </button>
+          )}
       </DrawerShell.Body>
 
       {canAct &&
@@ -782,48 +807,38 @@ function PayoutReviewSheet({
         !confirmApprove &&
         !showManualForm && (
           <DrawerShell.Footer>
-            <div className="space-y-2.5 w-full">
-              <div className="flex items-center gap-2.5 w-full">
-                <Button
-                  variant="outline"
-                  size="md"
-                  className="flex-1 border-danger/40 text-danger hover:bg-danger-bg"
-                  onClick={() => setShowRejectForm(true)}
-                >
-                  <XCircle className="w-4 h-4" />
-                  Reject
-                </Button>
-                {isPending && (
-                  <Button
-                    variant="primary"
-                    size="md"
-                    className="flex-1"
-                    onClick={() => setConfirmApprove(true)}
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    Approve &amp; Process
-                  </Button>
-                )}
-                {(isFailed || isReversed) && (
-                  <Button
-                    variant="primary"
-                    size="md"
-                    className="flex-1"
-                    onClick={() => setConfirmApprove(true)}
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    Retry Transfer
-                  </Button>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowManualForm(true)}
-                className="w-full h-10 rounded-xl text-xs font-heading font-semibold text-muted hover:text-stone-700 hover:bg-stone-100 border border-transparent hover:border-stone-200 transition-all flex items-center justify-center gap-1.5"
+            <div className="flex items-center gap-2.5 w-full">
+              <Button
+                variant="outline"
+                size="md"
+                className="flex-1 border-danger/40 text-danger hover:bg-danger-bg"
+                onClick={() => setShowRejectForm(true)}
               >
-                <UserCheck className="w-3.5 h-3.5" />
-                Mark as Paid Manually (sent outside platform)
-              </button>
+                <XCircle className="w-4 h-4" />
+                Reject
+              </Button>
+              {isPending && (
+                <Button
+                  variant="primary"
+                  size="md"
+                  className="flex-1"
+                  onClick={() => setConfirmApprove(true)}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Approve &amp; Process
+                </Button>
+              )}
+              {(isFailed || isReversed) && (
+                <Button
+                  variant="primary"
+                  size="md"
+                  className="flex-1"
+                  onClick={() => setConfirmApprove(true)}
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Retry Transfer
+                </Button>
+              )}
             </div>
           </DrawerShell.Footer>
         )}
