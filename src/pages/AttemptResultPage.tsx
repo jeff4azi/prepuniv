@@ -483,6 +483,7 @@ export function AttemptResultPage() {
     if (from.includes("/library")) return "Library";
     if (from.includes("/home")) return "Home";
     if (from.includes("/browse")) return "Browse";
+    if (from.includes("/quiz/")) return "Quiz";
     if (window.history.state?.idx > 0) return "Back";
     return "Quiz";
   })();

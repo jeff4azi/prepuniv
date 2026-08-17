@@ -512,7 +512,9 @@ export function AttemptPage() {
       completed_at: completedAt,
     };
 
-    navigate(`/attempt/${attemptId}/result`, { state: { result } });
+    navigate(`/attempt/${attemptId}/result`, {
+      state: { result, from: quiz?.id ? `/quiz/${quiz.id}` : "/browse" },
+    });
   }, [answers, quiz, isTimed, attemptId, navigate, authToken]);
 
   // Keep ref in sync so timer effects always have latest
