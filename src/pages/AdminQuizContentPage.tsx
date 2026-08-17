@@ -9,7 +9,7 @@
  * admin arrived from the Reports page (via router state `from`),
  * the back link returns to /admin/reports.
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, Navigate, useParams, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
@@ -26,17 +26,19 @@ import {
   AlertCircle,
   ExternalLink,
   CheckCheck,
+  Layers,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
+import { FilterSelect, type SelectOption } from "../components/CustomSelect";
 import { Button } from "../components/Button";
 import { Avatar } from "../components/Avatar";
 import { MathText } from "../components/MathText";
 import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
-import type { DbQuiz, DbCourse, DbProfile, DbQuestion } from "../lib/supabase";
+import type { DbQuiz, DbCourse, DbProfile, DbQuestion, DbQuizVersion } from "../lib/supabase";
 import {
   adminUnpublishQuiz,
   adminRepublishQuiz,
@@ -423,6 +425,8 @@ export function AdminQuizContentPage() {
   const [course, setCourse] = useState<DbCourse | null>(null);
   const [creator, setCreator] = useState<DbProfile | null>(null);
   const [questions, setQuestions] = useState<DbQuestion[]>([]);
+  const [versions, setVersions] = useState<DbQuizVersion[]>([]);
+  const [selectedVersionId, setSelectedVersionId] = useState("");
   const [stats, setStats] = useState<QuizStats>({
     totalAttempts: 0,
     avgScore: null,
@@ -456,8 +460,8 @@ export function AdminQuizContentPage() {
     }
     setQuiz(quizData as DbQuiz);
 
-    // 2. Parallel: course, creator profile, questions, attempts, reports
-    const [courseRes, creatorRes, questionsRes, attemptsRes, reportsRes] =
+    // 2. Parallel: course, creator profile, live questions, saved versions, attempts, reports
+    const [courseRes, creatorRes, questionsRes, versionsRes, attemptsRes, reportsRes] =
       await Promise.all([
         supabase
           .from("courses")
@@ -475,6 +479,11 @@ export function AdminQuizContentPage() {
           .eq("quiz_id", quizId)
           .order("order_index", { ascending: true }),
         supabase
+          .from("quiz_versions")
+          .select("*")
+          .eq("quiz_id", quizId)
+          .order("version_number", { ascending: false }),
+        supabase
           .from("quiz_attempts")
           .select("user_id, score")
           .eq("quiz_id", quizId)
@@ -489,6 +498,9 @@ export function AdminQuizContentPage() {
     setCourse((courseRes.data as DbCourse) ?? null);
     setCreator((creatorRes.data as DbProfile) ?? null);
     setQuestions((questionsRes.data ?? []) as DbQuestion[]);
+    const versionList = (versionsRes.data ?? []) as DbQuizVersion[];
+    setVersions(versionList);
+    setSelectedVersionId((current) => current || versionList[0]?.id || "");
 
     // Compute stats from attempts
     const attempts = attemptsRes.data ?? [];
@@ -509,6 +521,33 @@ export function AdminQuizContentPage() {
   useEffect(() => {
     void fetchAll();
   }, [fetchAll]);
+
+  const versionOptions = useMemo<SelectOption<string>[]>(
+    () =>
+      versions.map((version, index) => ({
+        value: version.id,
+        label: `Version ${version.version_number}${index === 0 ? " (Latest)" : ""} · ${version.question_count} q`,
+      })),
+    [versions],
+  );
+
+  const selectedVersion = useMemo(
+    () => versions.find((version) => version.id === selectedVersionId) ?? versions[0] ?? null,
+    [versions, selectedVersionId],
+  );
+
+  const displayedQuestions = useMemo(() => {
+    if (!selectedVersion?.questions_snapshot) return questions;
+    try {
+      const snapshot =
+        typeof selectedVersion.questions_snapshot === "string"
+          ? JSON.parse(selectedVersion.questions_snapshot)
+          : selectedVersion.questions_snapshot;
+      return Array.isArray(snapshot) ? (snapshot as DbQuestion[]) : questions;
+    } catch {
+      return questions;
+    }
+  }, [questions, selectedVersion]);
 
   // ── Action handlers ────────────────────────────────────────────────────────
   async function handleConfirmAction() {
@@ -657,7 +696,7 @@ export function AdminQuizContentPage() {
                   <p className="mt-1.5 text-sm text-muted font-heading">
                     {formatNaira(quiz.price)} per access
                     <span className="mx-1.5 text-border">·</span>
-                    {quiz.question_count ?? questions.length} questions
+                    {displayedQuestions.length} questions
                   </p>
                 </div>
 
@@ -736,7 +775,7 @@ export function AdminQuizContentPage() {
               <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-text-soft pt-1 border-t border-border/40">
                 <span>
                   <span className="font-heading font-semibold text-text">
-                    {quiz.question_count ?? questions.length}
+                    {displayedQuestions.length}
                   </span>{" "}
                   questions
                 </span>
@@ -804,18 +843,27 @@ export function AdminQuizContentPage() {
 
           {/* ── 4. Full question list ────────────────────────────────────── */}
           <div>
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
               <h2 className="font-heading font-bold text-base text-text flex items-center gap-2">
                 <span className="h-5 w-1 rounded-full bg-primary inline-block" />
                 Questions &amp; Answers
+                <span className="inline-flex h-6 min-w-6 px-2 items-center justify-center rounded-full text-[11px] font-heading font-bold bg-primary/10 text-primary">
+                  {displayedQuestions.length}
+                </span>
               </h2>
-              <span className="inline-flex h-6 min-w-6 px-2 items-center justify-center rounded-full text-[11px] font-heading font-bold bg-primary/10 text-primary">
-                {questions.length}
-              </span>
+              {versions.length > 0 && (
+                <FilterSelect
+                  value={selectedVersion?.id ?? ""}
+                  onChange={setSelectedVersionId}
+                  options={versionOptions}
+                  leadingIcon={<Layers className="w-3.5 h-3.5" />}
+                  aria-label="Select quiz version"
+                />
+              )}
             </div>
 
             <Card padded={false} className="overflow-hidden">
-              {questions.length === 0 ? (
+              {displayedQuestions.length === 0 ? (
                 <div className="flex flex-col items-center text-center py-14 px-4 gap-3">
                   <div className="h-14 w-14 rounded-3xl bg-cream border border-border/50 text-muted flex items-center justify-center shadow-card">
                     <FileText className="w-7 h-7" strokeWidth={1.8} />
@@ -840,8 +888,8 @@ export function AdminQuizContentPage() {
                       correct answers highlighted
                     </p>
                   </div>
-                  {questions.map((q, i) => (
-                    <QuestionCard key={q.id} question={q} index={i} />
+                  {displayedQuestions.map((q, i) => (
+                    <QuestionCard key={`${selectedVersion?.id ?? "live"}-${q.id}`} question={q} index={i} />
                   ))}
                 </>
               )}
