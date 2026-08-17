@@ -153,6 +153,9 @@ export type DbPayoutRequest = {
   flutterwave_reference: string | null;
   flutterwave_transfer_id: string | null;
   failure_reason: string | null;
+  payment_method: "flutterwave" | "manual";
+  manual_reference: string | null;
+  marked_paid_by: string | null;
 };
 
 export type DbReport = {

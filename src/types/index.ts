@@ -180,6 +180,8 @@ export type PayoutRequestStatus =
   | "rejected"
   | "reversed";
 
+export type PayoutPaymentMethod = "flutterwave" | "manual";
+
 export interface PayoutRequest {
   id: string;
   creator_id: string;
@@ -193,6 +195,9 @@ export interface PayoutRequest {
   flutterwave_reference?: string | null;
   flutterwave_transfer_id?: string | null;
   failure_reason?: string | null;
+  payment_method: PayoutPaymentMethod;
+  manual_reference?: string | null;
+  marked_paid_by?: string | null;
 }
 
 export type CreatorReportStatus = "open" | "resolved" | "dismissed";

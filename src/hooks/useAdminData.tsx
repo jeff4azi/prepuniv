@@ -255,6 +255,19 @@ export async function adminRejectPayoutRequest(
   });
 }
 
+export async function adminMarkPayoutPaidManually(
+  payoutId: string,
+  reference: string,
+) {
+  return apiFetch(
+    "/api/admin/payout-requests/" + payoutId + "/mark-paid-manually",
+    {
+      method: "POST",
+      body: { reference },
+    },
+  );
+}
+
 export async function adminUpdateCourse(
   courseId: string,
   updates: Partial<{

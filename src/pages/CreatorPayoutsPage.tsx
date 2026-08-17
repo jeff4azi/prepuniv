@@ -19,6 +19,7 @@ import {
   Edit2,
   Shield,
   RotateCcw,
+  UserCheck,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { PageContainer } from "../components/PageContainer";
@@ -611,10 +612,7 @@ function EligibilityCard({
           }`}
         >
           {isProcessing ? (
-            <Loader2
-              className="w-5 h-5 animate-spin"
-              strokeWidth={2}
-            />
+            <Loader2 className="w-5 h-5 animate-spin" strokeWidth={2} />
           ) : (
             <Clock className="w-5 h-5" strokeWidth={2} />
           )}
@@ -789,6 +787,16 @@ function PayoutRow({
           >
             {cfg.label}
           </Badge>
+          {isPaid && request.payment_method === "manual" && (
+            <Badge
+              variant="muted"
+              size="sm"
+              className="!bg-stone-100 !text-stone-600 !border-stone-200"
+            >
+              <UserCheck className="w-3 h-3 inline-block -mt-0.5 mr-1" />
+              Paid manually
+            </Badge>
+          )}
         </div>
         <p className="mt-0.5 text-[12px] text-text-soft">
           Requested {formatDate(request.requested_at)}
@@ -1442,10 +1450,7 @@ function BankAccountSetupSheet({
                   <div
                     className={`${inputBase} flex items-center justify-center gap-2 text-muted`}
                   >
-                    <Loader2
-                      className="w-4 h-4 animate-spin"
-                      strokeWidth={2}
-                    />
+                    <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
                     <span className="text-sm font-heading">Loading banks…</span>
                   </div>
                 )}

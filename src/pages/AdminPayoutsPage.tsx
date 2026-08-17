@@ -22,6 +22,8 @@ import {
   ExternalLink,
   Info,
   AlertTriangle,
+  UserCheck,
+  FileText,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -39,6 +41,7 @@ import {
   useProfiles,
   adminApprovePayoutRequest,
   adminRejectPayoutRequest,
+  adminMarkPayoutPaidManually,
   AdminLoadingState,
 } from "../hooks/useAdminData";
 
@@ -83,49 +86,71 @@ function formatDateTime(iso: string) {
   });
 }
 
-function StatusBadge({ status }: { status: string }) {
-  switch (status) {
-    case "pending":
-      return (
-        <Badge variant="warning" size="sm" dot>
-          Pending
+function StatusBadge({
+  status,
+  paymentMethod,
+}: {
+  status: string;
+  paymentMethod?: string | null;
+}) {
+  const badge = (() => {
+    switch (status) {
+      case "pending":
+        return (
+          <Badge variant="warning" size="sm" dot>
+            Pending
+          </Badge>
+        );
+      case "processing":
+        return (
+          <Badge variant="primary" size="sm" dot>
+            <Loader2 className="w-3 h-3 animate-spin inline-block -mt-0.5 mr-1" />
+            Processing
+          </Badge>
+        );
+      case "paid":
+        return (
+          <Badge variant="success" size="sm" dot>
+            Paid
+          </Badge>
+        );
+      case "rejected":
+        return (
+          <Badge variant="danger" size="sm" dot>
+            Rejected
+          </Badge>
+        );
+      case "failed":
+        return (
+          <Badge variant="danger" size="sm" dot>
+            Failed
+          </Badge>
+        );
+      case "reversed":
+        return (
+          <Badge variant="warning" size="sm" dot className="!bg-amber-100 !text-amber-800 !border-amber-200">
+            <AlertTriangle className="w-3 h-3 inline-block -mt-0.5 mr-1" />
+            Reversed
+          </Badge>
+        );
+      default:
+        return null;
+    }
+  })();
+
+  if (status === "paid" && paymentMethod === "manual") {
+    return (
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {badge}
+        <Badge variant="muted" size="sm" className="!bg-stone-100 !text-stone-600 !border-stone-200">
+          <UserCheck className="w-3 h-3 inline-block -mt-0.5 mr-1" />
+          Paid manually
         </Badge>
-      );
-    case "processing":
-      return (
-        <Badge variant="primary" size="sm" dot>
-          <Loader2 className="w-3 h-3 animate-spin inline-block -mt-0.5 mr-1" />
-          Processing
-        </Badge>
-      );
-    case "paid":
-      return (
-        <Badge variant="success" size="sm" dot>
-          Paid
-        </Badge>
-      );
-    case "rejected":
-      return (
-        <Badge variant="danger" size="sm" dot>
-          Rejected
-        </Badge>
-      );
-    case "failed":
-      return (
-        <Badge variant="danger" size="sm" dot>
-          Failed
-        </Badge>
-      );
-    case "reversed":
-      return (
-        <Badge variant="warning" size="sm" dot className="!bg-amber-100 !text-amber-800 !border-amber-200">
-          <AlertTriangle className="w-3 h-3 inline-block -mt-0.5 mr-1" />
-          Reversed
-        </Badge>
-      );
-    default:
-      return null;
+      </div>
+    );
   }
+
+  return badge;
 }
 
 // ─── Review sheet ─────────────────────────────────────────────────────────────
@@ -135,11 +160,13 @@ type ProcessingState = "idle" | "processing" | "done";
 function PayoutReviewSheet({
   req,
   creator,
+  profiles,
   onClose,
   onUpdated,
 }: {
   req: DbPayoutRequest;
   creator: DbProfile | undefined;
+  profiles: DbProfile[];
   onClose: () => void;
   onUpdated: (
     id: string,
@@ -169,6 +196,12 @@ function PayoutReviewSheet({
   const [rejectNotesError, setRejectNotesError] = useState("");
   const [confirmReject, setConfirmReject] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [confirmManual, setConfirmManual] = useState(false);
+  const [manualReference, setManualReference] = useState("");
+  const [manualReferenceError, setManualReferenceError] = useState("");
+  const [submittingManual, setSubmittingManual] = useState(false);
 
   async function handleProcessTransfer() {
     setProcessingState("processing");
@@ -234,12 +267,49 @@ function PayoutReviewSheet({
     onUpdated(req.id, "rejected");
   }
 
+  async function handleMarkPaidManually() {
+    if (!manualReference.trim()) {
+      setManualReferenceError(
+        "Reference / proof of transfer is required.",
+      );
+      return;
+    }
+    setSubmittingManual(true);
+    const result = await adminMarkPayoutPaidManually(
+      req.id,
+      manualReference.trim(),
+    );
+    setSubmittingManual(false);
+    if (result.error) {
+      if (
+        result.status === 409 ||
+        result.error.includes("Cannot mark") ||
+        result.error.includes("already")
+      ) {
+        setInitiateMessage(
+          result.error ||
+            "This payout has already been processed — try refreshing.",
+        );
+        setLastInitiateResult("failed");
+        setProcessingState("done");
+      } else {
+        setInitiateMessage(result.error);
+        setLastInitiateResult("failed");
+        setProcessingState("done");
+      }
+      return;
+    }
+    onUpdated(req.id, "paid");
+  }
+
   return (
     <DrawerShell open={true} onClose={onClose} ariaLabel="Payout review">
       <DrawerShell.Header
         icon={<CreditCard className="w-5 h-5" strokeWidth={2} />}
         title={formatNaira(Math.round(Number(req.amount) * 100))}
-        statusBadge={<StatusBadge status={req.status} />}
+        statusBadge={
+          <StatusBadge status={req.status} paymentMethod={req.payment_method} />
+        }
         meta={`Requested by ${creatorName} · ${formatDate(req.requested_at)}`}
         onClose={onClose}
       />
@@ -331,6 +401,44 @@ function PayoutReviewSheet({
                       : "Processed"}{" "}
               {formatDateTime(req.processed_at)}
             </span>
+          </div>
+        )}
+
+        {req.status === "paid" && req.payment_method === "manual" && (
+          <div className="rounded-2xl border border-stone-200 bg-stone-50 divide-y divide-stone-200/70 overflow-hidden">
+            {req.manual_reference && (
+              <div className="flex items-start gap-3 px-4 py-3">
+                <FileText
+                  className="w-4 h-4 text-stone-500 shrink-0 mt-0.5"
+                  strokeWidth={2}
+                />
+                <div className="min-w-0 flex-1">
+                  <span className="text-[11px] font-heading font-semibold uppercase tracking-wider text-stone-500 block">
+                    Admin proof of transfer
+                  </span>
+                  <span className="text-sm font-mono font-semibold text-stone-700 mt-1 block break-all">
+                    {req.manual_reference}
+                  </span>
+                </div>
+              </div>
+            )}
+            {req.marked_paid_by && (
+              <div className="flex items-start gap-3 px-4 py-3">
+                <UserCheck
+                  className="w-4 h-4 text-stone-500 shrink-0 mt-0.5"
+                  strokeWidth={2}
+                />
+                <div className="min-w-0 flex-1">
+                  <span className="text-[11px] font-heading font-semibold uppercase tracking-wider text-stone-500 block">
+                    Recorded by admin
+                  </span>
+                  <span className="text-sm font-heading font-semibold text-stone-700 mt-1 block">
+                    {profiles?.find((p) => p.id === req.marked_paid_by)
+                      ?.full_name ?? "Unknown admin"}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -562,45 +670,160 @@ function PayoutReviewSheet({
             </div>
           </div>
         )}
+
+        {canAct && showManualForm && !confirmManual && (
+          <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4 space-y-3">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle
+                className="w-4 h-4 text-stone-600 shrink-0 mt-0.5"
+                strokeWidth={2}
+              />
+              <p className="text-sm text-text leading-relaxed">
+                <span className="font-heading font-semibold text-stone-800">
+                  Only use this if you&apos;ve already sent the money yourself
+                  outside PrepUniv
+                </span>{" "}
+                (e.g. directly via your banking app). This will mark the payout
+                as paid and cannot be undone from here.
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-heading font-semibold text-text mb-1.5">
+                Reference / proof of transfer{" "}
+                <span className="text-danger">*</span>
+              </p>
+              <input
+                type="text"
+                placeholder="e.g. bank transaction reference, transfer ID, screenshot note…"
+                value={manualReference}
+                onChange={(e) => {
+                  setManualReference(e.target.value);
+                  if (e.target.value.trim()) setManualReferenceError("");
+                }}
+                className={`w-full px-4 py-3 rounded-xl bg-cream border text-sm text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all ${
+                  manualReferenceError
+                    ? "border-danger/60 focus:ring-danger/30"
+                    : "border-border"
+                }`}
+              />
+              {manualReferenceError && (
+                <p className="text-xs text-danger mt-1.5 flex items-center gap-1.5">
+                  <span className="w-1 h-1 rounded-full bg-danger inline-block" />
+                  {manualReferenceError}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowManualForm(false);
+                  setManualReference("");
+                  setManualReferenceError("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmManual(true)}
+                disabled={!manualReference.trim() || submittingManual}
+                className="border-stone-300 text-stone-700 hover:bg-stone-100 disabled:opacity-50"
+              >
+                Continue
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {canAct && showManualForm && confirmManual && (
+          <div className="rounded-2xl border border-stone-300 bg-stone-100 p-4 space-y-3">
+            <p className="text-sm text-text leading-relaxed">
+              Permanently mark{" "}
+              <span className="font-heading font-bold text-stone-800">
+                {formatNaira(Math.round(Number(req.amount) * 100))}
+              </span>{" "}
+              to{" "}
+              <span className="font-heading font-semibold">{creatorName}</span>{" "}
+              as paid manually? This action will record the wallet debit and
+              cannot be undone.
+            </p>
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmManual(false)}
+                disabled={submittingManual}
+              >
+                Back
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                isLoading={submittingManual}
+                onClick={handleMarkPaidManually}
+                className="bg-stone-700! text-cream! border-stone-700! hover:bg-stone-800!"
+              >
+                {!submittingManual && (
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                )}
+                Confirm — Mark as Paid
+              </Button>
+            </div>
+          </div>
+        )}
       </DrawerShell.Body>
 
       {canAct &&
         processingState === "idle" &&
         !showRejectForm &&
-        !confirmApprove && (
+        !confirmApprove &&
+        !showManualForm && (
           <DrawerShell.Footer>
-            <div className="flex items-center gap-2.5">
-              <Button
-                variant="outline"
-                size="md"
-                className="flex-1 border-danger/40 text-danger hover:bg-danger-bg"
-                onClick={() => setShowRejectForm(true)}
+            <div className="space-y-2.5 w-full">
+              <div className="flex items-center gap-2.5 w-full">
+                <Button
+                  variant="outline"
+                  size="md"
+                  className="flex-1 border-danger/40 text-danger hover:bg-danger-bg"
+                  onClick={() => setShowRejectForm(true)}
+                >
+                  <XCircle className="w-4 h-4" />
+                  Reject
+                </Button>
+                {isPending && (
+                  <Button
+                    variant="primary"
+                    size="md"
+                    className="flex-1"
+                    onClick={() => setConfirmApprove(true)}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Approve &amp; Process
+                  </Button>
+                )}
+                {(isFailed || isReversed) && (
+                  <Button
+                    variant="primary"
+                    size="md"
+                    className="flex-1"
+                    onClick={() => setConfirmApprove(true)}
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    Retry Transfer
+                  </Button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowManualForm(true)}
+                className="w-full h-10 rounded-xl text-xs font-heading font-semibold text-muted hover:text-stone-700 hover:bg-stone-100 border border-transparent hover:border-stone-200 transition-all flex items-center justify-center gap-1.5"
               >
-                <XCircle className="w-4 h-4" />
-                Reject
-              </Button>
-              {isPending && (
-                <Button
-                  variant="primary"
-                  size="md"
-                  className="flex-1"
-                  onClick={() => setConfirmApprove(true)}
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  Approve &amp; Process
-                </Button>
-              )}
-              {(isFailed || isReversed) && (
-                <Button
-                  variant="primary"
-                  size="md"
-                  className="flex-1"
-                  onClick={() => setConfirmApprove(true)}
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  Retry Transfer
-                </Button>
-              )}
+                <UserCheck className="w-3.5 h-3.5" />
+                Mark as Paid Manually (sent outside platform)
+              </button>
             </div>
           </DrawerShell.Footer>
         )}
@@ -637,7 +860,7 @@ function PayoutRow({
           <span className="font-heading font-semibold text-sm text-text">
             {name}
           </span>
-          <StatusBadge status={req.status} />
+          <StatusBadge status={req.status} paymentMethod={req.payment_method} />
         </div>
         <p className="text-xs text-muted mt-0.5">
           <Building2
@@ -921,6 +1144,7 @@ export function AdminPayoutsPage() {
         <PayoutReviewSheet
           req={reviewingReq}
           creator={profilesById.get(reviewingReq.creator_id)}
+          profiles={profiles}
           onClose={() => setReviewingId(null)}
           onUpdated={handleUpdated}
         />
