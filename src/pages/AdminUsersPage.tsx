@@ -28,7 +28,6 @@ import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Avatar } from "../components/Avatar";
 import { Toast, useToast } from "../components/Toast";
-import { formatNaira } from "../components/QuizCard";
 import { DrawerShell } from "../components/DrawerShell";
 import { UniversitySelect } from "../components/UniversitySelect";
 import { useAuth } from "../context/AuthContext";
@@ -40,6 +39,13 @@ import {
   AdminLoadingState,
   type AdminProfile,
 } from "../hooks/useAdminData";
+
+// Wallet transactions are stored in naira, unlike quiz prices (which use kobo).
+function formatLedgerNaira(amount: number) {
+  const base =
+    "₦" + Math.abs(amount).toLocaleString("en-NG", { maximumFractionDigits: 2 });
+  return amount < 0 ? "-" + base : base;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -249,7 +255,7 @@ function UserDetailPanel({
             <Wallet className="w-4 h-4 text-muted shrink-0" strokeWidth={2} />
             <span>
               <span className="font-heading font-semibold text-text">
-                {formatNaira(topUpTotal)}
+                {formatLedgerNaira(topUpTotal)}
               </span>{" "}
               topped up
             </span>
