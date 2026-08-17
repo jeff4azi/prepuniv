@@ -43,7 +43,14 @@ import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import type { DbProfile, DbQuiz, DbWalletTxn, DbPayoutRequest, DbReport, DbCreatorApplication } from "../lib/supabase";
 import { AdminLoadingState } from "../hooks/useAdminData";
-import { formatNaira } from "../components/QuizCard";
+
+// Wallet and payout ledger amounts are stored in naira. Quiz prices use kobo,
+// so the shared quiz-price formatter must not be used for these values.
+function formatLedgerNaira(amount: number) {
+  const base =
+    "₦" + Math.abs(amount).toLocaleString("en-NG", { maximumFractionDigits: 2 });
+  return amount < 0 ? "-" + base : base;
+}
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -251,7 +258,7 @@ function RevenueTooltip({
         {label}
       </p>
       <p className="font-heading font-bold text-base text-primary">
-        {formatNaira(payload[0].value)}
+        {formatLedgerNaira(payload[0].value)}
       </p>
     </div>
   );
@@ -434,7 +441,7 @@ export function AdminDashboardPage() {
         id: `payout-${p.id}`,
         icon: CreditCard,
         iconTone: "bg-success-bg text-success",
-        label: `Payout of ${formatNaira(Number(p.amount))} processed`,
+        label: `Payout of ${formatLedgerNaira(Number(p.amount))} processed`,
         meta: `to ${creator?.full_name ?? "creator"}`,
         ts: p.processed_at!,
       });
@@ -464,7 +471,7 @@ export function AdminDashboardPage() {
         id: `payout-req-${p.id}`,
         icon: Wallet,
         iconTone: "bg-warning-bg text-warning",
-        label: `Payout request: ${formatNaira(Number(p.amount))}`,
+        label: `Payout request: ${formatLedgerNaira(Number(p.amount))}`,
         meta: `from ${creator?.full_name ?? "creator"} — awaiting review`,
         ts: p.requested_at,
       });
@@ -574,14 +581,14 @@ export function AdminDashboardPage() {
             />
             <StatCard
               label="Platform Revenue"
-              value={formatNaira(platformRevenue)}
+              value={formatLedgerNaira(platformRevenue)}
               sub="PrepUniv's 35% cut"
               icon={TrendingUp}
               tone="success"
             />
             <StatCard
               label="Total Top-ups"
-              value={formatNaira(totalTopUps)}
+              value={formatLedgerNaira(totalTopUps)}
               sub="Gross money in"
               icon={Wallet}
               tone="warning"
@@ -653,7 +660,7 @@ export function AdminDashboardPage() {
                       }}
                       axisLine={false}
                       tickLine={false}
-                      tickFormatter={(v) => formatNaira(v)}
+                      tickFormatter={(v) => formatLedgerNaira(v)}
                       width={64}
                     />
                     <Tooltip
