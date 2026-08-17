@@ -42,6 +42,7 @@ import { Toast, useToast } from "../components/Toast";
 import { MathText } from "../components/MathText";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
+import { apiFetch } from "../lib/api";
 import type { Quiz, Question, QuestionType } from "../types";
 import {
   COURSE_PREFIX_SUBJECT_AREA,
@@ -538,45 +539,26 @@ export function QuizBuilderPage() {
       );
       const universityId = currentUser.university_id || "uni_001";
 
-      // ── 1. Upsert course ──────────────────────────────────────────────────
-      // Find existing course by code + university first
-      const { data: existingCourseRow } = await supabase
-        .from("courses")
-        .select("id")
-        .eq("code", courseCode)
-        .eq("university_id", universityId)
-        .maybeSingle();
+      // ── 1. Upsert course via backend (bypasses RLS) ───────────────────────
+      const { data: courseData, error: courseApiErr } = await apiFetch<{
+        course_id: string;
+        created: boolean;
+      }>("/api/creator/courses/upsert", {
+        method: "POST",
+        body: {
+          code: courseCode,
+          name: courseTitle,
+          subject_area: subjectArea,
+          level: levelNum,
+          is_computational: isComputational,
+          university_id: universityId,
+        },
+      });
 
-      let courseId: string;
-      if (existingCourseRow) {
-        courseId = existingCourseRow.id;
-        // Update title/subject if provided
-        await supabase
-          .from("courses")
-          .update({
-            name: courseTitle,
-            subject_area: subjectArea,
-            level: levelNum,
-          })
-          .eq("id", courseId);
-      } else {
-        const { data: newCourse, error: courseErr } = await supabase
-          .from("courses")
-          .insert({
-            name: courseTitle,
-            code: courseCode,
-            subject_area: subjectArea,
-            level: levelNum,
-            is_computational: isComputational,
-            university_id: universityId,
-          })
-          .select("id")
-          .single();
-        if (courseErr || !newCourse) {
-          throw new Error(courseErr?.message ?? "Failed to create course.");
-        }
-        courseId = newCourse.id;
+      if (courseApiErr || !courseData?.course_id) {
+        throw new Error(courseApiErr ?? "Failed to create course.");
       }
+      const courseId = courseData.course_id;
 
       // ── 2. Upsert quiz ────────────────────────────────────────────────────
       const quizTitle = `${courseCode} — ${details.title.trim()}`;
