@@ -454,7 +454,7 @@ function PayoutReviewSheet({
           </div>
         )}
 
-        {(req.failure_reason || req.notes) && (
+        {req.status !== "paid" && (req.failure_reason || req.notes) && (
           <div
             className={`flex items-start gap-2.5 px-4 py-3 rounded-2xl border ${
               req.status === "paid" || req.status === "rejected"
