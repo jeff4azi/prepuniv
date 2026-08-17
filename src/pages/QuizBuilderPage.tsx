@@ -50,6 +50,16 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface Course {
+  id: string;
+  code: string;
+  title: string;
+  subject_area: string;
+  level: 100 | 200 | 300 | 400;
+  is_computational: boolean;
+  university_id: string;
+}
+
 interface DraftQuestion {
   localId: string; // client-only stable key
   id?: string; // set for pre-existing questions
@@ -225,6 +235,12 @@ export function QuizBuilderPage() {
   }, [isEdit, loadingEdit, existingQuiz, detailsReady]);
 
   const [detailErrors, setDetailErrors] = useState<Partial<QuizDetails>>({});
+
+  // ── Autocomplete state & refs for course code field ──
+  const [courseCodeAcOpen, setCourseCodeAcOpen] = useState(false);
+  const [courseCodeAcHoverIdx, setCourseCodeAcHoverIdx] = useState(0);
+  const courseCodeWrapRef = useRef<HTMLDivElement>(null);
+  const courseCodeInputRef = useRef<HTMLInputElement>(null);
 
   // ── Live Supabase course loading for autocomplete ──
   const [dbCourses, setDbCourses] = useState<Course[]>([]);
