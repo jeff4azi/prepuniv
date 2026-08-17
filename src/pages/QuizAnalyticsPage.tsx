@@ -34,8 +34,6 @@ import { toAttempt } from "../lib/queries";
 import type { QuizAttempt } from "../types";
 import { formatNaira } from "./CreatorDashboardPage";
 
-import { apiFetch } from "../lib/api";
-
 interface DbQuiz {
   id: string;
   creator_id: string;
@@ -145,27 +143,34 @@ export function QuizAnalyticsPage() {
 
       // Try backend endpoint first (bypasses RLS & parses quiz_snapshot if needed)
       try {
-        const res = await apiFetch<{
-          quiz: DbQuiz;
-          course: DbCourse;
-          versions: DbQuizVersion[];
-          questions: DbQuestion[];
-          attempts: any[];
-          attemptAnswers: DbAttemptAnswer[];
-        }>(`/api/quiz/${quizId}/analytics`);
+        const apiBase = (import.meta.env.VITE_API_BASE_URL as string) ?? "";
+        const resp = await fetch(`${apiBase}/api/quiz/${quizId}/analytics`, {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            Accept: "application/json",
+          },
+        });
 
-        if (res.status === 200 && res.data) {
+        if (resp.ok) {
+          const resData = (await resp.json()) as {
+            quiz: DbQuiz;
+            course: DbCourse;
+            versions: DbQuizVersion[];
+            questions: DbQuestion[];
+            attempts: any[];
+            attemptAnswers: DbAttemptAnswer[];
+          };
           if (!cancelled) {
-            setQuiz(res.data.quiz ?? null);
-            setCourse(res.data.course ?? null);
-            const vList = res.data.versions ?? [];
+            setQuiz(resData.quiz ?? null);
+            setCourse(resData.course ?? null);
+            const vList = resData.versions ?? [];
             setVersions(vList);
             if (vList.length > 0) {
-              setSelectedVersionId(vList[0].id); // Default to latest version
+              setSelectedVersionId(vList[0].id);
             }
-            setQuizQuestions(res.data.questions ?? []);
-            setAttempts((res.data.attempts ?? []).map(toAttempt));
-            setAttemptAnswers(res.data.attemptAnswers ?? []);
+            setQuizQuestions(resData.questions ?? []);
+            setAttempts((resData.attempts ?? []).map(toAttempt));
+            setAttemptAnswers(resData.attemptAnswers ?? []);
             setLoading(false);
             return;
           }
