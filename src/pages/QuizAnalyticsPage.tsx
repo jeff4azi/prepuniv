@@ -120,7 +120,12 @@ function ChartTooltip({
 
 export function QuizAnalyticsPage() {
   const { id: quizId } = useParams<{ id: string }>();
-  const { currentUser, walletTxns } = useAuth();
+  const {
+    currentUser,
+    walletTxns,
+    authToken,
+    isLoading: authLoading,
+  } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [quiz, setQuiz] = useState<DbQuiz | null>(null);
@@ -132,7 +137,7 @@ export function QuizAnalyticsPage() {
   const [attemptAnswers, setAttemptAnswers] = useState<DbAttemptAnswer[]>([]);
 
   useEffect(() => {
-    if (!quizId) return;
+    if (!quizId || authLoading || !authToken) return;
     let cancelled = false;
 
     (async () => {
@@ -225,9 +230,7 @@ export function QuizAnalyticsPage() {
       if (questionsList.length === 0 && versionsList.length > 0) {
         const latestSnap = versionsList[0].questions_snapshot;
         questionsList =
-          typeof latestSnap === "string"
-            ? JSON.parse(latestSnap)
-            : latestSnap;
+          typeof latestSnap === "string" ? JSON.parse(latestSnap) : latestSnap;
       }
 
       setCourse(cRes.data ?? null);
@@ -259,7 +262,7 @@ export function QuizAnalyticsPage() {
     return () => {
       cancelled = true;
     };
-  }, [quizId]);
+  }, [quizId, authToken, authLoading]);
 
   // ── Key stats ──────────────────────────────────────────────────────────────
   const totalAttempts = attempts.length;
@@ -386,7 +389,9 @@ export function QuizAnalyticsPage() {
             total++;
             const isCorr =
               String(given).trim().toLowerCase() ===
-              String(q.correct_answer || "").trim().toLowerCase();
+              String(q.correct_answer || "")
+                .trim()
+                .toLowerCase();
             if (isCorr) correctCount++;
           }
         }
@@ -397,7 +402,8 @@ export function QuizAnalyticsPage() {
           (a) =>
             a.question_id === q.id &&
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (attemptIdsSet.size === 0 || attemptIdsSet.has((a as any).attempt_id)),
+            (attemptIdsSet.size === 0 ||
+              attemptIdsSet.has((a as any).attempt_id)),
         );
         total = qAns.length;
         correctCount = qAns.filter((a) => a.is_correct).length;
@@ -437,7 +443,10 @@ export function QuizAnalyticsPage() {
           <div className="h-20 rounded-2xl bg-surface/50 animate-pulse" />
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="h-28 rounded-2xl bg-surface/50 animate-pulse" />
+              <div
+                key={i}
+                className="h-28 rounded-2xl bg-surface/50 animate-pulse"
+              />
             ))}
           </div>
           <div className="h-64 rounded-3xl bg-surface/50 animate-pulse" />
@@ -742,7 +751,9 @@ export function QuizAnalyticsPage() {
                   Worst-performing questions shown first · based on{" "}
                   {attemptsForPerf.length} completed attempt
                   {attemptsForPerf.length !== 1 ? "s" : ""}
-                  {selectedVersion ? ` (Version ${selectedVersion.version_number})` : ""}
+                  {selectedVersion
+                    ? ` (Version ${selectedVersion.version_number})`
+                    : ""}
                 </p>
               </div>
 
