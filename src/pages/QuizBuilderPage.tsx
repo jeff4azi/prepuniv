@@ -347,6 +347,20 @@ export function QuizBuilderPage() {
   const [editorAnswers, setEditorAnswers] = useState<string[]>([]); // fill_blank
   const [editorAnswerInput, setEditorAnswerInput] = useState("");
   const [editorErrors, setEditorErrors] = useState<Record<string, string>>({});
+  const questionEditorRef = useRef<HTMLDivElement>(null);
+
+  // Editing an existing question opens the inline editor after the question
+  // list, so bring it into view as soon as React has rendered it.
+  useEffect(() => {
+    if (editorMode !== "edit") return;
+    const frame = requestAnimationFrame(() => {
+      questionEditorRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [editorMode, editingLocalId]);
 
   // ── AI Import modal ──
   const [aiModalOpen, setAiModalOpen] = useState(false);
@@ -1147,7 +1161,7 @@ export function QuizBuilderPage() {
 
             {/* Inline question editor */}
             {editorMode !== "none" && (
-              <div className="border-t border-border/50">
+              <div ref={questionEditorRef} className="border-t border-border/50">
                 <QuestionEditor
                   mode={editorMode}
                   type={editorType}
