@@ -34,6 +34,8 @@ import { toAttempt } from "../lib/queries";
 import type { QuizAttempt } from "../types";
 import { formatNaira } from "./CreatorDashboardPage";
 
+import { apiFetch } from "../lib/api";
+
 interface DbQuiz {
   id: string;
   creator_id: string;
@@ -118,12 +120,7 @@ function ChartTooltip({
 
 export function QuizAnalyticsPage() {
   const { id: quizId } = useParams<{ id: string }>();
-  const {
-    currentUser,
-    walletTxns,
-    authToken,
-    isLoading: authLoading,
-  } = useAuth();
+  const { currentUser, walletTxns } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [quiz, setQuiz] = useState<DbQuiz | null>(null);
@@ -135,7 +132,7 @@ export function QuizAnalyticsPage() {
   const [attemptAnswers, setAttemptAnswers] = useState<DbAttemptAnswer[]>([]);
 
   useEffect(() => {
-    if (!quizId || authLoading || !authToken) return;
+    if (!quizId) return;
     let cancelled = false;
 
     (async () => {
@@ -143,34 +140,27 @@ export function QuizAnalyticsPage() {
 
       // Try backend endpoint first (bypasses RLS & parses quiz_snapshot if needed)
       try {
-        const apiBase = (import.meta.env.VITE_API_BASE_URL as string) ?? "";
-        const resp = await fetch(`${apiBase}/api/quiz/${quizId}/analytics`, {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            Accept: "application/json",
-          },
-        });
+        const res = await apiFetch<{
+          quiz: DbQuiz;
+          course: DbCourse;
+          versions: DbQuizVersion[];
+          questions: DbQuestion[];
+          attempts: any[];
+          attemptAnswers: DbAttemptAnswer[];
+        }>(`/api/quiz/${quizId}/analytics`);
 
-        if (resp.ok) {
-          const resData = (await resp.json()) as {
-            quiz: DbQuiz;
-            course: DbCourse;
-            versions: DbQuizVersion[];
-            questions: DbQuestion[];
-            attempts: any[];
-            attemptAnswers: DbAttemptAnswer[];
-          };
+        if (res.status === 200 && res.data) {
           if (!cancelled) {
-            setQuiz(resData.quiz ?? null);
-            setCourse(resData.course ?? null);
-            const vList = resData.versions ?? [];
+            setQuiz(res.data.quiz ?? null);
+            setCourse(res.data.course ?? null);
+            const vList = res.data.versions ?? [];
             setVersions(vList);
             if (vList.length > 0) {
-              setSelectedVersionId(vList[0].id);
+              setSelectedVersionId(vList[0].id); // Default to latest version
             }
-            setQuizQuestions(resData.questions ?? []);
-            setAttempts((resData.attempts ?? []).map(toAttempt));
-            setAttemptAnswers(resData.attemptAnswers ?? []);
+            setQuizQuestions(res.data.questions ?? []);
+            setAttempts((res.data.attempts ?? []).map(toAttempt));
+            setAttemptAnswers(res.data.attemptAnswers ?? []);
             setLoading(false);
             return;
           }
@@ -267,7 +257,7 @@ export function QuizAnalyticsPage() {
     return () => {
       cancelled = true;
     };
-  }, [quizId, authToken, authLoading]);
+  }, [quizId]);
 
   // ── Key stats ──────────────────────────────────────────────────────────────
   const totalAttempts = attempts.length;
