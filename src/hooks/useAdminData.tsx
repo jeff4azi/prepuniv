@@ -21,6 +21,12 @@ import { apiFetch } from "../lib/api";
 // ─── Enriched types (DB types + joined fields) ───────────────────────────────
 
 export type AdminProfile = DbProfile & { email: string | null };
+export type AdminUsersPage = {
+  users: AdminProfile[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
 
 export type AdminReport = DbReport & { quiz_title: string | null };
 
@@ -57,13 +63,26 @@ export function useSupabaseFetch<T>(
 
 // ─── Admin Users (profiles + emails from backend) ────────────────────────────
 
-export function useAdminUsers() {
-  return useSupabaseFetch<AdminProfile[]>(async () => {
-    const res = await apiFetch<{ users: AdminProfile[] }>("/api/admin/users");
+export function useAdminUsers(params: {
+  page: number;
+  pageSize: number;
+  role: string;
+  universityId: string;
+  search: string;
+}) {
+  return useSupabaseFetch<AdminUsersPage>(async () => {
+    const query = new URLSearchParams({
+      page: String(params.page),
+      pageSize: String(params.pageSize),
+      role: params.role,
+      universityId: params.universityId,
+      search: params.search,
+    });
+    const res = await apiFetch<AdminUsersPage>(`/api/admin/users?${query}`);
     if (res.error || !res.data?.users)
       throw new Error(res.error || "Failed to fetch users");
-    return res.data.users;
-  });
+    return res.data;
+  }, [params.page, params.pageSize, params.role, params.universityId, params.search]);
 }
 
 // ─── Profiles (direct Supabase — no email needed) ────────────────────────────

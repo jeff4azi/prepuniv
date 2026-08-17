@@ -409,6 +409,8 @@ export function AdminUsersPage() {
   const [searchInput, setSearchInput] = useState("");
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [uniFilter, setUniFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const pageSize = 25;
   const [detailId, setDetailId] = useState<string | null>(null);
   const [suspendId, setSuspendId] = useState<string | null>(null);
   const [suspendCreatorPublishedCount, setSuspendCreatorPublishedCount] =
@@ -434,7 +436,13 @@ export function AdminUsersPage() {
 
   // ── Fetch data from Supabase ─────────────────────────────────────────────
 
-  const { data: allUsers, loading, refetch } = useAdminUsers();
+  const { data: allUsers, loading, refetch } = useAdminUsers({
+    page,
+    pageSize,
+    role: activeTab,
+    universityId: uniFilter,
+    search: searchInput.trim(),
+  });
 
   const [universities, setUniversities] = useState<DbUniversity[]>([]);
   const [txns, setTxns] = useState<DbWalletTxn[]>([]);
@@ -473,7 +481,9 @@ export function AdminUsersPage() {
       });
   }, []);
 
-  const profiles = allUsers || [];
+  const profiles = allUsers?.users || [];
+  const totalUsers = allUsers?.total || 0;
+  const totalPages = Math.max(1, Math.ceil(totalUsers / pageSize));
 
   const filtered = useMemo(() => {
     let list = profiles;
@@ -587,7 +597,7 @@ export function AdminUsersPage() {
                 Users
               </h1>
               <p className="mt-1.5 text-sm text-text-soft">
-                {counts.all} total users on the platform.
+                {totalUsers} {activeTab === "all" ? "total users on the platform." : "users match this filter."}
               </p>
             </div>
             <div className="relative w-full sm:max-w-xs shrink-0">
@@ -595,14 +605,20 @@ export function AdminUsersPage() {
               <input
                 type="search"
                 value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
+                onChange={(e) => {
+                  setSearchInput(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="Search by name or email…"
                 className="w-full h-11 pl-10 pr-10 rounded-2xl border border-border/60 bg-cream text-sm text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 transition-shadow"
               />
               {searchInput && (
                 <button
                   type="button"
-                  onClick={() => setSearchInput("")}
+                  onClick={() => {
+                    setSearchInput("");
+                    setPage(1);
+                  }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 rounded-lg text-muted hover:text-text hover:bg-surface/60 flex items-center justify-center transition-colors"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -618,7 +634,10 @@ export function AdminUsersPage() {
               id="uni-filter"
               universities={universities}
               value={uniFilter}
-              onChange={setUniFilter}
+              onChange={(value) => {
+                setUniFilter(value);
+                setPage(1);
+              }}
               includeAll
               placeholder="All Universities"
             />
@@ -629,7 +648,10 @@ export function AdminUsersPage() {
                 <button
                   key={tab.value}
                   type="button"
-                  onClick={() => setActiveTab(tab.value)}
+                  onClick={() => {
+                    setActiveTab(tab.value);
+                    setPage(1);
+                  }}
                   className={`h-9 px-3.5 rounded-xl text-xs font-heading font-semibold transition-all duration-150 flex items-center gap-1.5 shrink-0 ${
                     activeTab === tab.value
                       ? "bg-cream shadow-soft text-text"
@@ -689,10 +711,15 @@ export function AdminUsersPage() {
             )}
           </Card>
           {/* Result count */}
-          {filtered.length > 0 && (
-            <p className="text-xs text-muted text-right">
-              Showing {filtered.length} of {counts.all} users
-            </p>
+          {totalUsers > 0 && (
+            <div className="flex items-center justify-between gap-3 text-xs text-muted">
+              <p>Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalUsers)} of {totalUsers} users</p>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((current) => current - 1)}>Previous</Button>
+                <span>Page {page} of {totalPages}</span>
+                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)}>Next</Button>
+              </div>
+            </div>
           )}
         </div>
       </PageContainer>
