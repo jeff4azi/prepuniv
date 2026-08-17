@@ -57,8 +57,8 @@ export function DrawerShell({
       <div
         className="fixed z-10 flex flex-col bg-cream shadow-elevated overflow-hidden
                    bottom-0 left-0 right-0 w-full rounded-t-3xl max-h-[92dvh]
-                   sm:top-0 sm:left-auto sm:right-0 sm:bottom-auto sm:w-full sm:max-w-lg sm:max-h-screen sm:rounded-l-3xl sm:rounded-t-none
-                   animate-in slide-in-from-bottom sm:slide-in-from-right duration-200 ease-out"
+                   sm:inset-0 sm:m-auto sm:w-full sm:max-w-lg sm:h-fit sm:max-h-[88vh] sm:rounded-3xl
+                   animate-in slide-in-from-bottom sm:slide-in-from-bottom-2 sm:fade-in duration-200 ease-out"
       >
         {/* Drag pill — mobile only */}
         <div className="sm:hidden pt-2.5 pb-1 flex justify-center shrink-0">
