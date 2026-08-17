@@ -5,7 +5,7 @@
  * Filter tabs: Pending / Approved / Rejected / Paid / Failed / All
  * Uses backend API for approve/reject operations.
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, Navigate } from "react-router-dom";
 import {
   CreditCard,
@@ -31,7 +31,7 @@ import { Toast, useToast } from "../components/Toast";
 import { DrawerShell } from "../components/DrawerShell";
 import { useAuth } from "../context/AuthContext";
 import { formatNaira } from "../components/QuizCard";
-import { getBankName } from "../lib/banks";
+import { getBankName, fetchBanksList } from "../lib/banks";
 import type { DbPayoutRequest, DbProfile } from "../lib/supabase";
 import {
   usePayoutRequests,
@@ -601,6 +601,20 @@ export function AdminPayoutsPage() {
   const [reviewingId, setReviewingId] = useState<string | null>(null);
 
   if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
+
+  // Ensure the bank list is loaded so getBankName resolves codes to names.
+  // banksReady triggers a re-render once the list lands, replacing raw codes.
+  const [banksReady, setBanksReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetchBanksList().then(() => {
+      if (!cancelled) setBanksReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const {
     data: allPayouts,
