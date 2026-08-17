@@ -19,6 +19,7 @@ import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { FieldWrapper } from "../components/Form";
 import { Toast, useToast } from "../components/Toast";
+import { AppDialog } from "../components/AppDialog";
 import { useAuth } from "../context/AuthContext";
 import type { CreatorApplication, ApplicationStatus } from "../types";
 import { supabase } from "../lib/supabase";
@@ -259,6 +260,7 @@ function ApplicationForm({
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   function set<K extends keyof FormValues>(key: K, val: FormValues[K]) {
     setValues((p) => ({ ...p, [key]: val }));
@@ -292,7 +294,7 @@ function ApplicationForm({
     setSubmitting(false);
 
     if (error || !data) {
-      alert("Failed to submit application: " + (error?.message || "Unknown error"));
+      setErrorMessage(error?.message || "Unknown error");
       return;
     }
 
@@ -312,6 +314,12 @@ function ApplicationForm({
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-5">
+      <AppDialog
+        open={Boolean(errorMessage)}
+        title="Could not submit application"
+        message={errorMessage ?? ""}
+        onConfirm={() => setErrorMessage(null)}
+      />
       <Card className="bg-primary/5 border-primary/20">
         <div className="flex items-start gap-4">
           <div className="h-10 w-10 rounded-2xl bg-primary/15 text-primary flex items-center justify-center shrink-0">

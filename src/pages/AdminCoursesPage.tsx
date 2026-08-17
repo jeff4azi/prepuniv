@@ -23,6 +23,7 @@ import { Button } from "../components/Button";
 import { FieldWrapper } from "../components/Form";
 import { FieldSelect } from "../components/CustomSelect";
 import { Toast, useToast } from "../components/Toast";
+import { AppDialog } from "../components/AppDialog";
 import { useAuth } from "../context/AuthContext";
 import type { DbCourse } from "../lib/supabase";
 import {
@@ -65,6 +66,7 @@ function CourseEditModal({
   });
   const [errors, setErrors] = useState<Partial<CourseFormValues>>({});
   const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   function set<K extends keyof CourseFormValues>(
     key: K,
@@ -112,7 +114,7 @@ function CourseEditModal({
     });
     setSaving(false);
     if (res.error) {
-      alert(res.error);
+      setErrorMessage(res.error);
       return;
     }
     onSaved();
@@ -123,6 +125,12 @@ function CourseEditModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <AppDialog
+        open={Boolean(errorMessage)}
+        title="Could not save course"
+        message={errorMessage ?? ""}
+        onConfirm={() => setErrorMessage(null)}
+      />
       <div
         className="absolute inset-0 bg-text/40 backdrop-blur-sm"
         onClick={onClose}
@@ -485,4 +493,3 @@ export function AdminCoursesPage() {
     </>
   );
 }
-

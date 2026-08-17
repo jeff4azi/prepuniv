@@ -28,6 +28,7 @@ import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { FieldWrapper } from "../components/Form";
 import { Toast, useToast } from "../components/Toast";
+import { AppDialog } from "../components/AppDialog";
 import { useAuth } from "../context/AuthContext";
 import type { DbUniversity } from "../lib/supabase";
 import {
@@ -86,6 +87,7 @@ function UniversityModal({
   );
   const [errors, setErrors] = useState<Partial<UniversityFormValues>>({});
   const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   function set<K extends keyof UniversityFormValues>(k: K, v: string) {
     setValues((prev) => ({ ...prev, [k]: v }));
@@ -107,7 +109,7 @@ function UniversityModal({
       });
       setSaving(false);
       if (res.error) {
-        alert(res.error);
+        setErrorMessage(res.error);
         return;
       }
       onSaved(values.abbreviation.trim().toUpperCase(), true);
@@ -119,7 +121,7 @@ function UniversityModal({
       });
       setSaving(false);
       if (res.error) {
-        alert(res.error);
+        setErrorMessage(res.error);
         return;
       }
       onSaved(values.name.trim(), false);
@@ -131,6 +133,12 @@ function UniversityModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <AppDialog
+        open={Boolean(errorMessage)}
+        title="Could not save university"
+        message={errorMessage ?? ""}
+        onConfirm={() => setErrorMessage(null)}
+      />
       <div
         className="absolute inset-0 bg-text/40 backdrop-blur-sm"
         onClick={onClose}
