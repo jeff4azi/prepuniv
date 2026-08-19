@@ -172,6 +172,13 @@ function toPayoutRequest(row: any): PayoutRequest {
     notes: row.notes ?? undefined,
     bank_account_number: row.bank_account_number ?? "",
     bank_code: row.bank_code ?? "",
+    flutterwave_reference: row.flutterwave_reference ?? null,
+    flutterwave_transfer_id: row.flutterwave_transfer_id ?? null,
+    failure_reason: row.failure_reason ?? null,
+    payment_method: (row.payment_method ??
+      "flutterwave") as PayoutRequest["payment_method"],
+    manual_reference: row.manual_reference ?? null,
+    marked_paid_by: row.marked_paid_by ?? null,
   };
 }
 
@@ -305,14 +312,16 @@ export interface CoursePopularity {
 }
 
 /** Course popularity rows, optionally scoped to a university, sorted
- * by popularity score descending. */
+ * by popularity score descending. Calls the `get_course_popularity`
+ * security-definer function (see migration
+ * 20260819000033_course_popularity_function.sql) rather than selecting
+ * from a view — same live aggregation, just called via RPC so it
+ * doesn't trip Supabase's "Security Definer View" linter rule. */
 export async function fetchCoursePopularity(
   universityId?: string,
 ): Promise<CoursePopularity[]> {
-  let q = supabase.from("course_popularity").select("*");
-  if (universityId) q = q.eq("university_id", universityId);
-  const { data, error } = await q.order("popularity_score", {
-    ascending: false,
+  const { data, error } = await supabase.rpc("get_course_popularity", {
+    university_id_in: universityId ?? null,
   });
   if (error) {
     console.warn("fetchCoursePopularity failed:", error.message);
