@@ -285,6 +285,53 @@ export async function fetchCourse(id: string): Promise<Course | null> {
   return data ? toCourse(data) : null;
 }
 
+/** Per-course popularity, derived server-side from real engagement
+ * (attempts, unique learners, purchases, unique buyers, recent
+ * activity). Backed by the `course_popularity` view — see migration
+ * 20260819000031_course_popularity_view.sql. This has to be a
+ * database-level aggregate because quiz_attempts/wallet_transactions
+ * are RLS-locked to "own rows only" for regular users, so the browser
+ * client can never aggregate other users' engagement itself. */
+export interface CoursePopularity {
+  course_id: string;
+  course_code: string;
+  university_id: string | null;
+  attempts_count: number;
+  unique_attempt_users: number;
+  recent_attempts_30d: number;
+  purchases_count: number;
+  unique_purchase_users: number;
+  popularity_score: number;
+}
+
+/** Course popularity rows, optionally scoped to a university, sorted
+ * by popularity score descending. */
+export async function fetchCoursePopularity(
+  universityId?: string,
+): Promise<CoursePopularity[]> {
+  let q = supabase.from("course_popularity").select("*");
+  if (universityId) q = q.eq("university_id", universityId);
+  const { data, error } = await q.order("popularity_score", {
+    ascending: false,
+  });
+  if (error) {
+    console.warn("fetchCoursePopularity failed:", error.message);
+    return [];
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data ?? []).map((row: any) => ({
+    course_id: row.course_id,
+    course_code: row.course_code,
+    university_id: row.university_id ?? null,
+    attempts_count: row.attempts_count ?? 0,
+    unique_attempt_users: row.unique_attempt_users ?? 0,
+    recent_attempts_30d: row.recent_attempts_30d ?? 0,
+    purchases_count: row.purchases_count ?? 0,
+    unique_purchase_users: row.unique_purchase_users ?? 0,
+    popularity_score: Number(row.popularity_score ?? 0),
+  }));
+}
+
 /** All universities */
 export async function fetchUniversities(): Promise<University[]> {
   const { data } = await supabase

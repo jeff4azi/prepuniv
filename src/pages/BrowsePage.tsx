@@ -21,6 +21,8 @@ import {
   fetchPublishedQuizzes,
   fetchCourses,
   fetchDbProfilesByIds,
+  fetchCoursePopularity,
+  type CoursePopularity,
 } from "../lib/queries";
 
 type SortKey = "newest" | "popular" | "price-asc" | "price-desc";
@@ -54,6 +56,9 @@ export function BrowsePage() {
   const [allQuizzes, setAllQuizzes] = useState<Quiz[]>([]);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [allProfiles, setAllProfiles] = useState<DbProfile[]>([]);
+  const [coursePopularity, setCoursePopularity] = useState<
+    CoursePopularity[]
+  >([]);
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [deptFilter, setDeptFilter] = useState<string>("all");
@@ -69,10 +74,14 @@ export function BrowsePage() {
         currentUser.role === "admin" ? undefined : userUniversityId,
       ),
       fetchCourses(currentUser.role === "admin" ? undefined : userUniversityId),
-    ]).then(async ([quizzes, courses]) => {
+      fetchCoursePopularity(
+        currentUser.role === "admin" ? undefined : userUniversityId,
+      ),
+    ]).then(async ([quizzes, courses, popularity]) => {
       if (cancelled) return;
       setAllQuizzes(quizzes);
       setAllCourses(courses);
+      setCoursePopularity(popularity);
       // Fetch only the creator profiles needed for the visible quizzes
       const creatorIds = [
         ...new Set(quizzes.map((q) => q.creator_id).filter(Boolean)),
@@ -128,18 +137,43 @@ export function BrowsePage() {
     return Array.from(areas).sort();
   }, [publishedQuizzes, allCourses]);
 
-  /** Popular course codes: top codes by quiz count */
+  /**
+   * Popular course codes: ranked by real engagement (attempts, unique
+   * learners, purchases, unique buyers, recent activity) via the
+   * `course_popularity` view — not by how many quiz rows exist for a
+   * code. A code can map to multiple course rows (e.g. different
+   * levels/sections), so scores are summed per code before ranking.
+   * Only codes that currently have a published, browsable quiz are
+   * eligible, and courses with zero engagement yet are dropped rather
+   * than shown at the front with a 0 score.
+   */
   const popularCourseCodes = useMemo(() => {
-    const counts: Record<string, number> = {};
+    const browsableCodes = new Set<string>();
     publishedQuizzes.forEach((q) => {
       const course = coursesById.get(q.course_id);
-      if (course) counts[course.code] = (counts[course.code] ?? 0) + 1;
+      if (course) browsableCodes.add(course.code);
     });
-    return Object.entries(counts)
+    if (browsableCodes.size === 0) return [];
+
+    const scoreByCode: Record<string, number> = {};
+    coursePopularity.forEach((row) => {
+      if (!browsableCodes.has(row.course_code)) return;
+      scoreByCode[row.course_code] =
+        (scoreByCode[row.course_code] ?? 0) + row.popularity_score;
+    });
+
+    const ranked = Object.entries(scoreByCode)
+      .filter(([, score]) => score > 0)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6)
       .map(([code]) => code);
-  }, [publishedQuizzes, coursesById]);
+
+    if (ranked.length > 0) return ranked;
+
+    // Fallback for a brand-new platform with no engagement data yet —
+    // still deterministic (alphabetical), not random.
+    return Array.from(browsableCodes).sort().slice(0, 6);
+  }, [publishedQuizzes, coursesById, coursePopularity]);
 
   const filteredQuizzes = useMemo(() => {
     let list = publishedQuizzes;
