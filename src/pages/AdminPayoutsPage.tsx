@@ -328,7 +328,11 @@ function PayoutReviewSheet({
 
       <DrawerShell.Body>
         <div className="flex items-center gap-3 p-4 rounded-2xl bg-surface/40 border border-border/40">
-          <Avatar name={creatorName} size="sm" />
+          <Avatar
+            name={creatorName}
+            src={creator?.avatar_url ?? undefined}
+            size="sm"
+          />
           <div className="flex-1 min-w-0">
             <p className="font-heading font-semibold text-sm text-text leading-tight">
               {creatorName}
@@ -869,7 +873,7 @@ function PayoutRow({
   const acct = req.bank_account_number;
   return (
     <div className="flex items-center gap-3 sm:gap-4 py-3.5 px-5 border-b border-border/30 last:border-0 hover:bg-surface/20 transition-colors">
-      <Avatar name={name} size="sm" />
+      <Avatar name={name} src={creator?.avatar_url ?? undefined} size="sm" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-heading font-semibold text-sm text-text">

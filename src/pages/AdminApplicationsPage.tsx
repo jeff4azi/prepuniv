@@ -177,7 +177,13 @@ function ReviewSheet({
   return (
     <DrawerShell open={true} onClose={onClose} ariaLabel="Creator application">
       <DrawerShell.Header
-        icon={<Avatar name={name} size="md" />}
+        icon={
+          <Avatar
+            name={name}
+            src={profile?.avatar_url ?? undefined}
+            size="md"
+          />
+        }
         iconWrapper={false}
         title={name}
         statusBadge={<StatusBadge status={app.status} />}
@@ -461,7 +467,7 @@ function ApplicationRow({
   return (
     <div className="flex items-center gap-3 sm:gap-4 py-3.5 px-5 border-b border-border/30 last:border-0 hover:bg-surface/20 transition-colors">
       {/* Avatar */}
-      <Avatar name={name} size="sm" />
+      <Avatar name={name} src={profile?.avatar_url ?? undefined} size="sm" />
 
       {/* Info */}
       <div className="flex-1 min-w-0">

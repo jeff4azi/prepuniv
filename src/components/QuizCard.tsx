@@ -196,7 +196,12 @@ export function QuizCard({
 
     const inner = (
       <span className="flex items-center gap-2 min-w-0">
-        <Avatar name={creator.full_name} size="xs" />
+        <Avatar
+          name={creator.full_name}
+          src={creator.avatar_url ?? undefined}
+          size="xs"
+          enlargeable={false}
+        />
         <span className="text-[12px] text-text-soft truncate max-w-35 group-hover/creator:text-text transition-colors">
           by {creator.full_name.split(" ").slice(0, 2).join(" ")}
         </span>

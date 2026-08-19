@@ -198,7 +198,11 @@ function LibraryCard({ quiz, course, creator, stats }: LibraryCardProps) {
         <div className="flex items-center justify-between pt-0.5">
           {creator ? (
             <div className="flex items-center gap-2 min-w-0">
-              <Avatar name={creator.full_name} size="xs" />
+              <Avatar
+                name={creator.full_name}
+                src={creator.avatar_url ?? undefined}
+                size="xs"
+              />
               <span className="text-[12px] text-text-soft truncate max-w-35">
                 by {creator.full_name.split(" ").slice(0, 2).join(" ")}
               </span>

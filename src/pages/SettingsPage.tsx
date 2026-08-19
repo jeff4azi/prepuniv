@@ -6,6 +6,7 @@ import { Card } from "../components/Card";
 import { Button } from "../components/Button";
 import { TextInput, validateFullName } from "../components/Form";
 import { Toast, useToast } from "../components/Toast";
+import { AvatarUpload } from "../components/AvatarUpload";
 import { useAuth } from "../context/AuthContext";
 import { getBankName } from "../lib/banks";
 
@@ -86,6 +87,17 @@ function ProfileSection({
       title="Profile"
       description="Update your display name and creator bio. Email changes require contacting support."
     >
+      <div className="flex items-center gap-4 pb-1">
+        <AvatarUpload
+          onError={onError}
+          onSuccess={() => onSaved()}
+        />
+        <p className="text-xs text-muted leading-relaxed">
+          Tap the camera icon to upload a new photo. JPG, PNG, or WEBP —
+          it'll be resized and compressed automatically.
+        </p>
+      </div>
+
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <TextInput
           id="settings-name"

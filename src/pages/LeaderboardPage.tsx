@@ -97,6 +97,7 @@ interface LeaderboardEntry {
   userId: string;
   displayName: string;
   fullName: string;
+  avatarUrl?: string;
   score: number;
   timeTaken?: number;
   completedAt: string;
@@ -199,6 +200,7 @@ function buildLeaderboard(
       rank: idx + 1,
       userId,
       fullName,
+      avatarUrl: profile?.avatar_url ?? undefined,
       displayName: formatDisplayName(fullName, isCurrentUser),
       score: data.score,
       timeTaken: data.timeTaken,
@@ -588,6 +590,7 @@ function PodiumRow({
       </div>
       <Avatar
         name={entry.fullName}
+        src={entry.avatarUrl}
         size="sm"
         className={entry.rank <= 3 ? medal.ring : ""}
       />
@@ -652,7 +655,7 @@ function RankRow({
       <span className="text-[13px] font-heading font-bold text-muted w-7 shrink-0 text-center">
         {entry.rank}
       </span>
-      <Avatar name={entry.fullName} size="xs" />
+      <Avatar name={entry.fullName} src={entry.avatarUrl} size="xs" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
           {nameNode}

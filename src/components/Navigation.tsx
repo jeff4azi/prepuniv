@@ -348,7 +348,13 @@ export function Sidebar() {
               : "hover:bg-surface/60 hover:text-text text-text-soft"
           }`}
         >
-          <Avatar name={currentUser.full_name} size="md" ring />
+          <Avatar
+            name={currentUser.full_name}
+            src={currentUser.avatar_url ?? undefined}
+            size="md"
+            ring
+            enlargeable={false}
+          />
           <div className="flex-1 min-w-0 text-left">
             <p className="font-heading font-semibold text-sm text-text truncate">
               {currentUser.full_name}
@@ -428,7 +434,13 @@ export function TopBar({ onOpenAccountMenu }: TopBarProps) {
             className="h-11 w-11 flex items-center justify-center rounded-2xl active:scale-95 transition-transform"
             aria-label="Open account menu"
           >
-            <Avatar name={currentUser.full_name} size="sm" ring />
+            <Avatar
+              name={currentUser.full_name}
+              src={currentUser.avatar_url ?? undefined}
+              size="sm"
+              ring
+              enlargeable={false}
+            />
           </button>
         </div>
       </div>

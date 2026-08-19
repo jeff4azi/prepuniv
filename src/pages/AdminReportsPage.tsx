@@ -214,7 +214,11 @@ function ReportReviewSheet({
       <DrawerShell.Body>
         {/* Reporter */}
         <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-surface/40 border border-border/40">
-          <Avatar name={reporterName} size="sm" />
+          <Avatar
+            name={reporterName}
+            src={reporter?.avatar_url ?? undefined}
+            size="sm"
+          />
           <div className="flex-1 min-w-0">
             <p className="font-heading font-semibold text-sm text-text leading-tight">
               {reporterName}

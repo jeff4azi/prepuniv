@@ -106,7 +106,12 @@ function UserHeader() {
   const roleInfo = ROLE_LABELS[currentUser.role];
   return (
     <div className="px-4 pt-4 pb-3 flex items-center gap-3">
-      <Avatar name={currentUser.full_name} size="md" ring />
+      <Avatar
+        name={currentUser.full_name}
+        src={currentUser.avatar_url ?? undefined}
+        size="md"
+        ring
+      />
       <div className="flex-1 min-w-0">
         <p className="font-heading font-semibold text-sm text-text truncate leading-tight">
           {currentUser.full_name}

@@ -200,7 +200,7 @@ function QuizTableRow({
 }: {
   quiz: DbQuiz;
   courseName: string;
-  creator: { id: string; full_name: string } | undefined;
+  creator: { id: string; full_name: string; avatar_url?: string | null } | undefined;
   platformRevenue: number;
   onAction: (action: "unpublish" | "republish") => void;
 }) {
@@ -231,7 +231,12 @@ function QuizTableRow({
             to={`/profile/creator/${creator.id}`}
             className="flex items-center gap-1.5 group/cr hover:text-primary transition-colors"
           >
-            <Avatar name={creator.full_name} size="xs" />
+            <Avatar
+              name={creator.full_name}
+              src={creator.avatar_url ?? undefined}
+              size="xs"
+              enlargeable={false}
+            />
             <span className="text-xs font-heading font-medium text-text-soft group-hover/cr:text-primary truncate max-w-24">
               {creator.full_name.split(" ").slice(0, 2).join(" ")}
             </span>
@@ -321,7 +326,7 @@ function QuizMobileCard({
 }: {
   quiz: DbQuiz;
   courseName: string;
-  creator: { id: string; full_name: string } | undefined;
+  creator: { id: string; full_name: string; avatar_url?: string | null } | undefined;
   platformRevenue: number;
   onAction: (action: "unpublish" | "republish") => void;
 }) {
@@ -348,7 +353,12 @@ function QuizMobileCard({
             to={`/profile/creator/${creator.id}`}
             className="flex items-center gap-1 hover:text-primary transition-colors"
           >
-            <Avatar name={creator.full_name} size="xs" />
+            <Avatar
+              name={creator.full_name}
+              src={creator.avatar_url ?? undefined}
+              size="xs"
+              enlargeable={false}
+            />
             <span>{creator.full_name.split(" ").slice(0, 2).join(" ")}</span>
           </Link>
         )}

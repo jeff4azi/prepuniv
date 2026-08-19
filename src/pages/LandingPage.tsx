@@ -520,7 +520,11 @@ function FeaturedQuizCard({
               <Users className="w-4 h-4 text-muted" />
               {creator ? (
                 <>
-                  <Avatar name={creator.full_name} size="xs" />
+                  <Avatar
+                    name={creator.full_name}
+                    src={creator.avatar_url ?? undefined}
+                    size="xs"
+                  />
                   <span className="font-medium text-text truncate">
                     {creator.full_name.split(" ").slice(0, 2).join(" ")}
                   </span>

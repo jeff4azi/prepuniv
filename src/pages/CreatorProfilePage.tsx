@@ -258,6 +258,7 @@ export function CreatorProfilePage() {
             <div className="flex flex-col sm:flex-row sm:items-end gap-4">
               <Avatar
                 name={profile.full_name}
+                src={profile.avatar_url ?? undefined}
                 size="xl"
                 ring
                 className="h-20 w-20 text-xl ring-cream ring-4 shadow-elevated"

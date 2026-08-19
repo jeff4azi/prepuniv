@@ -285,7 +285,12 @@ export function HomePage() {
         {/* 1. Greeting header */}
         <section className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
           <div className="flex items-start gap-4">
-            <Avatar name={currentUser.full_name} size="xl" ring />
+            <Avatar
+              name={currentUser.full_name}
+              src={currentUser.avatar_url ?? undefined}
+              size="xl"
+              ring
+            />
             <div className="min-w-0">
               <p className="font-heading uppercase tracking-[0.18em] text-[11px] text-muted font-semibold">
                 {todayLabel}

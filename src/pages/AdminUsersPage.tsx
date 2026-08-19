@@ -210,7 +210,13 @@ function UserDetailPanel({
   return (
     <DrawerShell open={true} onClose={onClose} ariaLabel="User detail">
       <DrawerShell.Header
-        icon={<Avatar name={profile.full_name} size="md" />}
+        icon={
+          <Avatar
+            name={profile.full_name}
+            src={profile.avatar_url ?? undefined}
+            size="md"
+          />
+        }
         iconWrapper={false}
         title={
           <div className="min-w-0">
@@ -333,7 +339,12 @@ function UserRow({
         onClick={isCreator ? undefined : onDetail}
         className="shrink-0"
       >
-        <Avatar name={profile.full_name} size="sm" />
+        <Avatar
+          name={profile.full_name}
+          src={profile.avatar_url ?? undefined}
+          size="sm"
+          enlargeable={false}
+        />
       </button>
       {/* Name + email */}
       <div className="flex-1 min-w-0">
