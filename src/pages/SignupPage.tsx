@@ -17,6 +17,11 @@ import {
 } from "../components/UniversitySelect";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
+import {
+  stashPendingUniversity,
+  clearPendingUniversity,
+} from "../lib/pendingUniversity";
+import { useApplyPendingUniversity } from "../hooks/useApplyPendingUniversity";
 
 interface SignupErrors {
   full_name?: string | null;
@@ -28,10 +33,15 @@ interface SignupErrors {
 }
 
 const RESEND_COOLDOWN = 60;
-const PENDING_UNI_KEY = "prepuniv:pending_university_id";
 
 export function SignupPage() {
-  const { signUp, resendSignup, isLoggedIn, updateProfilePatch } = useAuth();
+  const { signUp, resendSignup, updateProfilePatch } = useAuth();
+
+  // Applies any pending university selection once a session exists —
+  // covers the case where this same tab is still open when the session
+  // lands (immediate sign-in, or the confirmation link opened elsewhere
+  // but this tab's storage/session listener picks it up).
+  useApplyPendingUniversity();
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -64,15 +74,6 @@ export function SignupPage() {
   }, []);
 
   useEffect(() => {
-    if (!isLoggedIn) return;
-    const pending = window.localStorage.getItem(PENDING_UNI_KEY);
-    if (!pending) return;
-    window.localStorage.removeItem(PENDING_UNI_KEY);
-    void updateProfilePatch({ university_id: pending } as any);
-    setUniversityId(pending);
-  }, [isLoggedIn, updateProfilePatch]);
-
-  useEffect(() => {
     if (cooldown <= 0) return;
     const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
     return () => clearTimeout(t);
@@ -103,7 +104,7 @@ export function SignupPage() {
       return;
 
     setLoading(true);
-    window.localStorage.setItem(PENDING_UNI_KEY, universityId);
+    stashPendingUniversity(universityId);
     const { error, needsConfirmation } = await signUp({
       full_name: fullName.trim(),
       email: email.trim(),
@@ -111,7 +112,7 @@ export function SignupPage() {
     });
 
     if (error) {
-      window.localStorage.removeItem(PENDING_UNI_KEY);
+      clearPendingUniversity();
       setLoading(false);
       setErrors({
         ...errs,
@@ -121,21 +122,31 @@ export function SignupPage() {
     }
 
     if (!needsConfirmation) {
+      // Email confirmation is off for this project — the user is already
+      // signed in. Apply university_id right away rather than waiting on
+      // the pending-university effect, and surface any failure instead of
+      // silently leaving it unset.
       const { error: patchErr } = await updateProfilePatch({
         university_id: universityId,
-      } as any);
+      });
+      clearPendingUniversity();
+      setLoading(false);
       if (patchErr) {
-        console.warn("university_id patch failed:", patchErr);
+        setErrors({
+          ...errs,
+          form:
+            "Your account was created, but we couldn't save your university. You can set it from Settings.",
+        });
       }
-      window.localStorage.removeItem(PENDING_UNI_KEY);
+      // No explicit navigation needed: the /signup route is wrapped in
+      // IfLoggedOut, which redirects to /home as soon as isLoggedIn flips
+      // true (once the profile finishes loading).
+      return;
     }
 
     setLoading(false);
-
-    if (needsConfirmation) {
-      setCooldown(RESEND_COOLDOWN);
-      setSignupEmail(email.trim());
-    }
+    setCooldown(RESEND_COOLDOWN);
+    setSignupEmail(email.trim());
   }
 
   async function handleResend() {

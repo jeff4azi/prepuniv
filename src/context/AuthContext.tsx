@@ -67,6 +67,14 @@ interface AuthContextValue {
   isLoggedIn: boolean;
   isAdmin: boolean;
   isApprovedCreator: boolean;
+  /**
+   * True only when the current session was established via a Supabase
+   * password-recovery link (the PASSWORD_RECOVERY auth event) — as
+   * opposed to any ordinary logged-in session. ResetPasswordPage gates
+   * on this so that changing a password always requires a fresh
+   * recovery link, not just any active session in the browser.
+   */
+  isPasswordRecovery: boolean;
 
   walletBalance: number;
   walletTxns: DbWalletTxn[];
@@ -119,6 +127,11 @@ const origin =
     ? window.location.origin
     : "";
 
+// sessionStorage (not localStorage) — deliberately scoped to this tab and
+// cleared on browser/tab close, so a stale recovery flag can't linger
+// across sessions on a shared computer.
+const PASSWORD_RECOVERY_FLAG_KEY = "prepuniv:password_recovery";
+
 /**
  * Fallback currentUser used when there is no session. Pages guarded by
  * RequireAuth will never see this, but destructuring assignments at the
@@ -138,6 +151,17 @@ const GUEST_USER: CurrentUser = {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState<boolean>(
+    () => {
+      try {
+        return (
+          window.sessionStorage.getItem(PASSWORD_RECOVERY_FLAG_KEY) === "1"
+        );
+      } catch {
+        return false;
+      }
+    },
+  );
   const [initialLoad, setInitialLoad] = useState(true);
 
   const [walletTxns, setWalletTxns] = useState<DbWalletTxn[]>([]);
@@ -337,11 +361,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, s) => {
+    } = supabase.auth.onAuthStateChange(async (event, s) => {
       if (!mounted) return;
       setSession(s);
       const uid = s?.user?.id ?? null;
       activeUserId = uid;
+
+      if (event === "PASSWORD_RECOVERY") {
+        setIsPasswordRecovery(true);
+        try {
+          window.sessionStorage.setItem(PASSWORD_RECOVERY_FLAG_KEY, "1");
+        } catch {
+          // no-op — the in-memory state above still works for this tab
+        }
+      } else if (event === "SIGNED_OUT") {
+        setIsPasswordRecovery(false);
+        try {
+          window.sessionStorage.removeItem(PASSWORD_RECOVERY_FLAG_KEY);
+        } catch {
+          // no-op
+        }
+      }
+
       if (uid) {
         await Promise.all([fetchProfile(uid), loadWalletData(uid)]);
       } else {
@@ -410,7 +451,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = useCallback(
     async (args: { full_name: string; email: string; password: string }) => {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: args.email,
         password: args.password,
         options: {
@@ -418,7 +459,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           emailRedirectTo: `${origin}/confirm-email`,
         },
       });
-      return { error, needsConfirmation: true };
+
+      if (error) {
+        return { error, needsConfirmation: true };
+      }
+
+      // Supabase returns a user object with NO error even when the email
+      // is already registered (deliberate — avoids leaking which emails
+      // exist). The giveaway is an empty `identities` array on the
+      // returned user, which only happens for a pre-existing account.
+      if (data.user && data.user.identities?.length === 0) {
+        return {
+          error: {
+            name: "AuthApiError",
+            message:
+              "An account with this email already exists. Try logging in instead.",
+            code: "user_already_exists",
+            status: 400,
+          } as AuthError,
+          needsConfirmation: true,
+        };
+      }
+
+      // If Supabase already returned a session, the project has email
+      // confirmation disabled and the user is signed in immediately —
+      // don't tell them to go check their inbox.
+      return { error: null, needsConfirmation: !data.session };
     },
     [],
   );
@@ -490,6 +556,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.updateUser({
       password: newPassword,
     });
+    if (!error) {
+      setIsPasswordRecovery(false);
+      try {
+        window.sessionStorage.removeItem(PASSWORD_RECOVERY_FLAG_KEY);
+      } catch {
+        // no-op
+      }
+    }
     return { error };
   }, []);
 
@@ -545,6 +619,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoggedIn: !!session?.user && !!profile,
       isAdmin: profile?.role === "admin",
       isApprovedCreator: !!profile?.is_approved_creator,
+      isPasswordRecovery,
 
       walletBalance: userBalance,
       walletTxns,
@@ -580,6 +655,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       currentUser,
       initialLoad,
+      isPasswordRecovery,
       userBalance,
       walletTxns,
       purchasedQuizIds,

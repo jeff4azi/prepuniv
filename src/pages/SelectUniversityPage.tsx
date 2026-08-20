@@ -29,8 +29,7 @@ export function SelectUniversityPage() {
     setError(null);
     const { error: saveErr } = await updateProfilePatch({
       university_id: selected,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    });
     if (saveErr) {
       setError("Failed to save. Please try again.");
       setSaving(false);

@@ -24,6 +24,7 @@ import { AuthShell, AuthCard } from "../components/AuthShell";
 import { Button } from "../components/Button";
 import { TextInput, validateEmail } from "../components/Form";
 import { useAuth } from "../context/AuthContext";
+import { useApplyPendingUniversity } from "../hooks/useApplyPendingUniversity";
 
 const RESEND_COOLDOWN = 60;
 
@@ -107,6 +108,11 @@ type PageState = "verifying" | "success" | "invalid";
 export function ConfirmEmailPage() {
   const navigate = useNavigate();
   const { isLoggedIn, currentUser } = useAuth();
+
+  // This is very often a NEW tab opened from the confirmation email, so
+  // SignupPage's own state/effects never ran here — apply whatever
+  // university was chosen at signup as soon as this tab gets a session.
+  useApplyPendingUniversity();
 
   const [state, setState] = useState<PageState>("verifying");
   const [autoRedirectCount, setAutoRedirectCount] = useState(5);
