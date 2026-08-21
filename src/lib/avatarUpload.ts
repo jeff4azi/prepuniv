@@ -39,6 +39,73 @@ function storagePathFromPublicUrl(url: string, userId: string): string | null {
 }
 
 /**
+ * Center-crops an image into a 1:1 square based on its shorter dimension,
+ * returning a new File object before downstream compression/upload.
+ */
+function cropSquareCenter(file: File): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const width = img.naturalWidth || img.width;
+      const height = img.naturalHeight || img.height;
+
+      const side = Math.min(width, height);
+      const sx = (width - side) / 2;
+      const sy = (height - side) / 2;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = side;
+      canvas.height = side;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(
+          new AvatarUploadError(
+            "Could not process that image — try a different file.",
+          ),
+        );
+        return;
+      }
+
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, side, side);
+
+      const mimeType = file.type || "image/jpeg";
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(
+              new AvatarUploadError(
+                "Could not process that image — try a different file.",
+              ),
+            );
+            return;
+          }
+          const croppedFile = new File([blob], file.name, {
+            type: mimeType,
+            lastModified: Date.now(),
+          });
+          resolve(croppedFile);
+        },
+        mimeType,
+        1.0,
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(
+        new AvatarUploadError("Couldn't load image for processing."),
+      );
+    };
+
+    img.src = url;
+  });
+}
+
+/**
  * Validates, client-side compresses, and uploads a new avatar image for
  * `userId`, updates nothing itself (the caller persists the resulting URL
  * to `profiles.avatar_url`), and best-effort cleans up `previousAvatarUrl`
@@ -61,9 +128,19 @@ export async function uploadAvatar(
     );
   }
 
+  let cropped: File;
+  try {
+    cropped = await cropSquareCenter(file);
+  } catch (err) {
+    if (err instanceof AvatarUploadError) throw err;
+    throw new AvatarUploadError(
+      "Couldn't process that image — try a different file.",
+    );
+  }
+
   let compressed: File;
   try {
-    compressed = await imageCompression(file, COMPRESSION_OPTIONS);
+    compressed = await imageCompression(cropped, COMPRESSION_OPTIONS);
   } catch {
     throw new AvatarUploadError(
       "Couldn't process that image — try a different file.",
