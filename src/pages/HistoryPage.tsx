@@ -226,13 +226,16 @@ function HistorySkeleton() {
       <Card padded={false} className="animate-pulse">
         <div className="px-5 divide-y divide-border/0">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="py-4 flex gap-4 items-center">
-              <div className="flex-1 space-y-2">
+            <div
+              key={i}
+              className="py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4"
+            >
+              <div className="flex-1 w-full space-y-2">
                 <div className="h-4 w-3/4 rounded-lg bg-surface" />
                 <div className="h-3 w-1/2 rounded-lg bg-surface" />
               </div>
-              <div className="h-2 w-48 rounded-full bg-surface" />
-              <div className="h-9 w-24 rounded-xl bg-surface" />
+              <div className="h-2 w-full sm:w-48 rounded-full bg-surface shrink-0" />
+              <div className="h-9 w-24 rounded-xl bg-surface shrink-0 self-start sm:self-auto" />
             </div>
           ))}
         </div>

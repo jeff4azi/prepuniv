@@ -398,12 +398,12 @@ export function AttemptResultPage() {
       <PageContainer className="max-w-170!">
         <Card padded={false} className="overflow-hidden mb-4">
           <div className="px-5 pt-6 pb-6 space-y-4 animate-pulse">
-            <div className="flex items-center gap-6">
-              <div className="h-37 w-37 rounded-3xl bg-surface" />
-              <div className="flex-1 space-y-3">
-                <div className="h-6 w-32 rounded-lg bg-surface" />
-                <div className="h-5 w-64 rounded-lg bg-surface/60" />
-                <div className="h-4 w-56 rounded-lg bg-surface/60" />
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div className="h-37 w-37 rounded-3xl bg-surface shrink-0" />
+              <div className="flex-1 w-full space-y-3 text-center sm:text-left">
+                <div className="h-6 w-32 max-w-full rounded-lg bg-surface mx-auto sm:mx-0" />
+                <div className="h-5 w-64 max-w-full rounded-lg bg-surface/60 mx-auto sm:mx-0" />
+                <div className="h-4 w-56 max-w-full rounded-lg bg-surface/60 mx-auto sm:mx-0" />
               </div>
             </div>
           </div>

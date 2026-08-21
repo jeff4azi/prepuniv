@@ -107,7 +107,7 @@ type PageState = "verifying" | "success" | "invalid";
 
 export function ConfirmEmailPage() {
   const navigate = useNavigate();
-  const { isLoggedIn, currentUser } = useAuth();
+  const { isLoggedIn, currentUser, isLoading: authLoading } = useAuth();
 
   // This is very often a NEW tab opened from the confirmation email, so
   // SignupPage's own state/effects never ran here — apply whatever
@@ -118,40 +118,35 @@ export function ConfirmEmailPage() {
   const [autoRedirectCount, setAutoRedirectCount] = useState(5);
 
   useEffect(() => {
-    let mounted = true;
-    const t = setTimeout(() => {
-      if (!mounted) return;
-      // Still resolving (or saving) the university chosen at signup —
-      // wait rather than redirecting on a stale (still-null)
-      // university_id; the effect below catches it once it settles.
-      if (isLoggedIn && pendingUniStatus !== "done") return;
-      if (isLoggedIn && currentUser.email_confirmed) {
-        setState("success");
-      } else {
-        // Either no session at all (an expired/used/invalid link), or a
-        // session exists but the email genuinely isn't confirmed (e.g.
-        // RequireAuth sent them straight here, with no fresh token in
-        // the URL) — either way the next step is the same: offer resend.
-        setState("invalid");
-      }
-    }, 1500);
+    setState((prev) => {
+      // Once confirmed, stay confirmed — don't let a later, unrelated
+      // dependency change (e.g. a profile refetch) flicker this back.
+      if (prev === "success") return prev;
 
-    return () => {
-      mounted = false;
-      clearTimeout(t);
-    };
-  }, [isLoggedIn, currentUser.email_confirmed, pendingUniStatus]);
+      // AuthContext is still resolving the initial session — this is the
+      // step that includes exchanging a confirmation token from the URL,
+      // if one is present. Previously this page used a flat 1500ms timer
+      // as a guess for "surely done by now," which on a slower network
+      // (or just normal token-exchange latency) could fire BEFORE the
+      // real session existed — showing a false "not confirmed" screen
+      // that then flipped to success a moment later once the real
+      // session actually landed. Waiting for the real signal instead of
+      // guessing removes that flash entirely.
+      if (authLoading) return "verifying";
 
-  useEffect(() => {
-    if (
-      state === "verifying" &&
-      isLoggedIn &&
-      currentUser.email_confirmed &&
-      pendingUniStatus === "done"
-    ) {
-      setState("success");
-    }
-  }, [state, isLoggedIn, currentUser.email_confirmed, pendingUniStatus]);
+      // Still saving the university chosen at signup — same idea, don't
+      // conclude anything while that write is still in flight.
+      if (isLoggedIn && pendingUniStatus === "applying") return "verifying";
+
+      if (isLoggedIn && currentUser.email_confirmed) return "success";
+
+      // Genuinely resolved and still not confirmed: either no session at
+      // all (an expired/used link), or a session exists but the email
+      // isn't confirmed (e.g. RequireAuth sent them straight here with
+      // no fresh token in the URL). Either way, offer resend.
+      return "invalid";
+    });
+  }, [authLoading, isLoggedIn, currentUser.email_confirmed, pendingUniStatus]);
 
   useEffect(() => {
     if (state !== "success") return;
