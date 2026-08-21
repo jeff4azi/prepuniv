@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { User, Building2, LogOut } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
@@ -7,9 +7,7 @@ import { Button } from "../components/Button";
 import { TextInput, validateFullName } from "../components/Form";
 import { Toast, useToast } from "../components/Toast";
 import { AvatarUpload } from "../components/AvatarUpload";
-import { UniversitySelect } from "../components/UniversitySelect";
 import { useAuth } from "../context/AuthContext";
-import { fetchUniversities, type University } from "../lib/queries";
 import { getBankName } from "../lib/banks";
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
@@ -60,38 +58,18 @@ function ProfileSection({
 
   const [fullName, setFullName] = useState(currentUser.full_name);
   const [bio, setBio] = useState(currentUser.bio ?? "");
-  const [universityId, setUniversityId] = useState(
-    currentUser.university_id ?? "",
-  );
-  const [universities, setUniversities] = useState<University[]>([]);
   const [nameError, setNameError] = useState<string | null>(null);
-  const [universityError, setUniversityError] = useState<string | null>(
-    null,
-  );
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchUniversities().then((list) => {
-      if (!cancelled) setUniversities(list);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const err = validateFullName(fullName);
-    const uniErr = universityId ? null : "Please select your university.";
     setNameError(err);
-    setUniversityError(uniErr);
-    if (err || uniErr) return;
+    if (err) return;
 
     setSaving(true);
     const { error } = await updateProfilePatch({
       full_name: fullName.trim(),
-      university_id: universityId,
       ...(isCreator ? { bio: bio.trim() } : {}),
     });
     setSaving(false);
@@ -155,24 +133,6 @@ function ProfileSection({
             </p>
           </div>
         )}
-
-        <UniversitySelect
-          id="settings-university"
-          label="University"
-          universities={universities}
-          value={universityId}
-          onChange={(id) => {
-            setUniversityId(id);
-            if (universityError)
-              setUniversityError(id ? null : "Please select your university.");
-          }}
-          error={universityError ?? undefined}
-          hint={
-            isCreator
-              ? "Quizzes you create are scoped to this university. If you already have quizzes for another university, changing this may be blocked."
-              : "Quizzes and courses shown to you are scoped to your university."
-          }
-        />
 
         <div className="w-full">
           <label className="block mb-1.5 text-xs sm:text-[13px] font-heading font-semibold text-text-soft tracking-tight">
