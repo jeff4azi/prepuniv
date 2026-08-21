@@ -20,6 +20,16 @@ export function SelectUniversityPage() {
     fetchUniversities().then(setUniversities);
   }, []);
 
+  // If university_id is (or becomes) set while we're sitting here — e.g.
+  // a signup-time selection that was still being saved in the background
+  // when RequireAuth first landed us here — move on automatically rather
+  // than making the user pick again.
+  useEffect(() => {
+    if (currentUser.university_id) {
+      navigate("/home", { replace: true });
+    }
+  }, [currentUser.university_id, navigate]);
+
   async function handleConfirm() {
     if (!selected) {
       setError("Please select your university to continue.");

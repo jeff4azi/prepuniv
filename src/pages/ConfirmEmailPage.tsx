@@ -28,9 +28,9 @@ import { useApplyPendingUniversity } from "../hooks/useApplyPendingUniversity";
 
 const RESEND_COOLDOWN = 60;
 
-function ResendForm() {
+function ResendForm({ initialEmail }: { initialEmail?: string }) {
   const { resendSignup } = useAuth();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail ?? "");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +112,7 @@ export function ConfirmEmailPage() {
   // This is very often a NEW tab opened from the confirmation email, so
   // SignupPage's own state/effects never ran here — apply whatever
   // university was chosen at signup as soon as this tab gets a session.
-  useApplyPendingUniversity();
+  const pendingUniStatus = useApplyPendingUniversity();
 
   const [state, setState] = useState<PageState>("verifying");
   const [autoRedirectCount, setAutoRedirectCount] = useState(5);
@@ -121,11 +121,17 @@ export function ConfirmEmailPage() {
     let mounted = true;
     const t = setTimeout(() => {
       if (!mounted) return;
+      // Still resolving (or saving) the university chosen at signup —
+      // wait rather than redirecting on a stale (still-null)
+      // university_id; the effect below catches it once it settles.
+      if (isLoggedIn && pendingUniStatus !== "done") return;
       if (isLoggedIn && currentUser.email_confirmed) {
         setState("success");
-      } else if (isLoggedIn && !currentUser.email_confirmed) {
-        setState("verifying");
       } else {
+        // Either no session at all (an expired/used/invalid link), or a
+        // session exists but the email genuinely isn't confirmed (e.g.
+        // RequireAuth sent them straight here, with no fresh token in
+        // the URL) — either way the next step is the same: offer resend.
         setState("invalid");
       }
     }, 1500);
@@ -134,13 +140,18 @@ export function ConfirmEmailPage() {
       mounted = false;
       clearTimeout(t);
     };
-  }, [isLoggedIn, currentUser.email_confirmed]);
+  }, [isLoggedIn, currentUser.email_confirmed, pendingUniStatus]);
 
   useEffect(() => {
-    if (state === "verifying" && isLoggedIn && currentUser.email_confirmed) {
+    if (
+      state === "verifying" &&
+      isLoggedIn &&
+      currentUser.email_confirmed &&
+      pendingUniStatus === "done"
+    ) {
       setState("success");
     }
-  }, [state, isLoggedIn, currentUser.email_confirmed]);
+  }, [state, isLoggedIn, currentUser.email_confirmed, pendingUniStatus]);
 
   useEffect(() => {
     if (state !== "success") return;
@@ -222,8 +233,8 @@ export function ConfirmEmailPage() {
       <AuthCard
         tag="Link expired"
         tagTone="secondary"
-        title="This link isn't valid"
-        subtitle="The confirmation link has expired or was already used. Request a new one below."
+        title="Email not confirmed"
+        subtitle="Your confirmation link may have expired or already been used — or you haven't confirmed yet. Request a new link below."
       >
         <div className="space-y-5">
           <div className="flex justify-center py-2">
@@ -232,7 +243,7 @@ export function ConfirmEmailPage() {
             </div>
           </div>
 
-          <ResendForm />
+          <ResendForm initialEmail={currentUser.email ?? undefined} />
 
           <Link
             to="/login"

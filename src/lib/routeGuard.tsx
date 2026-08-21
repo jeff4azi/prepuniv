@@ -47,6 +47,19 @@ export function RequireAuth({ children, role, redirectTo }: RequireAuthProps) {
     return null;
   }
 
+  // Enforce email confirmation ourselves rather than relying solely on the
+  // Supabase project's "Confirm email" setting: if that's ever off (or a
+  // session is otherwise granted pre-confirmation), a session existing is
+  // NOT the same thing as the email actually being confirmed. Admins are
+  // provisioned directly (seed script) and don't go through this flow.
+  if (
+    currentUser.role !== "admin" &&
+    !currentUser.email_confirmed &&
+    pathname !== "/confirm-email"
+  ) {
+    return <Navigate to="/confirm-email" replace />;
+  }
+
   // Non-admin users must select a university before accessing the app
   if (
     currentUser.role !== "admin" &&
