@@ -1482,7 +1482,7 @@ function BankAccountSetupSheet({
                     <button
                       type="button"
                       onClick={() => setBankDropOpen((v) => !v)}
-                      disabled={!canVerify && selectedBankCode === ""}
+                      disabled={banksList.length === 0}
                       className={`${inputBase} text-left flex items-center justify-between pr-10 ${selectedBank ? "text-text" : "text-muted"} disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       <span>
