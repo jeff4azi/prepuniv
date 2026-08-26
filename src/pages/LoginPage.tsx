@@ -10,11 +10,13 @@ import {
   validatePassword,
 } from "../components/Form";
 import { useAuth } from "../context/AuthContext";
+import { useRedirectAfterAuth } from "../lib/routeGuard";
 
 const RESEND_COOLDOWN = 60;
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const redirectTarget = useRedirectAfterAuth();
   const { logIn, resendSignup } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -88,7 +90,7 @@ export function LoginPage() {
       return;
     }
 
-    navigate("/home", { replace: true });
+    navigate(redirectTarget, { replace: true });
     setLoading(false);
   }
 

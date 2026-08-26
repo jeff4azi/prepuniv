@@ -9,6 +9,21 @@ interface RequireAuthProps {
 }
 
 /**
+ * Resolves the role-specific dashboard path for a user:
+ * - Admin -> /admin
+ * - Creator (or approved creator) -> /creator
+ * - Regular user / Learner -> /home
+ */
+export function getDefaultDashboard(
+  user?: { role?: string; is_approved_creator?: boolean } | null,
+): string {
+  if (!user) return "/home";
+  if (user.role === "admin") return "/admin";
+  if (user.role === "creator" || user.is_approved_creator) return "/creator";
+  return "/home";
+}
+
+/**
  * Reusable route guard wrapper.
  *
  *   <RequireAuth><HomePage /></RequireAuth>             → must be logged in
@@ -70,7 +85,7 @@ export function RequireAuth({ children, role, redirectTo }: RequireAuthProps) {
   }
 
   if (role === "admin" && !isAdmin) {
-    return <Navigate to={redirectTo ?? "/home"} replace />;
+    return <Navigate to={redirectTo ?? getDefaultDashboard(currentUser)} replace />;
   }
 
   if (role === "approvedCreator" && !isApprovedCreator) {
@@ -85,16 +100,16 @@ export function RequireAuth({ children, role, redirectTo }: RequireAuthProps) {
 
 /**
  * Redirect logged-in users AWAY from auth-only pages (e.g. /login, /signup).
- * Optional `fallback` overrides the default redirect target of "/home".
+ * Optional `fallback` overrides the default role-based redirect target.
  */
 export function IfLoggedOut({
   children,
-  fallback = "/home",
+  fallback,
 }: {
   children: ReactNode;
   fallback?: string;
 }) {
-  const { isLoggedIn, isLoading } = useAuth();
+  const { isLoggedIn, isLoading, currentUser } = useAuth();
 
   if (isLoading) {
     return (
@@ -104,14 +119,18 @@ export function IfLoggedOut({
     );
   }
 
-  if (isLoggedIn) return <Navigate to={fallback} replace />;
+  if (isLoggedIn) {
+    const target = fallback ?? getDefaultDashboard(currentUser);
+    return <Navigate to={target} replace />;
+  }
   return <>{children}</>;
 }
 
 export function useRedirectAfterAuth() {
   const { search } = useLocation();
+  const { currentUser } = useAuth();
   const params = new URLSearchParams(search);
-  return params.get("redirect") ?? "/home";
+  return params.get("redirect") ?? getDefaultDashboard(currentUser);
 }
 
 /**
@@ -122,3 +141,4 @@ export function useRedirectIf(condition: boolean, destination: string) {
     if (condition) window.location.href = destination;
   }, [condition, destination]);
 }
+

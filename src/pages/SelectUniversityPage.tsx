@@ -4,6 +4,7 @@ import { GraduationCap, ArrowRight } from "lucide-react";
 import { Button } from "../components/Button";
 import { UniversitySelect } from "../components/UniversitySelect";
 import { useAuth } from "../context/AuthContext";
+import { getDefaultDashboard } from "../lib/routeGuard";
 import { fetchUniversities } from "../lib/queries";
 import type { University } from "../lib/queries";
 
@@ -26,9 +27,9 @@ export function SelectUniversityPage() {
   // than making the user pick again.
   useEffect(() => {
     if (currentUser.university_id) {
-      navigate("/home", { replace: true });
+      navigate(getDefaultDashboard(currentUser), { replace: true });
     }
-  }, [currentUser.university_id, navigate]);
+  }, [currentUser, navigate]);
 
   async function handleConfirm() {
     if (!selected) {
@@ -46,7 +47,7 @@ export function SelectUniversityPage() {
       return;
     }
     await refreshProfile();
-    navigate("/home", { replace: true });
+    navigate(getDefaultDashboard(currentUser), { replace: true });
   }
 
   return (

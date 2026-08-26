@@ -2,12 +2,13 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Home } from "lucide-react";
 import { Button } from "../components/Button";
 import { useAuth } from "../context/AuthContext";
+import { getDefaultDashboard } from "../lib/routeGuard";
 
 export function NotFoundPage() {
   const navigate = useNavigate();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, currentUser } = useAuth();
 
-  const homeTarget = isLoggedIn ? "/home" : "/";
+  const homeTarget = isLoggedIn ? getDefaultDashboard(currentUser) : "/";
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16 bg-background">

@@ -27,6 +27,7 @@ import { Avatar } from "./Avatar";
 import { Badge } from "./Badge";
 import { AccountSheet, AccountPopover } from "./AccountMenu";
 import { useNavBadges, formatBadgeCount } from "../hooks/useNavBadges";
+import { getDefaultDashboard } from "../lib/routeGuard";
 
 // ─── Types & shared data ──────────────────────────────────────────────────────
 
@@ -402,7 +403,7 @@ export function TopBar({ onOpenAccountMenu }: TopBarProps) {
       <div className="flex items-center justify-between h-14 px-4">
         {/* Logo */}
         <button
-          onClick={() => navigate("/home")}
+          onClick={() => navigate(getDefaultDashboard(currentUser))}
           className="flex items-center gap-2 h-11 -ml-2 pl-2 pr-3 rounded-2xl active:scale-95 transition-transform"
         >
           <img
