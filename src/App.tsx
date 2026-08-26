@@ -6,6 +6,8 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
+import { NetworkProvider, useNetwork } from "./context/NetworkContext";
+import { ConnectionLostPage } from "./pages/ConnectionLostPage";
 import { AuthProvider } from "./context/AuthContext";
 import { RequireAuth, IfLoggedOut } from "./lib/routeGuard";
 import { Sidebar, TopBar, BottomNav } from "./components/Navigation";
@@ -365,13 +367,28 @@ function AttemptShell() {
   );
 }
 
+function OfflineBoundary({ children }: { children: React.ReactNode }) {
+  const { isOnline } = useNetwork();
+  const location = useLocation();
+
+  if (location.pathname === "/connection-lost") {
+    return <ConnectionLostPage />;
+  }
+
+  if (!isOnline) {
+    return <ConnectionLostPage />;
+  }
+
+  return <>{children}</>;
+}
+
 function PublicRoutes() {
   return (
     <Routes>
       <Route
         path="/"
         element={
-          <IfLoggedOut fallback="/home">
+          <IfLoggedOut>
             <LandingPage />
           </IfLoggedOut>
         }
@@ -402,6 +419,7 @@ function PublicRoutes() {
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/account-suspended" element={<AccountSuspendedPage />} />
+      <Route path="/connection-lost" element={<ConnectionLostPage />} />
     </Routes>
   );
 }
@@ -421,6 +439,7 @@ function RoutingSwitch() {
     "/terms/",
     "/privacy/",
     "/account-suspended",
+    "/connection-lost",
   ];
   const isPublic = publicPaths.includes(loc.pathname);
   const isAttempt = /^\/attempt\//.test(loc.pathname);
@@ -440,9 +459,13 @@ function RoutingSwitch() {
 export function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <RoutingSwitch />
-      </AuthProvider>
+      <NetworkProvider>
+        <AuthProvider>
+          <OfflineBoundary>
+            <RoutingSwitch />
+          </OfflineBoundary>
+        </AuthProvider>
+      </NetworkProvider>
     </BrowserRouter>
   );
 }

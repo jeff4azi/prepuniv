@@ -242,3 +242,6 @@ export function AdminQuizzesPage() {
 export function AdminUniversitiesPage() {
   return <RealAdminUniversitiesPage />;
 }
+
+export { ConnectionLostPage } from "./ConnectionLostPage";
+

@@ -68,6 +68,9 @@ export async function apiFetch<T = unknown>(
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch (e) {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("prepuniv:network_error"));
+    }
     return {
       data: null,
       error: e instanceof Error ? e.message : "Network error",
