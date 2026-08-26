@@ -338,18 +338,58 @@ export function AdminDashboardPage() {
   const totalCreators = allProfiles.filter((p) => p.is_approved_creator && p.role !== "admin").length;
   const publishedQuizzes = allQuizzes.filter((q) => q.is_published).length;
 
-  const platformRevenue = allTxns
-    .filter((t) => t.type === "platform_revenue" && t.status === "completed")
-    .reduce((sum, t) => sum + Number(t.amount), 0);
+  // ── Financial Accounting Calculations ─────────────────────────────────────
+  const completedTopUps = useMemo(
+    () => allTxns.filter((t) => t.type === "topup" && t.status === "completed"),
+    [allTxns],
+  );
 
-  const totalTopUps = allTxns
-    .filter((t) => t.type === "topup" && t.status === "completed")
-    .reduce((sum, t) => sum + Number(t.amount), 0);
+  const grossTopUpVolume = useMemo(
+    () =>
+      completedTopUps.reduce(
+        (sum, t) => sum + Number(t.gross_amount ?? t.amount ?? 0),
+        0,
+      ),
+    [completedTopUps],
+  );
+
+  const platformPaymentFees = useMemo(
+    () =>
+      completedTopUps.reduce(
+        (sum, t) => sum + Number(t.platform_fee ?? 0),
+        0,
+      ),
+    [completedTopUps],
+  );
+
+  const netTopUpCash = useMemo(
+    () => grossTopUpVolume - platformPaymentFees,
+    [grossTopUpVolume, platformPaymentFees],
+  );
+
+  const platformRevenue = useMemo(
+    () =>
+      allTxns
+        .filter(
+          (t) => t.type === "platform_revenue" && t.status === "completed",
+        )
+        .reduce((sum, t) => sum + Number(t.amount), 0),
+    [allTxns],
+  );
+
+  const topupTxns = useMemo(
+    () => allTxns.filter((t) => t.type === "topup"),
+    [allTxns],
+  );
 
   // ── Pending items ──────────────────────────────────────────────────────────
 
-  const pendingApplications = allApplications.filter((a) => a.status === "pending").length;
-  const pendingPayouts = allPayouts.filter((p) => p.status === "pending").length;
+  const pendingApplications = allApplications.filter(
+    (a) => a.status === "pending",
+  ).length;
+  const pendingPayouts = allPayouts.filter(
+    (p) => p.status === "pending",
+  ).length;
   const openReports = allReports.filter((r) => r.status === "open").length;
 
   // ── Revenue trend (last 30 days, grouped by 4-day buckets) ─────────────────
@@ -373,8 +413,13 @@ export function AdminDashboardPage() {
   const revenueTrendData: { label: string; revenue: number }[] = [];
   for (let i = 0; i < 30; i += 4) {
     const start = new Date(cutoff.getTime() + i * 24 * 60 * 60 * 1000);
-    const end = new Date(cutoff.getTime() + Math.min(i + 4, 30) * 24 * 60 * 60 * 1000);
-    const label = start.toLocaleDateString("en-NG", { month: "short", day: "numeric" });
+    const end = new Date(
+      cutoff.getTime() + Math.min(i + 4, 30) * 24 * 60 * 60 * 1000,
+    );
+    const label = start.toLocaleDateString("en-NG", {
+      month: "short",
+      day: "numeric",
+    });
     let total = 0;
     for (const [dayStr, amt] of Object.entries(byDay)) {
       const d = new Date(dayStr);
@@ -451,7 +496,8 @@ export function AdminDashboardPage() {
   allReports
     .filter((r) => r.status === "open")
     .forEach((r) => {
-      const quizTitle = (r as unknown as { quiz_title?: string }).quiz_title || "a quiz";
+      const quizTitle =
+        (r as unknown as { quiz_title?: string }).quiz_title || "a quiz";
       activityItems.push({
         id: `report-${r.id}`,
         icon: Flag,
@@ -547,13 +593,41 @@ export function AdminDashboardPage() {
           </div>
         </section>
 
-        {/* ── 2. Platform-wide stats ────────────────────────────────────────── */}
+        {/* ── 2. Platform & Financial Overview ───────────────────────────── */}
         <section>
           <h2 className="font-heading font-bold text-base text-text mb-3 flex items-center gap-2">
             <span className="h-5 w-1 rounded-full bg-primary inline-block" />
-            Platform Overview
+            Platform & Financial Overview
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
+            <StatCard
+              label="Gross Top-Up Volume"
+              value={formatLedgerNaira(grossTopUpVolume)}
+              sub="Total customer top-ups"
+              icon={Wallet}
+              tone="warning"
+            />
+            <StatCard
+              label="Platform Payment Fees"
+              value={formatLedgerNaira(platformPaymentFees)}
+              sub="Flutterwave processing fees"
+              icon={CreditCard}
+              tone="muted"
+            />
+            <StatCard
+              label="Net Top-Up Cash"
+              value={formatLedgerNaira(netTopUpCash)}
+              sub="Gross top-ups minus fees"
+              icon={TrendingUp}
+              tone="success"
+            />
+            <StatCard
+              label="Quiz Share Revenue (35%)"
+              value={formatLedgerNaira(platformRevenue)}
+              sub="PrepUniv 35% quiz fee cut"
+              icon={TrendingUp}
+              tone="primary"
+            />
             <StatCard
               label="Total Users"
               value={totalUsers}
@@ -578,20 +652,6 @@ export function AdminDashboardPage() {
               value={totalAttempts}
               icon={Repeat2}
               tone="muted"
-            />
-            <StatCard
-              label="Platform Revenue"
-              value={formatLedgerNaira(platformRevenue)}
-              sub="PrepUniv's 35% cut"
-              icon={TrendingUp}
-              tone="success"
-            />
-            <StatCard
-              label="Total Top-ups"
-              value={formatLedgerNaira(totalTopUps)}
-              sub="Gross money in"
-              icon={Wallet}
-              tone="warning"
             />
           </div>
         </section>
@@ -717,7 +777,99 @@ export function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* ── 4. Quick links to all admin sections ─────────────────────────── */}
+        {/* ── 4. Top-Up Fee Accounting Ledger ─────────────────────────────── */}
+        <section>
+          <h2 className="font-heading font-bold text-base text-text mb-3 flex items-center gap-2">
+            <span className="h-5 w-1 rounded-full bg-success inline-block" />
+            Top-Up Financial Ledger & Fee Audit
+          </h2>
+          <Card padded={false} className="overflow-hidden border-border/50">
+            {topupTxns.length === 0 ? (
+              <div className="py-8 text-center text-muted font-heading text-sm">
+                No top-up transactions recorded yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-surface/60 border-b border-border/40 font-heading font-semibold text-text-soft">
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">Reference</th>
+                      <th className="py-3 px-4 text-right">Gross Amount</th>
+                      <th className="py-3 px-4 text-right">Platform Fee</th>
+                      <th className="py-3 px-4 text-right">Net Received</th>
+                      <th className="py-3 px-4">Fee Status</th>
+                      <th className="py-3 px-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/30">
+                    {topupTxns.slice(0, 10).map((t) => {
+                      const gross = Number(t.gross_amount ?? t.amount ?? 0);
+                      const fee = Number(t.platform_fee ?? 0);
+                      const net = Number(t.net_amount ?? gross - fee);
+                      const isCompleted = t.status === "completed";
+                      return (
+                        <tr key={t.id} className="hover:bg-surface/30">
+                          <td className="py-3 px-4 font-heading text-muted">
+                            {new Date(t.created_at).toLocaleDateString("en-NG", {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </td>
+                          <td className="py-3 px-4 font-mono text-[11px] text-text-soft">
+                            {t.reference || t.id.slice(0, 12)}
+                          </td>
+                          <td className="py-3 px-4 text-right font-heading font-semibold text-text">
+                            {formatLedgerNaira(gross)}
+                          </td>
+                          <td className="py-3 px-4 text-right font-heading text-danger">
+                            {isCompleted ? formatLedgerNaira(fee) : "—"}
+                          </td>
+                          <td className="py-3 px-4 text-right font-heading font-semibold text-success">
+                            {isCompleted ? formatLedgerNaira(net) : "—"}
+                          </td>
+                          <td className="py-3 px-4">
+                            {!isCompleted ? (
+                              <Badge variant="muted" size="sm">
+                                N/A
+                              </Badge>
+                            ) : t.fee_is_estimated ? (
+                              <Badge variant="warning" size="sm">
+                                Estimated (Backfill)
+                              </Badge>
+                            ) : (
+                              <Badge variant="success" size="sm">
+                                Confirmed Gateway
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge
+                              variant={
+                                t.status === "completed"
+                                  ? "success"
+                                  : t.status === "failed"
+                                    ? "danger"
+                                    : "warning"
+                              }
+                              size="sm"
+                            >
+                              {t.status}
+                            </Badge>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </section>
+
+        {/* ── 5. Quick links to all admin sections ─────────────────────────── */}
         <section>
           <h2 className="font-heading font-bold text-base text-text mb-3 flex items-center gap-2">
             <span className="h-5 w-1 rounded-full bg-muted inline-block" />

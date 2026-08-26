@@ -75,6 +75,13 @@ export interface WalletTransaction {
   id: string;
   user_id: string;
   amount: number;
+  gross_amount?: number;
+  processing_fee?: number;
+  vat_fee?: number;
+  platform_fee?: number;
+  net_amount?: number;
+  fee_rate?: number;
+  fee_is_estimated?: boolean;
   type: TransactionType;
   reference: string;
   related_quiz_id?: string;

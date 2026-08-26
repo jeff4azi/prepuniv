@@ -89,6 +89,13 @@ export type DbWalletTxn = {
   id: string;
   user_id: string | null;
   amount: number;
+  gross_amount?: number | null;
+  processing_fee?: number | null;
+  vat_fee?: number | null;
+  platform_fee?: number | null;
+  net_amount?: number | null;
+  fee_rate?: number | null;
+  fee_is_estimated?: boolean | null;
   type:
     | "topup"
     | "quiz_payment"
