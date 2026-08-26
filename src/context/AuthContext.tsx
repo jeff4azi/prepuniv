@@ -226,7 +226,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       full_name: profile.full_name,
       email: sessionUser.email ?? "",
       role: profile.role as UserRole,
-      is_approved_creator: !!profile.is_approved_creator,
+      is_approved_creator:
+        profile.role === "creator" || !!profile.is_approved_creator,
       is_suspended: !!profile.is_suspended,
       university_id: profile.university_id ?? "",
       email_confirmed: !!sessionUser.email_confirmed_at,
@@ -503,11 +504,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           error?.code === "email_not_confirmed");
 
       if (!error && signInData?.user) {
-        // Check suspension before letting the session persist in the app.
-        // If suspended: sign back out immediately and surface a distinct error.
+        // Fetch full profile immediately so role & approval status are ready
         const { data: profileRow } = await supabase
           .from("profiles")
-          .select("is_suspended")
+          .select("*")
           .eq("id", signInData.user.id)
           .maybeSingle();
 
@@ -520,14 +520,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } as AuthError,
             emailNotConfirmed: false,
             accountSuspended: true,
+            profile: null,
           };
         }
+
+        if (profileRow) {
+          setProfile(profileRow as Profile);
+        }
+
+        return {
+          error: null,
+          emailNotConfirmed: false,
+          accountSuspended: false,
+          profile: (profileRow as Profile) ?? null,
+        };
       }
 
       return {
         error,
         emailNotConfirmed: !!emailNotConfirmed,
         accountSuspended: false,
+        profile: null,
       };
     },
     [],

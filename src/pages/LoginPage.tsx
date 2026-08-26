@@ -10,7 +10,7 @@ import {
   validatePassword,
 } from "../components/Form";
 import { useAuth } from "../context/AuthContext";
-import { useRedirectAfterAuth } from "../lib/routeGuard";
+import { getDefaultDashboard, useRedirectAfterAuth } from "../lib/routeGuard";
 
 const RESEND_COOLDOWN = 60;
 
@@ -64,7 +64,7 @@ export function LoginPage() {
     if (!validateAll()) return;
     setLoading(true);
 
-    const { error, emailNotConfirmed, accountSuspended } = await logIn({
+    const { error, emailNotConfirmed, accountSuspended, profile: loggedInProfile } = await logIn({
       email: email.trim(),
       password,
     });
@@ -90,7 +90,11 @@ export function LoginPage() {
       return;
     }
 
-    navigate(redirectTarget, { replace: true });
+    const searchParams = new URLSearchParams(window.location.search);
+    const redirectParam = searchParams.get("redirect");
+    const target = redirectParam ?? getDefaultDashboard(loggedInProfile);
+
+    navigate(target, { replace: true });
     setLoading(false);
   }
 
