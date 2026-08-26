@@ -281,11 +281,6 @@ interface DashboardData {
 export function AdminDashboardPage() {
   const { currentUser } = useAuth();
 
-  // Gate: only admin role
-  if (currentUser.role !== "admin") {
-    return <Navigate to="/home" replace />;
-  }
-
   // ── Fetch all dashboard data ───────────────────────────────────────────────
 
   const [data, setData] = useState<DashboardData | null>(null);
@@ -294,14 +289,39 @@ export function AdminDashboardPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [profilesRes, quizzesRes, attemptCountRes, txnsRes, payoutsRes, appsRes, reportsRes] = await Promise.all([
-        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+      const [
+        profilesRes,
+        quizzesRes,
+        attemptCountRes,
+        txnsRes,
+        payoutsRes,
+        appsRes,
+        reportsRes,
+      ] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("*")
+          .order("created_at", { ascending: false }),
         supabase.from("quizzes").select("*"),
-        supabase.from("quiz_attempts").select("*", { count: "exact", head: true }),
-        supabase.from("wallet_transactions").select("*").order("created_at", { ascending: false }),
-        supabase.from("payout_requests").select("*").order("requested_at", { ascending: false }),
-        supabase.from("creator_applications").select("*").order("submitted_at", { ascending: false }),
-        supabase.from("reports").select("*").order("created_at", { ascending: false }),
+        supabase
+          .from("quiz_attempts")
+          .select("*", { count: "exact", head: true }),
+        supabase
+          .from("wallet_transactions")
+          .select("*")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("payout_requests")
+          .select("*")
+          .order("requested_at", { ascending: false }),
+        supabase
+          .from("creator_applications")
+          .select("*")
+          .order("submitted_at", { ascending: false }),
+        supabase
+          .from("reports")
+          .select("*")
+          .order("created_at", { ascending: false }),
       ]);
 
       setData({
@@ -320,25 +340,13 @@ export function AdminDashboardPage() {
     }
   }, []);
 
-  useEffect(() => { void fetchData(); }, [fetchData]);
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
 
-  if (loading || !data) {
-    return (
-      <PageContainer className="max-w-290!">
-        <AdminLoadingState label="Loading dashboard…" />
-      </PageContainer>
-    );
-  }
+  const allTxns = data?.txns ?? [];
 
-  const { profiles: allProfiles, quizzes: allQuizzes, attemptCount: totalAttempts, txns: allTxns, payouts: allPayouts, applications: allApplications, reports: allReports } = data;
-
-  // ── Platform stats ──────────────────────────────────────────────────────────
-
-  const totalUsers = allProfiles.filter((p) => p.role === "user").length;
-  const totalCreators = allProfiles.filter((p) => p.is_approved_creator && p.role !== "admin").length;
-  const publishedQuizzes = allQuizzes.filter((q) => q.is_published).length;
-
-  // ── Financial Accounting Calculations ─────────────────────────────────────
+  // ── Financial Accounting Calculations (Must run unconditionally before early returns) ──
   const completedTopUps = useMemo(
     () => allTxns.filter((t) => t.type === "topup" && t.status === "completed"),
     [allTxns],
@@ -381,6 +389,34 @@ export function AdminDashboardPage() {
     () => allTxns.filter((t) => t.type === "topup"),
     [allTxns],
   );
+
+  // Gate: only admin role
+  if (currentUser.role !== "admin") {
+    return <Navigate to="/home" replace />;
+  }
+
+  if (loading || !data) {
+    return (
+      <PageContainer className="max-w-290!">
+        <AdminLoadingState label="Loading dashboard…" />
+      </PageContainer>
+    );
+  }
+
+  const {
+    profiles: allProfiles,
+    quizzes: allQuizzes,
+    attemptCount: totalAttempts,
+    payouts: allPayouts,
+    applications: allApplications,
+    reports: allReports,
+  } = data;
+
+  const totalUsers = allProfiles.filter((p) => p.role === "user").length;
+  const totalCreators = allProfiles.filter(
+    (p) => p.is_approved_creator && p.role !== "admin",
+  ).length;
+  const publishedQuizzes = allQuizzes.filter((q) => q.is_published).length;
 
   // ── Pending items ──────────────────────────────────────────────────────────
 
