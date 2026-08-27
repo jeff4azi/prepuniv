@@ -312,7 +312,7 @@ export function HomePage() {
                 Browse quizzes
               </Button>
             </Link>
-            <Link to="/wallet">
+            <Link to="/wallet?action=topup">
               <Button variant="outline" size="md">
                 <Plus className="w-4 h-4" />
                 Top up
@@ -378,7 +378,7 @@ export function HomePage() {
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-1">
-                <Link to="/wallet" className="sm:inline-flex sm:w-auto w-full">
+                <Link to="/wallet?action=topup" className="sm:inline-flex sm:w-auto w-full">
                   <Button
                     variant="secondary"
                     size="lg"

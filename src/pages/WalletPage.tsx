@@ -82,6 +82,31 @@ export function WalletPage() {
   const [redirectTxRef, setRedirectTxRef] = useState<string | null>(null);
 
   /**
+   * Auto-open Top Up overlay if navigated from a dedicated "Top Up" button
+   * (e.g. ?action=topup or ?topup=true or location.state.openTopup)
+   */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get("action");
+    const topup = params.get("topup");
+    const state = (window.history.state as { usr?: { openTopup?: boolean } })?.usr;
+
+    if (action === "topup" || topup === "true" || state?.openTopup) {
+      setSheetOpen(true);
+      setTopUpStep("amount");
+
+      if (action || topup) {
+        const cleanParams = new URLSearchParams(window.location.search);
+        cleanParams.delete("action");
+        cleanParams.delete("topup");
+        const newSearch = cleanParams.toString();
+        const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : "");
+        window.history.replaceState(window.history.state, "", newUrl);
+      }
+    }
+  }, []);
+
+  /**
    * On mount: if Flutterwave redirected back with ?tx_ref=..., call our
    * verify endpoint so the pending transaction gets completed even when the
    * webhook hasn't fired (e.g. local dev without a public URL).

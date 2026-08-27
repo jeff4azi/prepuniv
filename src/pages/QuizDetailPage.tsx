@@ -534,7 +534,7 @@ export function QuizDetailPage() {
                             variant="danger"
                             size="sm"
                             className="mt-1"
-                            onClick={() => navigate("/wallet")}
+                            onClick={() => navigate("/wallet?action=topup")}
                           >
                             <Wallet className="w-3.5 h-3.5" />
                             Top Up Wallet
