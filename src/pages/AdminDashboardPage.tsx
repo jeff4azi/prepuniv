@@ -26,6 +26,7 @@ import {
   UserCheck,
   Sparkles,
   AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import {
   AreaChart,
@@ -43,6 +44,7 @@ import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import type { DbProfile, DbQuiz, DbWalletTxn, DbPayoutRequest, DbReport, DbCreatorApplication } from "../lib/supabase";
 import { AdminLoadingState } from "../hooks/useAdminData";
+import { apiFetch } from "../lib/api";
 
 // Wallet and payout ledger amounts are stored in naira. Quiz prices use kobo,
 // so the shared quiz-price formatter must not be used for these values.
@@ -340,9 +342,23 @@ export function AdminDashboardPage() {
     }
   }, []);
 
+  const [reconciling, setReconciling] = useState(false);
+
   useEffect(() => {
     void fetchData();
   }, [fetchData]);
+
+  const handleReconcileTopups = async () => {
+    setReconciling(true);
+    try {
+      await apiFetch("/api/admin/topups/reconcile", { method: "POST" });
+      await fetchData();
+    } catch (err) {
+      console.error("Failed to reconcile top-ups:", err);
+    } finally {
+      setReconciling(false);
+    }
+  };
 
   const allTxns = data?.txns ?? [];
 
@@ -815,10 +831,20 @@ export function AdminDashboardPage() {
 
         {/* ── 4. Top-Up Fee Accounting Ledger ─────────────────────────────── */}
         <section>
-          <h2 className="font-heading font-bold text-base text-text mb-3 flex items-center gap-2">
-            <span className="h-5 w-1 rounded-full bg-success inline-block" />
-            Top-Up Financial Ledger & Fee Audit
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-heading font-bold text-base text-text flex items-center gap-2">
+              <span className="h-5 w-1 rounded-full bg-success inline-block" />
+              Top-Up Financial Ledger & Fee Audit
+            </h2>
+            <button
+              disabled={reconciling}
+              onClick={handleReconcileTopups}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium font-heading bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50 transition-colors"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${reconciling ? "animate-spin" : ""}`} />
+              {reconciling ? "Syncing..." : "Sync & Reconcile Statuses"}
+            </button>
+          </div>
           <Card padded={false} className="overflow-hidden border-border/50">
             {topupTxns.length === 0 ? (
               <div className="py-8 text-center text-muted font-heading text-sm">
