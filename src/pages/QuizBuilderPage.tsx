@@ -100,6 +100,40 @@ function koboToNaira(kobo: number) {
   return kobo / 100;
 }
 
+// Matches course-code-shaped tokens like "EDU 101", "GST111", "CSC-122".
+const COURSE_CODE_SHAPE_RE = /\b[A-Za-z]{2,5}\s?-?\s?\d{3}\b/;
+
+function normalizeCode(s: string) {
+  return s.replace(/\s+|-/g, "").toUpperCase();
+}
+
+/**
+ * Returns the course-code-looking substring found in the title, or null.
+ * Checked two ways:
+ *  1. Does the title contain the exact course code the creator already
+ *     entered above (spacing/case-insensitive)? — highest confidence.
+ *  2. Otherwise, does the title contain *anything* shaped like a course
+ *     code (e.g. "EDU 101")? — catches it even before Course Code is filled.
+ */
+function findCourseCodeInTitle(
+  title: string,
+  courseCode: string,
+): string | null {
+  if (!title.trim()) return null;
+
+  const normalizedTitle = normalizeCode(title);
+  const normalizedCourseCode = courseCode.trim()
+    ? normalizeCode(courseCode)
+    : "";
+
+  if (normalizedCourseCode && normalizedTitle.includes(normalizedCourseCode)) {
+    return courseCode.trim().toUpperCase();
+  }
+
+  const match = title.match(COURSE_CODE_SHAPE_RE);
+  return match ? match[0] : null;
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function QuizBuilderPage() {
@@ -236,6 +270,15 @@ export function QuizBuilderPage() {
   }, [isEdit, loadingEdit, existingQuiz, detailsReady]);
 
   const [detailErrors, setDetailErrors] = useState<Partial<QuizDetails>>({});
+
+  // Live warning: creator typed the course code into the Title field.
+  // The site already prefixes every quiz title with the course code on
+  // save (see `quizTitle` in handleSave), so a code left in here would
+  // show up twice — e.g. "CSC 122 — CSC 122 Loops & Arrays".
+  const duplicateCourseCodeInTitle = useMemo(
+    () => findCourseCodeInTitle(details.title, details.course_code),
+    [details.title, details.course_code],
+  );
 
   // ── Autocomplete state & refs for course code field ──
   const [courseCodeAcOpen, setCourseCodeAcOpen] = useState(false);
@@ -720,7 +763,13 @@ export function QuizBuilderPage() {
                 error={
                   saveAttempted && !details.title.trim()
                     ? "Title is required."
-                    : undefined
+                    : duplicateCourseCodeInTitle
+                      ? `Don't include the course code here — it looks like "${duplicateCourseCodeInTitle}" is in the title. We already prefix every quiz with the course code automatically, so it would show up twice (e.g. "${
+                          details.course_code.trim() || "CSC 122"
+                        } — ${
+                          details.course_code.trim() || "CSC 122"
+                        } Loops & Arrays"). Just enter the topic, e.g. "Loops, Arrays & Functions Practice".`
+                      : undefined
                 }
               >
                 <input
@@ -731,7 +780,11 @@ export function QuizBuilderPage() {
                   onChange={(e) =>
                     setDetails((d) => ({ ...d, title: e.target.value }))
                   }
-                  className="w-full h-11 px-4 rounded-xl bg-cream border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-sm font-heading text-text placeholder:text-muted transition-all"
+                  className={`w-full h-11 px-4 rounded-xl bg-cream border focus:outline-none focus:ring-2 text-sm font-heading text-text placeholder:text-muted transition-all ${
+                    duplicateCourseCodeInTitle
+                      ? "border-danger/60 focus:ring-danger/30 focus:border-danger"
+                      : "border-border focus:ring-primary/30 focus:border-primary/50"
+                  }`}
                 />
               </FieldWrapper>
 
@@ -1161,7 +1214,10 @@ export function QuizBuilderPage() {
 
             {/* Inline question editor */}
             {editorMode !== "none" && (
-              <div ref={questionEditorRef} className="border-t border-border/50">
+              <div
+                ref={questionEditorRef}
+                className="border-t border-border/50"
+              >
                 <QuestionEditor
                   mode={editorMode}
                   type={editorType}
