@@ -345,7 +345,17 @@ export function AdminDashboardPage() {
   const [reconciling, setReconciling] = useState(false);
 
   useEffect(() => {
-    void fetchData();
+    // This server is serverless, so there's no persistent background job
+    // clearing out stale pending top-ups anymore. Every dashboard load
+    // triggers an on-demand sweep instead (throttled server-side to
+    // roughly once a minute, so repeat loads stay cheap), then fetches
+    // the fresh data. If the sweep call fails for any reason, we still
+    // fetch — the dashboard just shows whatever's currently in the DB.
+    void apiFetch("/api/admin/topups/reconcile-status", { method: "GET" })
+      .catch(() => {})
+      .finally(() => {
+        void fetchData();
+      });
   }, [fetchData]);
 
   const handleReconcileTopups = async () => {
@@ -870,6 +880,7 @@ export function AdminDashboardPage() {
                       const fee = Number(t.platform_fee ?? 0);
                       const net = Number(t.net_amount ?? gross - fee);
                       const isCompleted = t.status === "completed";
+                      const isPartial = t.status === "partial";
                       return (
                         <tr key={t.id} className="hover:bg-surface/30">
                           <td className="py-3 px-4 font-heading text-muted">
@@ -885,6 +896,11 @@ export function AdminDashboardPage() {
                           </td>
                           <td className="py-3 px-4 text-right font-heading font-semibold text-text">
                             {formatLedgerNaira(gross)}
+                            {isPartial && t.amount_received != null && (
+                              <span className="block text-[10px] font-normal text-warning mt-0.5">
+                                only {formatLedgerNaira(Number(t.amount_received))} received
+                              </span>
+                            )}
                           </td>
                           <td className="py-3 px-4 text-right font-heading text-danger">
                             {isCompleted ? formatLedgerNaira(fee) : "—"}

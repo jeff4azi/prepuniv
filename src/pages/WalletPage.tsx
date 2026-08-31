@@ -25,7 +25,13 @@ import { apiFetch } from "../lib/api";
 
 type FilterKey = "all" | "topups" | "payments";
 type TopUpStep = "amount" | "processing" | "success";
-type VerifyState = "idle" | "verifying" | "success" | "failed" | "pending";
+type VerifyState =
+  | "idle"
+  | "verifying"
+  | "success"
+  | "failed"
+  | "pending"
+  | "partial";
 
 const PRESET_AMOUNTS_KOBO = [50000, 100000, 200000, 500000];
 
@@ -80,6 +86,13 @@ export function WalletPage() {
   // ── Redirect-back verification state ─────────────────────────────────────
   const [verifyState, setVerifyState] = useState<VerifyState>("idle");
   const [redirectTxRef, setRedirectTxRef] = useState<string | null>(null);
+  // amounts are naira (same unit wallet_transactions stores amounts in —
+  // see the comment on formatLedgerNaira in AdminDashboardPage.tsx; only
+  // quiz prices are kobo). Run through kobo() below before formatNaira().
+  const [partialAmounts, setPartialAmounts] = useState<{
+    expected: number;
+    received: number;
+  } | null>(null);
 
   /**
    * Auto-open Top Up overlay if navigated from a dedicated "Top Up" button
@@ -89,7 +102,8 @@ export function WalletPage() {
     const params = new URLSearchParams(window.location.search);
     const action = params.get("action");
     const topup = params.get("topup");
-    const state = (window.history.state as { usr?: { openTopup?: boolean } })?.usr;
+    const state = (window.history.state as { usr?: { openTopup?: boolean } })
+      ?.usr;
 
     if (action === "topup" || topup === "true" || state?.openTopup) {
       setSheetOpen(true);
@@ -100,7 +114,8 @@ export function WalletPage() {
         cleanParams.delete("action");
         cleanParams.delete("topup");
         const newSearch = cleanParams.toString();
-        const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : "");
+        const newUrl =
+          window.location.pathname + (newSearch ? `?${newSearch}` : "");
         window.history.replaceState(window.history.state, "", newUrl);
       }
     }
@@ -128,10 +143,14 @@ export function WalletPage() {
       const delayMs = 3000;
 
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const { data, error } = await apiFetch<{ status: string }>(
-          "/api/wallet/topup/verify",
-          { method: "POST", body: { tx_ref: txRef } },
-        );
+        const { data, error } = await apiFetch<{
+          status: string;
+          amount_expected?: number;
+          amount_received?: number;
+        }>("/api/wallet/topup/verify", {
+          method: "POST",
+          body: { tx_ref: txRef },
+        });
 
         if (cancelled) return;
 
@@ -152,6 +171,15 @@ export function WalletPage() {
           await refreshProfile();
           if (cancelled) return;
           setVerifyState("failed");
+          return;
+        } else if (status === "partial") {
+          await refreshProfile();
+          if (cancelled) return;
+          setPartialAmounts({
+            expected: Number(data?.amount_expected ?? 0),
+            received: Number(data?.amount_received ?? 0),
+          });
+          setVerifyState("partial");
           return;
         } else {
           setVerifyState("pending");
@@ -402,6 +430,56 @@ export function WalletPage() {
                   We haven't received confirmation yet. Your balance will update
                   automatically once Flutterwave confirms the payment — usually
                   within a minute.
+                </p>
+              </div>
+              <button
+                onClick={() => setVerifyState("idle")}
+                className="h-7 w-7 rounded-lg flex items-center justify-center text-muted hover:text-text hover:bg-surface active:scale-95 transition-colors shrink-0"
+                aria-label="Dismiss"
+              >
+                <X className="w-4 h-4" strokeWidth={2} />
+              </button>
+            </div>
+          )}
+
+          {verifyState === "partial" && (
+            <div className="flex items-start gap-3 p-4 rounded-2xl bg-warning-bg border border-warning/25">
+              <Info
+                className="w-5 h-5 text-warning shrink-0 mt-0.5"
+                strokeWidth={2}
+              />
+              <div className="flex-1 min-w-0">
+                <p className="font-heading font-semibold text-sm text-text leading-tight">
+                  We received less than expected
+                </p>
+                <p className="mt-0.5 text-xs text-text-soft">
+                  {partialAmounts ? (
+                    <>
+                      You transferred{" "}
+                      <span className="font-semibold text-text">
+                        {formatNaira(kobo(partialAmounts.received))}
+                      </span>{" "}
+                      of the{" "}
+                      <span className="font-semibold text-text">
+                        {formatNaira(kobo(partialAmounts.expected))}
+                      </span>{" "}
+                      expected. Your wallet hasn't been credited yet — this
+                      wasn't enough to complete the top-up.
+                    </>
+                  ) : (
+                    "The amount received was less than what you set out to pay, so your wallet hasn't been credited yet."
+                  )}
+                </p>
+                <p className="mt-1.5 text-xs text-text-soft">
+                  You can start a new top-up for the remaining balance, or
+                  contact support with your reference
+                  {redirectTxRef && (
+                    <>
+                      {" "}
+                      (<span className="font-mono">{redirectTxRef}</span>)
+                    </>
+                  )}{" "}
+                  if you believe this is a mistake.
                 </p>
               </div>
               <button
@@ -957,6 +1035,11 @@ function TxnRow({ txn, quizTitle }: { txn: DbWalletTxn; quizTitle?: string }) {
         <span className="w-1.5 h-1.5 rounded-full bg-warning" />
         Pending
       </Badge>
+    ) : txn.status === "partial" ? (
+      <Badge variant="warning" size="sm" dot>
+        <span className="w-1.5 h-1.5 rounded-full bg-warning" />
+        Partial payment
+      </Badge>
     ) : txn.status === "failed" ? (
       <Badge variant="danger" size="sm" dot>
         <span className="w-1.5 h-1.5 rounded-full bg-danger" />
@@ -1002,12 +1085,25 @@ function TxnRow({ txn, quizTitle }: { txn: DbWalletTxn; quizTitle?: string }) {
                 : "text-text"
           }`}
         >
-          {positive ? "+" : "−"}
-          {formatNaira(amountKobo)}
+          {txn.status === "partial" && txn.amount_received != null ? (
+            // What actually arrived — not the originally requested amount,
+            // since the wallet was NOT credited that full amount.
+            <>+{formatNaira(kobo(txn.amount_received))}</>
+          ) : (
+            <>
+              {positive ? "+" : "−"}
+              {formatNaira(amountKobo)}
+            </>
+          )}
         </p>
         {txn.status === "completed" && (
           <p className="mt-1 text-[11px] font-heading font-medium text-muted">
             {topup ? "Completed" : "Paid"}
+          </p>
+        )}
+        {txn.status === "partial" && (
+          <p className="mt-1 text-[11px] font-heading font-medium text-warning">
+            of {formatNaira(amountKobo)} requested — not credited
           </p>
         )}
       </div>
