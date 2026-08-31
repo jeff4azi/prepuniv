@@ -96,6 +96,10 @@ export type DbWalletTxn = {
   net_amount?: number | null;
   fee_rate?: number | null;
   fee_is_estimated?: boolean | null;
+  // Only set when status is "partial" — how much Flutterwave actually
+  // confirmed was received, which is less than `gross_amount`/`amount`
+  // (the amount the user was asked to pay). Naira, same unit as amount.
+  amount_received?: number | null;
   type:
     | "topup"
     | "quiz_payment"
@@ -106,7 +110,7 @@ export type DbWalletTxn = {
   reference: string | null;
   related_quiz_id: string | null;
   related_attempt_id: string | null;
-  status: "pending" | "completed" | "failed";
+  status: "pending" | "completed" | "partial" | "failed";
   created_at: string;
 };
 
