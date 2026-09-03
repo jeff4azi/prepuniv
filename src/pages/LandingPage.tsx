@@ -692,7 +692,7 @@ function TrustBar() {
             {
               icon: Lock,
               label: "Secure payments",
-              sub: "Wallet top-ups via Paystack",
+              sub: "Wallet top-ups via Flutterwave",
             },
             {
               icon: Infinity,
