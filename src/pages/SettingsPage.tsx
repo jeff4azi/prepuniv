@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { User, Building2, LogOut } from "lucide-react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
+import { User, Building2, LogOut, Bell, ChevronRight } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
@@ -9,6 +9,8 @@ import { Toast, useToast } from "../components/Toast";
 import { AvatarUpload } from "../components/AvatarUpload";
 import { useAuth } from "../context/AuthContext";
 import { getBankName } from "../lib/banks";
+import { usePushSubscription } from "../hooks/usePushSubscription";
+import { useNavBadges, formatBadgeCount } from "../hooks/useNavBadges";
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 
@@ -245,6 +247,132 @@ function BankDetailsSection() {
   );
 }
 
+// ─── Notifications section ──────────────────────────────────────────────────────
+
+function NotificationsSection() {
+  const { currentUser } = useAuth();
+  const { pathname } = useLocation();
+  const { permission, subscribed, loading, enable, disable } = usePushSubscription();
+  const [, showToast] = useToast();
+  const badges = useNavBadges({
+    userId: currentUser.id,
+    role: currentUser.role,
+    isApprovedCreator: currentUser.is_approved_creator,
+    pathname,
+  });
+
+  const unreadCount = badges.unreadNotifications;
+  const isEnabled = permission === "granted" && subscribed;
+  const isBlocked = permission === "denied";
+
+  async function handleEnable() {
+    const res = await enable();
+    if (!res.ok) {
+      showToast({ message: res.error || "Failed to enable notifications.", variant: "danger" });
+    } else {
+      showToast({ message: "Push notifications enabled." });
+    }
+  }
+
+  async function handleDisable() {
+    const res = await disable();
+    if (!res.ok) {
+      showToast({ message: res.error || "Failed to disable notifications.", variant: "danger" });
+    } else {
+      showToast({ message: "Push notifications disabled." });
+    }
+  }
+
+  return (
+    <SettingsSection
+      icon={Bell}
+      title="Notifications"
+      description="Manage how you receive alerts and view your notification history."
+    >
+      <Link
+        to="/notifications"
+        className="inline-flex items-center justify-between h-11 w-full px-3 rounded-2xl bg-surface/50 hover:bg-surface transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+            <Bell className="w-5 h-5" strokeWidth={2} />
+          </div>
+          <span className="text-sm font-heading font-medium text-text">
+            View all notifications
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <span className="inline-flex h-5 min-w-5 px-1 items-center justify-center rounded-full text-[11px] font-bold bg-warning text-cream">
+              {formatBadgeCount(unreadCount)}
+            </span>
+          )}
+          <ChevronRight className="w-4 h-4 opacity-40 shrink-0" />
+        </div>
+      </Link>
+
+      <div className="border-t border-border/40 pt-4">
+        <p className="text-[12px] font-heading font-semibold text-muted uppercase tracking-wider mb-3">
+          Push notifications
+        </p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            {isEnabled ? (
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-success" />
+                <span className="text-sm font-heading font-medium text-success">
+                  Enabled
+                </span>
+              </div>
+            ) : isBlocked ? (
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-danger" />
+                  <span className="text-sm font-heading font-medium text-danger">
+                    Blocked by browser
+                  </span>
+                </div>
+                <p className="text-xs text-muted leading-relaxed">
+                  To re-enable, open your browser settings and allow notifications
+                  for this site.
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-muted/50" />
+              <span className="text-sm font-heading font-medium text-muted">
+                Disabled
+              </span>
+            </div>
+            )}
+          </div>
+          {!isBlocked && (
+            isEnabled ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDisable}
+                disabled={loading}
+              >
+                Disable
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleEnable}
+                disabled={loading}
+              >
+                Enable
+              </Button>
+            )
+          )}
+        </div>
+      </div>
+    </SettingsSection>
+  );
+}
+
 // ─── Danger zone section ──────────────────────────────────────────────────────
 
 function DangerSection() {
@@ -347,6 +475,7 @@ export function SettingsPage() {
             }
           />
           {isCreator && <BankDetailsSection />}
+          <NotificationsSection />
           <DangerSection />
         </div>
       </PageContainer>

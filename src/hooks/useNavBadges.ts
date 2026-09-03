@@ -28,6 +28,8 @@ export interface NavBadges {
   /** Creator */
   creatorPayouts: number;
   creatorReports: number;
+  /** All users */
+  unreadNotifications: number;
 }
 
 const EMPTY: NavBadges = {
@@ -36,6 +38,7 @@ const EMPTY: NavBadges = {
   adminReports: 0,
   creatorPayouts: 0,
   creatorReports: 0,
+  unreadNotifications: 0,
 };
 
 /** Cap displayed number at this value (shows "9+" in UI) */
@@ -70,9 +73,21 @@ export function useNavBadges({
     const isAdmin = role === "admin";
     const isCreator = isApprovedCreator;
 
-    // Nothing to fetch for a plain user with no special roles
+    // ── Unread notifications count (all users) ───────────────────────────────
+    const notificationsCountPromise = supabase
+      .from("notifications")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("is_read", false);
+
+    // Nothing to fetch for a plain user with no special roles — but still
+    // need unread notifications count.
     if (!isAdmin && !isCreator) {
-      setBadges(EMPTY);
+      const notifRes = await notificationsCountPromise;
+      setBadges({
+        ...EMPTY,
+        unreadNotifications: notifRes.count ?? 0,
+      });
       return;
     }
 
@@ -112,11 +127,14 @@ export function useNavBadges({
       ? supabase.from("quizzes").select("id").eq("creator_id", userId)
       : Promise.resolve(null);
 
-    const [adminResults, navStateRes, quizIdsRes] = await Promise.all([
+    const [adminResults, navStateRes, quizIdsRes, notifRes] = await Promise.all([
       adminPromise,
       creatorNavStatePromise,
       creatorQuizIdsPromise,
+      notificationsCountPromise,
     ]);
+
+    const unreadNotifications = notifRes.count ?? 0;
 
     // ── Admin counts ──────────────────────────────────────────────────────────
 
@@ -200,6 +218,7 @@ export function useNavBadges({
       adminReports,
       creatorPayouts,
       creatorReports,
+      unreadNotifications,
     });
   }, [userId, role, isApprovedCreator]);
 

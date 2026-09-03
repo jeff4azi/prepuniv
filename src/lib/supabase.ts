@@ -202,3 +202,59 @@ export type DbUserBalance = {
   user_id: string;
   balance: number;
 };
+
+export type DbNotification = {
+  id: string;
+  user_id: string;
+  type:
+    | "topup_completed"
+    | "topup_partial"
+    | "topup_failed"
+    | "quiz_purchase_confirmed"
+    | "admin_broadcast"
+    | "payout_requested"
+    | "payout_paid"
+    | "payout_failed"
+    | "payout_reversed"
+    | "new_report_on_quiz"
+    | "quiz_suspended"
+    | "creator_application_approved"
+    | "creator_application_rejected"
+    | "new_report_submitted"
+    | "new_creator_application"
+    | "payout_requested_pending_review";
+  title: string;
+  body: string | null;
+  data: Record<string, unknown> | null;
+  is_read: boolean;
+  read_at: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type DbPushSubscription = {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  user_agent: string | null;
+  created_at: string;
+  last_seen_at: string;
+};
+
+export type DbNotificationBroadcast = {
+  id: string;
+  title: string;
+  body: string | null;
+  data: Record<string, unknown> | null;
+  target: "all" | "user";
+  target_user_id: string | null;
+  created_by: string;
+  status: "pending" | "processing" | "done" | "failed";
+  total_recipients: number;
+  processed_count: number;
+  last_processed_user_id: string | null;
+  created_at: string;
+  completed_at: string | null;
+};

@@ -21,6 +21,7 @@ import {
   HistoryPage,
   SettingsPage,
   LibraryPage,
+  NotificationsPage,
   CreatorDashboardPage,
   CreatorQuizzesPage,
   CreatorQuizzesNewPage,
@@ -36,6 +37,7 @@ import {
   AdminCoursesPage,
   AdminQuizzesPage,
   AdminUniversitiesPage,
+  AdminNotificationsPage,
 } from "./pages";
 import { AdminQuizContentPage } from "./pages/AdminQuizContentPage";
 import { AccountSuspendedPage } from "./pages/AccountSuspendedPage";
@@ -147,6 +149,14 @@ function AppShell() {
                 element={
                   <RequireAuth>
                     <SettingsPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/notifications"
+                element={
+                  <RequireAuth>
+                    <NotificationsPage />
                   </RequireAuth>
                 }
               />
@@ -323,6 +333,14 @@ function AppShell() {
                 }
               />
               <Route
+                path="/admin/notifications"
+                element={
+                  <RequireAuth role="admin">
+                    <AdminNotificationsPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
                 path="/admin/quizzes/:id/content"
                 element={
                   <RequireAuth role="admin">
@@ -446,7 +464,7 @@ function RoutingSwitch() {
 
   // Known app-shell paths — anything else is a 404, rendered shell-free
   const isAppPath =
-    /^\/(home|browse|library|wallet|history|settings|quiz|profile|creator|admin|select-university)/.test(
+    /^\/(home|browse|library|wallet|history|settings|notifications|quiz|profile|creator|admin|select-university)/.test(
       loc.pathname,
     );
 

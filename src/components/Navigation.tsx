@@ -19,6 +19,7 @@ import {
   Library,
   UserPlus,
   GraduationCap,
+  Megaphone,
 } from "lucide-react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -106,6 +107,12 @@ const ADMIN_NAV: NavItem[] = [
     to: "/admin/universities",
     label: "Universities",
     icon: GraduationCap,
+    roles: ["admin"],
+  },
+  {
+    to: "/admin/notifications",
+    label: "Broadcasts",
+    icon: Megaphone,
     roles: ["admin"],
   },
 ];

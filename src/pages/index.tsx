@@ -27,6 +27,7 @@ import { WalletPage as RealWalletPage } from "./WalletPage";
 import { HistoryPage as RealHistoryPage } from "./HistoryPage";
 import { SettingsPage as RealSettingsPage } from "./SettingsPage";
 import { LibraryPage as RealLibraryPage } from "./LibraryPage";
+import { NotificationsPage as RealNotificationsPage } from "./NotificationsPage";
 import { CreatorDashboardPage as RealCreatorDashboardPage } from "./CreatorDashboardPage";
 import { CreatorQuizzesPage as RealCreatorQuizzesPage } from "./CreatorQuizzesPage";
 import { QuizBuilderPage as RealQuizBuilderPage } from "./QuizBuilderPage";
@@ -41,6 +42,7 @@ import { AdminUsersPage as RealAdminUsersPage } from "./AdminUsersPage";
 import { AdminCoursesPage as RealAdminCoursesPage } from "./AdminCoursesPage";
 import { AdminQuizzesPage as RealAdminQuizzesPage } from "./AdminQuizzesPage";
 import { AdminUniversitiesPage as RealAdminUniversitiesPage } from "./AdminUniversitiesPage";
+import { AdminNotificationsPage as RealAdminNotificationsPage } from "./AdminNotificationsPage";
 
 // suppress "unused" linter warnings for icons still used by placeholder pages
 void (ClockIcon, SettingsIcon, WalletIcon);
@@ -181,6 +183,10 @@ export function LibraryPage() {
   return <RealLibraryPage />;
 }
 
+export function NotificationsPage() {
+  return <RealNotificationsPage />;
+}
+
 // Creator pages
 export function CreatorDashboardPage() {
   return <RealCreatorDashboardPage />;
@@ -241,6 +247,10 @@ export function AdminQuizzesPage() {
 
 export function AdminUniversitiesPage() {
   return <RealAdminUniversitiesPage />;
+}
+
+export function AdminNotificationsPage() {
+  return <RealAdminNotificationsPage />;
 }
 
 export { ConnectionLostPage } from "./ConnectionLostPage";

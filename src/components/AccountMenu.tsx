@@ -24,6 +24,7 @@ import {
   ChevronRight,
   Clock,
   GraduationCap,
+  Megaphone,
 } from "lucide-react";
 import { useAuth, type UserRole } from "../context/AuthContext";
 import { Avatar } from "./Avatar";
@@ -210,6 +211,7 @@ function MobileMenuBody({ onClose }: { onClose: () => void }) {
           to="/settings"
           icon={Settings}
           label="Settings"
+          badge={badges.unreadNotifications}
           onClose={onClose}
         />
 
@@ -333,6 +335,13 @@ function MobileMenuBody({ onClose }: { onClose: () => void }) {
               to="/admin/universities"
               icon={GraduationCap}
               label="Universities"
+              onClose={onClose}
+              end
+            />
+            <NavItem
+              to="/admin/notifications"
+              icon={Megaphone}
+              label="Broadcasts"
               onClose={onClose}
               end
             />
