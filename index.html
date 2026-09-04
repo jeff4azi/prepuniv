@@ -9,14 +9,21 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
 
     <!-- Android Chrome / PWA Icons -->
-    <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png" />
-    <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="192x192"
+      href="/android-chrome-192x192.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="512x512"
+      href="/android-chrome-512x512.png"
+    />
 
     <!-- Apple PWA Icon -->
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-
-    <!-- Web App Manifest -->
-    <link rel="manifest" href="/site.webmanifest" />
 
     <!-- Viewport -->
     <meta
@@ -35,22 +42,6 @@
 
     <!-- Windows / Edge tile -->
     <meta name="msapplication-TileColor" content="#44612e" />
-
-    <!-- Keep the browser/standalone status-bar theme color in sync with the
-         real --color-primary CSS variable.  If you ever tweak the palette
-         in src/index.css, the top bar automatically matches on next load
-         (no need to remember to re-edit this file + the PWA manifest). -->
-    <script>
-      (function syncThemeColorFromCss() {
-        try {
-          var style = getComputedStyle(document.documentElement);
-          var primary = style.getPropertyValue('--color-primary').trim();
-          if (!primary) return;
-          var meta = document.querySelector('meta[name="theme-color"]');
-          if (meta) meta.setAttribute('content', primary);
-        } catch (_) {}
-      })();
-    </script>
 
     <!-- SEO -->
     <meta
@@ -73,10 +64,7 @@
       property="og:description"
       content="PrepUniv helps Nigerian university students ace CBT exams with course-specific practice quizzes, created and shared by fellow students and creators."
     />
-    <meta
-      property="og:image"
-      content="https://www.prepuniv.com/PrepUniv.png"
-    />
+    <meta property="og:image" content="https://www.prepuniv.com/PrepUniv.png" />
     <meta
       property="og:image:alt"
       content="PrepUniv — University Learning Platform"
