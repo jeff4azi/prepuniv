@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   Search,
   SlidersHorizontal,
@@ -52,6 +53,8 @@ export function BrowsePage() {
   const location = useLocation();
   const { hasPurchasedQuiz, currentUser } = useAuth();
   const userUniversityId = currentUser.university_id || undefined;
+
+  usePageTitle("Browse Quizzes");
 
   const [loading, setLoading] = useState(true);
   const [allQuizzes, setAllQuizzes] = useState<Quiz[]>([]);

@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   ArrowRight,
   CheckCircle2,
@@ -23,6 +24,8 @@ type PageState = "verifying" | "ready" | "invalid" | "success";
 export function ResetPasswordPage() {
   const { updatePassword, isPasswordRecovery } = useAuth();
   const [password, setPassword] = useState("");
+
+  usePageTitle("Reset Password");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{
@@ -92,8 +95,7 @@ export function ResetPasswordPage() {
     setState("success");
   }
 
-  const liveErrors =
-    touched.password || touched.confirm ? runValidation() : {};
+  const liveErrors = touched.password || touched.confirm ? runValidation() : {};
   const finalErrors = {
     password: errors.password ?? liveErrors.password,
     confirm: errors.confirm ?? liveErrors.confirm,
@@ -130,7 +132,11 @@ export function ResetPasswordPage() {
   if (state === "invalid") {
     return (
       <AuthShell
-        crossLink={{ label: "Know your password?", to: "/login", cta: "Log in" }}
+        crossLink={{
+          label: "Know your password?",
+          to: "/login",
+          cta: "Log in",
+        }}
       >
         <AuthCard
           tag="Link expired"
@@ -167,7 +173,11 @@ export function ResetPasswordPage() {
 
   return (
     <AuthShell
-      crossLink={{ label: "Never mind,", to: "/login", cta: "Go back to login" }}
+      crossLink={{
+        label: "Never mind,",
+        to: "/login",
+        cta: "Go back to login",
+      }}
     >
       <AuthCard
         tag={state === "success" ? "All set" : "Choose new password"}
@@ -180,7 +190,11 @@ export function ResetPasswordPage() {
         }
       >
         {state === "ready" ? (
-          <form onSubmit={handleSubmit} noValidate className="space-y-4 sm:space-y-[18px]">
+          <form
+            onSubmit={handleSubmit}
+            noValidate
+            className="space-y-4 sm:space-y-[18px]"
+          >
             <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-primary/5 border border-primary/15">
               <div className="h-10 w-10 rounded-xl bg-cream text-primary flex items-center justify-center shrink-0">
                 <Lock className="w-5 h-5" strokeWidth={2.1} />
@@ -221,14 +235,23 @@ export function ResetPasswordPage() {
               </p>
             )}
 
-            <Button fullWidth size="lg" isLoading={loading} type="submit" className="h-12 mt-1">
+            <Button
+              fullWidth
+              size="lg"
+              isLoading={loading}
+              type="submit"
+              className="h-12 mt-1"
+            >
               Reset password
               {!loading && <ArrowRight className="w-[18px] h-[18px]" />}
             </Button>
 
             <p className="text-center text-xs text-muted pt-1">
-              Found it after all?{' '}
-              <Link to="/login" className="font-semibold text-primary hover:underline">
+              Found it after all?{" "}
+              <Link
+                to="/login"
+                className="font-semibold text-primary hover:underline"
+              >
                 Log in instead
               </Link>
             </p>
@@ -243,10 +266,14 @@ export function ResetPasswordPage() {
                 Nice work. Your password is updated.
               </h3>
               <p className="text-sm text-text-soft max-w-sm leading-relaxed">
-                Use it the next time you log in. If this wasn't you, please reach out to{' '}
-                <a href="mailto:support@prepuniv.com" className="font-semibold text-primary hover:underline">
+                Use it the next time you log in. If this wasn't you, please
+                reach out to{" "}
+                <a
+                  href="mailto:support@prepuniv.com"
+                  className="font-semibold text-primary hover:underline"
+                >
                   support@prepuniv.com
-                </a>{' '}
+                </a>{" "}
                 immediately.
               </p>
             </div>

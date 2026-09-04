@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import { ArrowRight, CheckCircle2, Mail } from "lucide-react";
 import { AuthShell, AuthCard } from "../components/AuthShell";
 import { Button } from "../components/Button";
@@ -18,6 +19,8 @@ export function LoginPage() {
   const navigate = useNavigate();
   const redirectTarget = useRedirectAfterAuth();
   const { logIn, resendSignup } = useAuth();
+
+  usePageTitle("Log In");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -64,7 +67,12 @@ export function LoginPage() {
     if (!validateAll()) return;
     setLoading(true);
 
-    const { error, emailNotConfirmed, accountSuspended, profile: loggedInProfile } = await logIn({
+    const {
+      error,
+      emailNotConfirmed,
+      accountSuspended,
+      profile: loggedInProfile,
+    } = await logIn({
       email: email.trim(),
       password,
     });

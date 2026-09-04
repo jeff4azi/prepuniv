@@ -11,6 +11,7 @@
  */
 import { useState, useMemo } from "react";
 import { Navigate } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   GraduationCap,
   Edit2,
@@ -347,7 +348,9 @@ function UniversityRow({
             {university.abbreviation}
           </Badge>
         </div>
-        <p className="text-xs text-text-soft mt-0.5">{university.state || "—"}</p>
+        <p className="text-xs text-text-soft mt-0.5">
+          {university.state || "—"}
+        </p>
       </div>
 
       {/* Stats */}
@@ -427,28 +430,40 @@ function EmptyState() {
 
 export function AdminUniversitiesPage() {
   const { currentUser } = useAuth();
+
+  usePageTitle("Admin · Universities");
+
   const [toast, showToast, dismissToast] = useToast();
   const [modalMode, setModalMode] = useState<"add" | "edit" | null>(null);
   const [editTarget, setEditTarget] = useState<DbUniversity | undefined>();
   const [deleteTarget, setDeleteTarget] = useState<DbUniversity | undefined>();
   const [deleting, setDeleting] = useState(false);
 
-  const { data: universities, loading: unisLoading, refetch: refetchUnis } = useUniversities();
+  const {
+    data: universities,
+    loading: unisLoading,
+    refetch: refetchUnis,
+  } = useUniversities();
   const { data: courses, loading: coursesLoading } = useCourses();
   const { data: quizzes, loading: quizzesLoading } = useQuizzes();
   const { data: profiles, loading: profilesLoading } = useProfiles();
 
   if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
 
-  const isLoading = unisLoading || coursesLoading || quizzesLoading || profilesLoading;
+  const isLoading =
+    unisLoading || coursesLoading || quizzesLoading || profilesLoading;
 
   const list = useMemo(
-    () => [...(universities || [])].sort((a, b) => a.name.localeCompare(b.name)),
+    () =>
+      [...(universities || [])].sort((a, b) => a.name.localeCompare(b.name)),
     [universities],
   );
 
   const statsMap = useMemo(() => {
-    const map: Record<string, { users: number; courses: number; quizzes: number }> = {};
+    const map: Record<
+      string,
+      { users: number; courses: number; quizzes: number }
+    > = {};
     (universities || []).forEach((u) => {
       map[u.id] = {
         users: (profiles || []).filter((p) => p.university_id === u.id).length,
@@ -474,7 +489,9 @@ export function AdminUniversitiesPage() {
     setEditTarget(undefined);
     void refetchUnis();
     showToast({
-      message: isEdit ? `${name} has been updated.` : `${name} added successfully.`,
+      message: isEdit
+        ? `${name} has been updated.`
+        : `${name} added successfully.`,
       variant: "success",
     });
   }
@@ -625,4 +642,3 @@ export function AdminUniversitiesPage() {
     </>
   );
 }
-

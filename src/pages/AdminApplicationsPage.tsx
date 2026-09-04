@@ -7,6 +7,7 @@
  */
 import { useState, useMemo, useEffect } from "react";
 import { Navigate } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   ListChecks,
   ChevronRight,
@@ -172,7 +173,8 @@ function ReviewSheet({
   }
 
   const name = profile?.full_name ?? "Unknown applicant";
-  const courseStrengths = (app as unknown as { course_strengths?: string }).course_strengths || "";
+  const courseStrengths =
+    (app as unknown as { course_strengths?: string }).course_strengths || "";
 
   return (
     <DrawerShell open={true} onClose={onClose} ariaLabel="Creator application">
@@ -462,7 +464,8 @@ function ApplicationRow({
   onReview: () => void;
 }) {
   const name = profile?.full_name ?? "Unknown";
-  const courseStrengths = (app as unknown as { course_strengths?: string }).course_strengths || "";
+  const courseStrengths =
+    (app as unknown as { course_strengths?: string }).course_strengths || "";
 
   return (
     <div className="flex items-center gap-3 sm:gap-4 py-3.5 px-5 border-b border-border/30 last:border-0 hover:bg-surface/20 transition-colors">
@@ -543,13 +546,20 @@ function EmptyState({ tab }: { tab: FilterTab }) {
 
 export function AdminApplicationsPage() {
   const { currentUser } = useAuth();
+
+  usePageTitle("Admin · Applications");
+
   const [toast, showToast, dismissToast] = useToast();
   const [activeTab, setActiveTab] = useState<FilterTab>("pending");
   const [reviewingId, setReviewingId] = useState<string | null>(null);
 
   if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
 
-  const { data: allApplications, loading: appsLoading, refetch: refetchApps } = useCreatorApplications();
+  const {
+    data: allApplications,
+    loading: appsLoading,
+    refetch: refetchApps,
+  } = useCreatorApplications();
   const { data: allProfiles, loading: profilesLoading } = useProfiles();
 
   const loading = appsLoading || profilesLoading;

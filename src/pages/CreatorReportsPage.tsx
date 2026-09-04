@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { Link, Navigate } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   Flag,
   Edit2,
@@ -78,6 +79,9 @@ function isActionable(r: CreatorReport) {
 
 export function CreatorReportsPage() {
   const { currentUser } = useAuth();
+
+  usePageTitle("Reports");
+
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
 
   // All hooks before gate

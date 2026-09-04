@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   ArrowLeft,
   Edit2,
@@ -125,6 +126,8 @@ export function QuizAnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [quiz, setQuiz] = useState<DbQuiz | null>(null);
   const [course, setCourse] = useState<DbCourse | null>(null);
+
+  usePageTitle(loading ? null : quiz ? `${quiz.title} — Analytics` : null);
   const [versions, setVersions] = useState<DbQuizVersion[]>([]);
   const [selectedVersionId, setSelectedVersionId] = useState<string>("");
   const [quizQuestions, setQuizQuestions] = useState<DbQuestion[]>([]);

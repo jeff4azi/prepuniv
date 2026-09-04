@@ -1,6 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Link, Navigate } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   Plus,
   Search,
@@ -66,6 +67,8 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 export function CreatorQuizzesPage() {
   const { currentUser, walletTxns } = useAuth();
   const creatorId = currentUser.id;
+
+  usePageTitle("My Quizzes");
   const [toast, showToast, dismissToast] = useToast();
 
   const quizEarningsMap = useMemo(() => {

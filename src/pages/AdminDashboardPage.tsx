@@ -9,6 +9,7 @@
  */
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link, Navigate } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   Users,
   BookOpen,
@@ -42,7 +43,14 @@ import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
-import type { DbProfile, DbQuiz, DbWalletTxn, DbPayoutRequest, DbReport, DbCreatorApplication } from "../lib/supabase";
+import type {
+  DbProfile,
+  DbQuiz,
+  DbWalletTxn,
+  DbPayoutRequest,
+  DbReport,
+  DbCreatorApplication,
+} from "../lib/supabase";
 import { AdminLoadingState } from "../hooks/useAdminData";
 import { apiFetch } from "../lib/api";
 
@@ -50,7 +58,8 @@ import { apiFetch } from "../lib/api";
 // so the shared quiz-price formatter must not be used for these values.
 function formatLedgerNaira(amount: number) {
   const base =
-    "₦" + Math.abs(amount).toLocaleString("en-NG", { maximumFractionDigits: 2 });
+    "₦" +
+    Math.abs(amount).toLocaleString("en-NG", { maximumFractionDigits: 2 });
   return amount < 0 ? "-" + base : base;
 }
 
@@ -283,6 +292,8 @@ interface DashboardData {
 export function AdminDashboardPage() {
   const { currentUser } = useAuth();
 
+  usePageTitle("Admin · Dashboard");
+
   // ── Fetch all dashboard data ───────────────────────────────────────────────
 
   const [data, setData] = useState<DashboardData | null>(null);
@@ -389,10 +400,7 @@ export function AdminDashboardPage() {
 
   const platformPaymentFees = useMemo(
     () =>
-      completedTopUps.reduce(
-        (sum, t) => sum + Number(t.platform_fee ?? 0),
-        0,
-      ),
+      completedTopUps.reduce((sum, t) => sum + Number(t.platform_fee ?? 0), 0),
     [completedTopUps],
   );
 
@@ -851,7 +859,9 @@ export function AdminDashboardPage() {
               onClick={handleReconcileTopups}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium font-heading bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50 transition-colors"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${reconciling ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${reconciling ? "animate-spin" : ""}`}
+              />
               {reconciling ? "Syncing..." : "Sync & Reconcile Statuses"}
             </button>
           </div>
@@ -884,12 +894,15 @@ export function AdminDashboardPage() {
                       return (
                         <tr key={t.id} className="hover:bg-surface/30">
                           <td className="py-3 px-4 font-heading text-muted">
-                            {new Date(t.created_at).toLocaleDateString("en-NG", {
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                            {new Date(t.created_at).toLocaleDateString(
+                              "en-NG",
+                              {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              },
+                            )}
                           </td>
                           <td className="py-3 px-4 font-mono text-[11px] text-text-soft">
                             {t.reference || t.id.slice(0, 12)}
@@ -898,7 +911,9 @@ export function AdminDashboardPage() {
                             {formatLedgerNaira(gross)}
                             {isPartial && t.amount_received != null && (
                               <span className="block text-[10px] font-normal text-warning mt-0.5">
-                                only {formatLedgerNaira(Number(t.amount_received))} received
+                                only{" "}
+                                {formatLedgerNaira(Number(t.amount_received))}{" "}
+                                received
                               </span>
                             )}
                           </td>

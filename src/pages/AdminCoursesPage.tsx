@@ -15,6 +15,7 @@
  */
 import { useState, useMemo } from "react";
 import { Navigate } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import { BookOpen, Edit2, X, ShieldCheck, Info, Check } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -321,10 +322,17 @@ function EmptyState() {
 
 export function AdminCoursesPage() {
   const { currentUser } = useAuth();
+
+  usePageTitle("Admin · Courses");
+
   const [toast, showToast, dismissToast] = useToast();
   const [editingCourse, setEditingCourse] = useState<DbCourse | undefined>();
 
-  const { data: courses, loading: coursesLoading, refetch: refetchCourses } = useCourses();
+  const {
+    data: courses,
+    loading: coursesLoading,
+    refetch: refetchCourses,
+  } = useCourses();
   const { data: quizzes, loading: quizzesLoading } = useQuizzes();
   const { data: universities, loading: unisLoading } = useUniversities();
 
@@ -334,7 +342,9 @@ export function AdminCoursesPage() {
 
   const isLoading = coursesLoading || quizzesLoading || unisLoading;
 
-  const currentUniId = activeUniId || (universities && universities.length > 0 ? universities[0].id : "");
+  const currentUniId =
+    activeUniId ||
+    (universities && universities.length > 0 ? universities[0].id : "");
 
   const sortedCourses = useMemo(
     () =>

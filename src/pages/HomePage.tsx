@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   Plus,
   ArrowRight,
@@ -48,6 +49,8 @@ function attemptDateKey(a: DbQuizAttempt) {
 export function HomePage() {
   const { currentUser, purchasedQuizIds, walletBalance, hasPurchasedQuiz } =
     useAuth();
+
+  usePageTitle("Home");
 
   const [loading, setLoading] = useState(true);
   const [allQuizzes, setAllQuizzes] = useState<DbQuiz[]>([]);
@@ -378,7 +381,10 @@ export function HomePage() {
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-1">
-                <Link to="/wallet?action=topup" className="sm:inline-flex sm:w-auto w-full">
+                <Link
+                  to="/wallet?action=topup"
+                  className="sm:inline-flex sm:w-auto w-full"
+                >
                   <Button
                     variant="secondary"
                     size="lg"

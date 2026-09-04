@@ -3,10 +3,13 @@ import { ArrowLeft, Home } from "lucide-react";
 import { Button } from "../components/Button";
 import { useAuth } from "../context/AuthContext";
 import { getDefaultDashboard } from "../lib/routeGuard";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 export function NotFoundPage() {
   const navigate = useNavigate();
   const { isLoggedIn, currentUser } = useAuth();
+
+  usePageTitle("Page Not Found");
 
   const homeTarget = isLoggedIn ? getDefaultDashboard(currentUser) : "/";
 

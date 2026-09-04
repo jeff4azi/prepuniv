@@ -12,10 +12,12 @@
  */
 import { Link } from "react-router-dom";
 import { PauseCircle, Mail, ArrowLeft } from "lucide-react";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 const SUPPORT_EMAIL = "support@prepuniv.com";
 
 export function AccountSuspendedPage() {
+  usePageTitle("Account Suspended");
   return (
     <div className="min-h-dvh w-full bg-background flex flex-col">
       {/* Minimal header — logo only, no nav links */}

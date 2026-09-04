@@ -7,6 +7,7 @@
  */
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Navigate } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   Megaphone,
   Bell,
@@ -96,7 +97,9 @@ function formatNumber(n: number): string {
   return n.toLocaleString("en-NG");
 }
 
-function statusBadgeVariant(status: BroadcastStatus): "warning" | "success" | "danger" {
+function statusBadgeVariant(
+  status: BroadcastStatus,
+): "warning" | "success" | "danger" {
   if (status === "done") return "success";
   if (status === "failed") return "danger";
   return "warning";
@@ -243,12 +246,17 @@ function BroadcastStatusCard({
 }) {
   const progress =
     broadcast.total_recipients > 0
-      ? Math.min(100, (broadcast.processed_count / broadcast.total_recipients) * 100)
+      ? Math.min(
+          100,
+          (broadcast.processed_count / broadcast.total_recipients) * 100,
+        )
       : 0;
 
-  const isTerminal = broadcast.status === "done" || broadcast.status === "failed";
+  const isTerminal =
+    broadcast.status === "done" || broadcast.status === "failed";
   const isStuckProcessing =
-    broadcast.status === "processing" && broadcast.processed_count < broadcast.total_recipients;
+    broadcast.status === "processing" &&
+    broadcast.processed_count < broadcast.total_recipients;
 
   return (
     <Card padded={false} className="p-5 border-primary/20 bg-primary/[0.03]">
@@ -284,7 +292,9 @@ function BroadcastStatusCard({
             Audience:{" "}
             {broadcast.target === "all"
               ? "Everyone"
-              : broadcast.target_user_name || broadcast.target_user_email || "Specific user"}
+              : broadcast.target_user_name ||
+                broadcast.target_user_email ||
+                "Specific user"}
           </Badge>
           <Badge variant="muted" size="sm">
             <Clock className="w-3 h-3" />
@@ -320,7 +330,10 @@ function BroadcastStatusCard({
         {/* Done summary */}
         {broadcast.status === "done" && (
           <div className="flex items-start gap-2.5 px-4 py-3 rounded-2xl bg-success-bg border border-success/20">
-            <Check className="w-4 h-4 text-success shrink-0 mt-0.5" strokeWidth={2} />
+            <Check
+              className="w-4 h-4 text-success shrink-0 mt-0.5"
+              strokeWidth={2}
+            />
             <p className="text-[13px] text-text leading-relaxed">
               Broadcast complete. Sent to{" "}
               <span className="font-heading font-semibold">
@@ -344,7 +357,10 @@ function BroadcastStatusCard({
         {/* Failed */}
         {broadcast.status === "failed" && (
           <div className="flex items-start gap-2.5 px-4 py-3 rounded-2xl bg-danger-bg border border-danger/20">
-            <AlertCircle className="w-4 h-4 text-danger shrink-0 mt-0.5" strokeWidth={2} />
+            <AlertCircle
+              className="w-4 h-4 text-danger shrink-0 mt-0.5"
+              strokeWidth={2}
+            />
             <p className="text-[13px] text-text leading-relaxed">
               Broadcast stopped before completing. You can resume processing
               below or start a new broadcast.
@@ -373,10 +389,16 @@ function BroadcastStatusCard({
 
         {isStuckProcessing && !isTerminal && (
           <div className="flex items-start gap-2.5 px-4 py-3 rounded-2xl bg-warning-bg border border-warning/20">
-            <Clock className="w-4 h-4 text-warning shrink-0 mt-0.5" strokeWidth={2} />
+            <Clock
+              className="w-4 h-4 text-warning shrink-0 mt-0.5"
+              strokeWidth={2}
+            />
             <p className="text-[13px] text-text leading-relaxed">
-              Taking longer than expected. Use <span className="font-heading font-semibold">Resume processing</span> to
-              nudge the queue along.
+              Taking longer than expected. Use{" "}
+              <span className="font-heading font-semibold">
+                Resume processing
+              </span>{" "}
+              to nudge the queue along.
             </p>
           </div>
         )}
@@ -450,7 +472,9 @@ function RecentBroadcastsTable({
                 {row.title}
               </p>
               <p className="md:hidden text-[11px] text-muted mt-0.5">
-                {row.target === "all" ? "Everyone" : row.target_user_name || "Specific user"}
+                {row.target === "all"
+                  ? "Everyone"
+                  : row.target_user_name || "Specific user"}
                 {" · "}
                 {relativeTime(row.created_at)}
               </p>
@@ -492,6 +516,9 @@ function RecentBroadcastsTable({
 
 export function AdminNotificationsPage() {
   const { currentUser } = useAuth();
+
+  usePageTitle("Admin · Notifications");
+
   const [toast, showToast, dismissToast] = useToast();
 
   // ─── Composer state ────────────────────────────────────────────────────────
@@ -505,7 +532,9 @@ export function AdminNotificationsPage() {
   // ─── User search state ─────────────────────────────────────────────────────
 
   const [userSearchInput, setUserSearchInput] = useState("");
-  const [userSearchResults, setUserSearchResults] = useState<UserSearchMatch[]>([]);
+  const [userSearchResults, setUserSearchResults] = useState<UserSearchMatch[]>(
+    [],
+  );
   const [userSearchLoading, setUserSearchLoading] = useState(false);
   const [userSearchOpen, setUserSearchOpen] = useState(false);
   const userSearchDebounce = useRef<number | null>(null);
@@ -519,7 +548,9 @@ export function AdminNotificationsPage() {
 
   const [sending, setSending] = useState(false);
   const [broadcastId, setBroadcastId] = useState<string | null>(null);
-  const [activeBroadcast, setActiveBroadcast] = useState<Broadcast | null>(null);
+  const [activeBroadcast, setActiveBroadcast] = useState<Broadcast | null>(
+    null,
+  );
   const [continuing, setContinuing] = useState(false);
   const pollTimerRef = useRef<number | null>(null);
   const processingStartRef = useRef<number | null>(null);
@@ -527,7 +558,9 @@ export function AdminNotificationsPage() {
 
   // ─── Recent broadcasts state ───────────────────────────────────────────────
 
-  const [recentBroadcasts, setRecentBroadcasts] = useState<RecentBroadcastRow[]>([]);
+  const [recentBroadcasts, setRecentBroadcasts] = useState<
+    RecentBroadcastRow[]
+  >([]);
   const [recentLoading, setRecentLoading] = useState(true);
 
   // ─── Helpers: validity ─────────────────────────────────────────────────────
@@ -696,28 +729,31 @@ export function AdminNotificationsPage() {
     processingStartRef.current = null;
   }, []);
 
-  const pollBroadcast = useCallback(async (id: string) => {
-    try {
-      const res = await apiFetch<{ broadcast: Broadcast }>(
-        `/api/admin/notifications/broadcasts/${id}`,
-      );
-      if (res.data?.broadcast) {
-        const b = res.data.broadcast;
-        setActiveBroadcast(b);
+  const pollBroadcast = useCallback(
+    async (id: string) => {
+      try {
+        const res = await apiFetch<{ broadcast: Broadcast }>(
+          `/api/admin/notifications/broadcasts/${id}`,
+        );
+        if (res.data?.broadcast) {
+          const b = res.data.broadcast;
+          setActiveBroadcast(b);
 
-        if (b.status === "processing" && processingStartRef.current == null) {
-          processingStartRef.current = Date.now();
-        }
+          if (b.status === "processing" && processingStartRef.current == null) {
+            processingStartRef.current = Date.now();
+          }
 
-        if (b.status === "done" || b.status === "failed") {
-          stopPolling();
-          void loadRecentBroadcasts();
+          if (b.status === "done" || b.status === "failed") {
+            stopPolling();
+            void loadRecentBroadcasts();
+          }
         }
+      } catch (err) {
+        console.warn("Broadcast poll failed:", err);
       }
-    } catch (err) {
-      console.warn("Broadcast poll failed:", err);
-    }
-  }, [stopPolling, loadRecentBroadcasts]);
+    },
+    [stopPolling, loadRecentBroadcasts],
+  );
 
   // Start polling when broadcastId is set
   useEffect(() => {
@@ -744,7 +780,8 @@ export function AdminNotificationsPage() {
   const performSend = useCallback(async () => {
     setSending(true);
     try {
-      const data = url.trim() && url.trim() !== "/" ? { url: url.trim() } : undefined;
+      const data =
+        url.trim() && url.trim() !== "/" ? { url: url.trim() } : undefined;
       const payload: {
         title: string;
         body: string;
@@ -790,7 +827,16 @@ export function AdminNotificationsPage() {
       setSending(false);
       void loadRecentBroadcasts();
     }
-  }, [title, body, target, selectedUser, url, showToast, resetForm, loadRecentBroadcasts]);
+  }, [
+    title,
+    body,
+    target,
+    selectedUser,
+    url,
+    showToast,
+    resetForm,
+    loadRecentBroadcasts,
+  ]);
 
   const handleSendClick = () => {
     if (!canSend) return;
@@ -1059,7 +1105,8 @@ export function AdminNotificationsPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-3">
                 <label className="text-[13px] font-heading font-semibold text-text">
-                  Tap action link <span className="font-normal text-muted">(optional)</span>
+                  Tap action link{" "}
+                  <span className="font-normal text-muted">(optional)</span>
                 </label>
               </div>
               <p className="text-[12px] text-text-soft -mt-0.5 leading-relaxed">

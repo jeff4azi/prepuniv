@@ -3,6 +3,7 @@
  */
 import { useState, useEffect, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   Sparkles,
   Clock,
@@ -473,6 +474,9 @@ function ApplicationForm({
 
 export function CreatorApplyPage() {
   const { currentUser } = useAuth();
+
+  usePageTitle("Apply to Become a Creator");
+
   const [realApp, setRealApp] = useState<CreatorApplication | null>(null);
   const [localApp, setLocalApp] = useState<CreatorApplication | null>(null);
   const [reApplying, setReApplying] = useState(false);

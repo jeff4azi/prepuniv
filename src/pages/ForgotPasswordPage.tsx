@@ -1,14 +1,17 @@
-import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, Mail, ArrowLeft } from 'lucide-react';
-import { AuthShell, AuthCard } from '../components/AuthShell';
-import { Button } from '../components/Button';
-import { TextInput, validateEmail } from '../components/Form';
-import { useAuth } from '../context/AuthContext';
+import { useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
+import { ArrowRight, CheckCircle2, Mail, ArrowLeft } from "lucide-react";
+import { AuthShell, AuthCard } from "../components/AuthShell";
+import { Button } from "../components/Button";
+import { TextInput, validateEmail } from "../components/Form";
+import { useAuth } from "../context/AuthContext";
 
 export function ForgotPasswordPage() {
   const { resetPasswordRequest } = useAuth();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
+
+  usePageTitle("Forgot Password");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
@@ -38,12 +41,12 @@ export function ForgotPasswordPage() {
 
   return (
     <AuthShell
-      crossLink={{ label: 'Remembered it?', to: '/login', cta: 'Log in' }}
+      crossLink={{ label: "Remembered it?", to: "/login", cta: "Log in" }}
     >
       <AuthCard
-        tag={sent ? 'Link sent' : 'Reset password'}
-        tagTone={sent ? 'success' : 'secondary'}
-        title={sent ? 'Check your email' : 'Reset your password'}
+        tag={sent ? "Link sent" : "Reset password"}
+        tagTone={sent ? "success" : "secondary"}
+        title={sent ? "Check your email" : "Reset your password"}
         subtitle={
           sent
             ? "If there's a PrepUniv account associated with this email, you'll receive a password reset link shortly."
@@ -51,7 +54,11 @@ export function ForgotPasswordPage() {
         }
       >
         {!sent ? (
-          <form onSubmit={handleSubmit} noValidate className="space-y-4 sm:space-y-[18px]">
+          <form
+            onSubmit={handleSubmit}
+            noValidate
+            className="space-y-4 sm:space-y-[18px]"
+          >
             <TextInput
               id="email"
               name="email"
@@ -62,10 +69,16 @@ export function ForgotPasswordPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onBlur={() => setTouched(true)}
-              error={touched ? error ?? undefined : undefined}
+              error={touched ? (error ?? undefined) : undefined}
               hint="We'll never share this email with anyone."
             />
-            <Button fullWidth size="lg" type="submit" isLoading={loading} className="h-12 mt-1">
+            <Button
+              fullWidth
+              size="lg"
+              type="submit"
+              isLoading={loading}
+              className="h-12 mt-1"
+            >
               Send reset link
               {!loading && <ArrowRight className="w-[18px] h-[18px]" />}
             </Button>
@@ -85,11 +98,14 @@ export function ForgotPasswordPage() {
               </div>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface/60 text-text-soft text-sm border border-border/60 mb-4">
                 <Mail className="w-4 h-4 text-muted" strokeWidth={2} />
-                <span className="font-medium truncate max-w-[280px]">{email || 'you@example.com'}</span>
+                <span className="font-medium truncate max-w-[280px]">
+                  {email || "you@example.com"}
+                </span>
               </div>
               <p className="text-sm text-text-soft max-w-sm leading-relaxed">
-                We've sent a password reset link to the email above. It expires in 30
-                minutes. If you don't see it, check your spam or promotions folder.
+                We've sent a password reset link to the email above. It expires
+                in 30 minutes. If you don't see it, check your spam or
+                promotions folder.
               </p>
             </div>
             <div className="space-y-3 pt-1">

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   Plus,
   ArrowUpRight,
@@ -78,6 +79,9 @@ function kobo(nairaAmount: number): number {
 
 export function WalletPage() {
   const { currentUser, walletBalance, walletTxns, refreshProfile } = useAuth();
+
+  usePageTitle("Wallet");
+
   const [sheetOpen, setSheetOpen] = useState(false);
   const [topUpStep, setTopUpStep] = useState<TopUpStep>("amount");
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);

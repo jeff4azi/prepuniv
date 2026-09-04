@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import { GraduationCap, ArrowRight } from "lucide-react";
 import { Button } from "../components/Button";
 import { UniversitySelect } from "../components/UniversitySelect";
@@ -11,6 +12,8 @@ import type { University } from "../lib/queries";
 export function SelectUniversityPage() {
   const { currentUser, updateProfilePatch, refreshProfile } = useAuth();
   const navigate = useNavigate();
+
+  usePageTitle("Select University");
 
   const [universities, setUniversities] = useState<University[]>([]);
   const [selected, setSelected] = useState("");

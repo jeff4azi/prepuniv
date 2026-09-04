@@ -13,6 +13,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { useParams, useNavigate, Navigate, Link } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   ArrowLeft,
   Plus,
@@ -150,6 +151,16 @@ export function QuizBuilderPage() {
   const [loadingEdit, setLoadingEdit] = useState(isEdit);
   const [existingQuiz, setExistingQuiz] = useState<Quiz | undefined>(undefined);
   const [existingQuestions, setExistingQuestions] = useState<Question[]>([]);
+
+  // Tab title: placed after existingQuiz declaration to avoid "used before declaration" TS error.
+  // "Edit: Quiz Title | PrepUniv" once loaded in edit mode; "New Quiz" in create mode.
+  usePageTitle(
+    isEdit
+      ? existingQuiz?.title
+        ? `Edit: ${existingQuiz.title}`
+        : null // still loading in edit mode
+      : "New Quiz",
+  );
 
   useEffect(() => {
     if (!isEdit || !editId) return;

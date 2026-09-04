@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -145,6 +146,9 @@ export function QuizDetailPage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [creator, setCreator] = useState<Profile | null>(null);
   const [myAttempts, setMyAttempts] = useState<QuizAttempt[]>([]);
+
+  // Dynamic tab title — shows quiz title once loaded, "Loading…" before that
+  usePageTitle(quiz === undefined ? null : (quiz?.title ?? null));
 
   useEffect(() => {
     if (!id) return;

@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import { ArrowRight, CheckCircle2, Mail } from "lucide-react";
 import { AuthShell, AuthCard } from "../components/AuthShell";
 import { Button } from "../components/Button";
@@ -36,6 +37,8 @@ const RESEND_COOLDOWN = 60;
 
 export function SignupPage() {
   const { signUp, resendSignup, updateProfilePatch } = useAuth();
+
+  usePageTitle("Sign Up");
 
   // Applies any pending university selection once a session exists —
   // covers the case where this same tab is still open when the session
@@ -134,8 +137,7 @@ export function SignupPage() {
       if (patchErr) {
         setErrors({
           ...errs,
-          form:
-            "Your account was created, but we couldn't save your university. You can set it from Settings.",
+          form: "Your account was created, but we couldn't save your university. You can set it from Settings.",
         });
       }
       // No explicit navigation needed: the /signup route is wrapped in

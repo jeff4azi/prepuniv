@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   Bell,
   BellOff,
@@ -77,8 +78,7 @@ function getIconForType(type: string): {
     case "topup_partial":
       return {
         icon: <WalletIcon className="w-[18px] h-[18px]" strokeWidth={2} />,
-        bgClass:
-          type === "topup_partial" ? "bg-warning/10" : "bg-primary/10",
+        bgClass: type === "topup_partial" ? "bg-warning/10" : "bg-primary/10",
         textClass: type === "topup_partial" ? "text-warning" : "text-primary",
       };
     case "topup_failed":
@@ -157,8 +157,15 @@ function getIconForType(type: string): {
 export function NotificationsPage() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
-  const { permission, subscribed, enable, loading: pushLoading } =
-    usePushSubscription();
+
+  usePageTitle("Notifications");
+
+  const {
+    permission,
+    subscribed,
+    enable,
+    loading: pushLoading,
+  } = usePushSubscription();
   const [toast, showToast, dismissToast] = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -181,8 +188,7 @@ export function NotificationsPage() {
         .eq("user_id", uid)
         .eq("is_read", false);
       if (!error && count != null) setUnreadCount(count);
-    } catch {
-    }
+    } catch {}
   };
 
   const load = async (uid: string, cursor?: string | null, append = false) => {
@@ -212,8 +218,7 @@ export function NotificationsPage() {
       const lastItem = rows[rows.length - 1];
       setLastLoadedAt(lastItem?.created_at ?? null);
       setHasMore(rows.length === PAGE_SIZE);
-    } catch {
-    }
+    } catch {}
   };
 
   useEffect(() => {
@@ -222,10 +227,7 @@ export function NotificationsPage() {
 
     const initial = async () => {
       setLoading(true);
-      await Promise.all([
-        load(userId, null, false),
-        loadUnreadCount(userId),
-      ]);
+      await Promise.all([load(userId, null, false), loadUnreadCount(userId)]);
       if (!cancelled) setLoading(false);
     };
 
@@ -277,11 +279,16 @@ export function NotificationsPage() {
       } else {
         setNotifications((prev) =>
           prev.map((n) =>
-            n.is_read ? n : { ...n, is_read: true, read_at: new Date().toISOString() },
+            n.is_read
+              ? n
+              : { ...n, is_read: true, read_at: new Date().toISOString() },
           ),
         );
         setUnreadCount(0);
-        showToast({ message: "All notifications marked as read", variant: "success" });
+        showToast({
+          message: "All notifications marked as read",
+          variant: "success",
+        });
       }
     } catch {
       showToast({ message: "Failed to mark as read", variant: "danger" });
@@ -306,8 +313,7 @@ export function NotificationsPage() {
           ),
         );
         setUnreadCount((c) => Math.max(0, c - 1));
-      } catch {
-      }
+      } catch {}
     }
 
     const url = n.data?.url;
@@ -365,9 +371,9 @@ export function NotificationsPage() {
                   </p>
                   <p className="mt-1 text-xs text-text-soft leading-relaxed max-w-lg">
                     You've blocked notifications in your browser settings. To
-                    receive real-time alerts for payouts, top-ups, and
-                    important updates, please enable notifications for this
-                    site in your browser's privacy settings.
+                    receive real-time alerts for payouts, top-ups, and important
+                    updates, please enable notifications for this site in your
+                    browser's privacy settings.
                   </p>
                 </div>
                 <Button
@@ -458,7 +464,9 @@ export function NotificationsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                leftIcon={<CheckCheck className="w-[16px] h-[16px]" strokeWidth={2} />}
+                leftIcon={
+                  <CheckCheck className="w-[16px] h-[16px]" strokeWidth={2} />
+                }
                 onClick={handleMarkAllAsRead}
                 disabled={unreadCount === 0 || markingAllRead}
                 isLoading={markingAllRead}

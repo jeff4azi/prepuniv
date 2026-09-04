@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { Link, Navigate } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   CreditCard,
   TrendingUp,
@@ -110,6 +111,8 @@ export function CreatorPayoutsPage() {
     walletTxns,
     refreshProfile,
   } = useAuth();
+
+  usePageTitle("Payouts");
 
   const earningsBalance = useMemo(
     () => computeEarningsBalance(currentUser.id, walletTxns),

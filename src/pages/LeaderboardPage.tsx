@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   ArrowLeft,
   Trophy,
@@ -223,6 +224,8 @@ export function LeaderboardPage() {
   const [quizAttempts, setQuizAttempts] = useState<QuizAttempt[]>([]);
   const [profiles, setProfiles] = useState<Map<string, Profile>>(new Map());
   const [tab, setTab] = useState<TabMode>("timed");
+
+  usePageTitle(loading ? null : quiz ? `${quiz.title} — Leaderboard` : null);
 
   useEffect(() => {
     if (!quizId) return;

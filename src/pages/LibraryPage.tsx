@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   Library,
   Search,
@@ -383,6 +384,8 @@ const ATTEMPT_FILTER_OPTIONS: { value: AttemptFilter; label: string }[] = [
 
 export function LibraryPage() {
   const { currentUser, purchasedQuizIds } = useAuth();
+
+  usePageTitle("My Library");
 
   const [loading, setLoading] = useState(true);
   const [allQuizzes, setAllQuizzes] = useState<Quiz[]>([]);

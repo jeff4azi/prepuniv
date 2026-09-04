@@ -12,6 +12,7 @@
  */
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   CheckCircle2,
   Loader2,
@@ -109,6 +110,8 @@ type PageState = "verifying" | "success" | "invalid";
 export function ConfirmEmailPage() {
   const navigate = useNavigate();
   const { isLoggedIn, currentUser, isLoading: authLoading } = useAuth();
+
+  usePageTitle("Confirm Email");
 
   // This is very often a NEW tab opened from the confirmation email, so
   // SignupPage's own state/effects never ran here — apply whatever
@@ -208,7 +211,9 @@ export function ConfirmEmailPage() {
               fullWidth
               size="lg"
               className="h-12"
-              onClick={() => navigate(getDefaultDashboard(currentUser), { replace: true })}
+              onClick={() =>
+                navigate(getDefaultDashboard(currentUser), { replace: true })
+              }
             >
               Continue to PrepUniv
               <ArrowRight className="w-[18px] h-[18px]" />

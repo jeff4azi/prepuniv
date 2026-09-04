@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useLocation, useNavigate, useParams, Link } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   CheckCircle2,
   XCircle,
@@ -385,6 +386,15 @@ export function AttemptResultPage() {
   const answers = result?.answers ?? [];
   const correctCount = answers.filter((a) => a.is_correct).length;
   const incorrectCount = answers.length - correctCount;
+
+  // Tab title once result is loaded: "Quiz Title — Your Result (72%) | PrepUniv"
+  usePageTitle(
+    loading
+      ? null
+      : result
+        ? `${result.quiz_title} — Your Result (${result.score}%)`
+        : "Result not found",
+  );
 
   const visibleAnswers = useMemo(() => {
     if (filter === "correct") return answers.filter((a) => a.is_correct);

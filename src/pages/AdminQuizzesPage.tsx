@@ -11,6 +11,7 @@
  */
 import { useState, useMemo } from "react";
 import { Link, Navigate } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   ScrollText,
   Search,
@@ -200,7 +201,9 @@ function QuizTableRow({
 }: {
   quiz: DbQuiz;
   courseName: string;
-  creator: { id: string; full_name: string; avatar_url?: string | null } | undefined;
+  creator:
+    | { id: string; full_name: string; avatar_url?: string | null }
+    | undefined;
   platformRevenue: number;
   onAction: (action: "unpublish" | "republish") => void;
 }) {
@@ -326,7 +329,9 @@ function QuizMobileCard({
 }: {
   quiz: DbQuiz;
   courseName: string;
-  creator: { id: string; full_name: string; avatar_url?: string | null } | undefined;
+  creator:
+    | { id: string; full_name: string; avatar_url?: string | null }
+    | undefined;
   platformRevenue: number;
   onAction: (action: "unpublish" | "republish") => void;
 }) {
@@ -425,6 +430,9 @@ function EmptyState() {
 
 export function AdminQuizzesPage() {
   const { currentUser } = useAuth();
+
+  usePageTitle("Admin · Quizzes");
+
   const [toast, showToast, dismissToast] = useToast();
   const [searchInput, setSearchInput] = useState("");
   const [courseFilter, setCourseFilter] = useState("all");

@@ -8,6 +8,7 @@
  */
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Link, Navigate } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   Users,
   Search,
@@ -43,7 +44,8 @@ import {
 // Wallet transactions are stored in naira, unlike quiz prices (which use kobo).
 function formatLedgerNaira(amount: number) {
   const base =
-    "₦" + Math.abs(amount).toLocaleString("en-NG", { maximumFractionDigits: 2 });
+    "₦" +
+    Math.abs(amount).toLocaleString("en-NG", { maximumFractionDigits: 2 });
   return amount < 0 ? "-" + base : base;
 }
 
@@ -416,6 +418,9 @@ function EmptyState({ hasSearch }: { hasSearch: boolean }) {
 
 export function AdminUsersPage() {
   const { currentUser } = useAuth();
+
+  usePageTitle("Admin · Users");
+
   const [toast, showToast, dismissToast] = useToast();
   const [searchInput, setSearchInput] = useState("");
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
@@ -447,7 +452,11 @@ export function AdminUsersPage() {
 
   // ── Fetch data from Supabase ─────────────────────────────────────────────
 
-  const { data: allUsers, loading, refetch } = useAdminUsers({
+  const {
+    data: allUsers,
+    loading,
+    refetch,
+  } = useAdminUsers({
     page,
     pageSize,
     role: activeTab,
@@ -608,7 +617,10 @@ export function AdminUsersPage() {
                 Users
               </h1>
               <p className="mt-1.5 text-sm text-text-soft">
-                {totalUsers} {activeTab === "all" ? "total users on the platform." : "users match this filter."}
+                {totalUsers}{" "}
+                {activeTab === "all"
+                  ? "total users on the platform."
+                  : "users match this filter."}
               </p>
             </div>
             <div className="relative w-full sm:max-w-xs shrink-0">
@@ -724,11 +736,30 @@ export function AdminUsersPage() {
           {/* Result count */}
           {totalUsers > 0 && (
             <div className="flex items-center justify-between gap-3 text-xs text-muted">
-              <p>Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalUsers)} of {totalUsers} users</p>
+              <p>
+                Showing {(page - 1) * pageSize + 1}–
+                {Math.min(page * pageSize, totalUsers)} of {totalUsers} users
+              </p>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((current) => current - 1)}>Previous</Button>
-                <span>Page {page} of {totalPages}</span>
-                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)}>Next</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === 1}
+                  onClick={() => setPage((current) => current - 1)}
+                >
+                  Previous
+                </Button>
+                <span>
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((current) => current + 1)}
+                >
+                  Next
+                </Button>
               </div>
             </div>
           )}

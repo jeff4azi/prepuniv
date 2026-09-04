@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { Link, Navigate } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   TrendingUp,
   ArrowRight,
@@ -74,6 +75,8 @@ export function CreatorDashboardPage() {
   } = useAuth();
   const now = useMemo(() => new Date(), []);
   const creatorId = currentUser.id;
+
+  usePageTitle("Creator Dashboard");
 
   const [myQuizzes, setMyQuizzes] = useState<DbQuiz[]>([]);
   const [walletTxns, setWalletTxns] = useState<DbWalletTxn[]>([]);

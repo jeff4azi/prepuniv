@@ -11,6 +11,7 @@
  */
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, Navigate, useParams, useLocation } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   ArrowLeft,
   ShieldCheck,
@@ -38,7 +39,13 @@ import { MathText } from "../components/MathText";
 import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
-import type { DbQuiz, DbCourse, DbProfile, DbQuestion, DbQuizVersion } from "../lib/supabase";
+import type {
+  DbQuiz,
+  DbCourse,
+  DbProfile,
+  DbQuestion,
+  DbQuizVersion,
+} from "../lib/supabase";
 import {
   adminUnpublishQuiz,
   adminRepublishQuiz,
@@ -422,6 +429,10 @@ export function AdminQuizContentPage() {
   // ── Data state ─────────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(true);
   const [quiz, setQuiz] = useState<DbQuiz | null>(null);
+
+  usePageTitle(
+    loading ? null : quiz ? `${quiz.title} — Content` : "Quiz not found",
+  );
   const [course, setCourse] = useState<DbCourse | null>(null);
   const [creator, setCreator] = useState<DbProfile | null>(null);
   const [questions, setQuestions] = useState<DbQuestion[]>([]);
@@ -461,39 +472,45 @@ export function AdminQuizContentPage() {
     setQuiz(quizData as DbQuiz);
 
     // 2. Parallel: course, creator profile, live questions, saved versions, attempts, reports
-    const [courseRes, creatorRes, questionsRes, versionsRes, attemptsRes, reportsRes] =
-      await Promise.all([
-        supabase
-          .from("courses")
-          .select("*")
-          .eq("id", quizData.course_id)
-          .maybeSingle(),
-        supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", quizData.creator_id)
-          .maybeSingle(),
-        supabase
-          .from("questions")
-          .select("*")
-          .eq("quiz_id", quizId)
-          .order("order_index", { ascending: true }),
-        supabase
-          .from("quiz_versions")
-          .select("*")
-          .eq("quiz_id", quizId)
-          .order("version_number", { ascending: false }),
-        supabase
-          .from("quiz_attempts")
-          .select("user_id, score")
-          .eq("quiz_id", quizId)
-          .not("completed_at", "is", null),
-        supabase
-          .from("reports")
-          .select("id", { count: "exact" })
-          .eq("quiz_id", quizId)
-          .eq("status", "open"),
-      ]);
+    const [
+      courseRes,
+      creatorRes,
+      questionsRes,
+      versionsRes,
+      attemptsRes,
+      reportsRes,
+    ] = await Promise.all([
+      supabase
+        .from("courses")
+        .select("*")
+        .eq("id", quizData.course_id)
+        .maybeSingle(),
+      supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", quizData.creator_id)
+        .maybeSingle(),
+      supabase
+        .from("questions")
+        .select("*")
+        .eq("quiz_id", quizId)
+        .order("order_index", { ascending: true }),
+      supabase
+        .from("quiz_versions")
+        .select("*")
+        .eq("quiz_id", quizId)
+        .order("version_number", { ascending: false }),
+      supabase
+        .from("quiz_attempts")
+        .select("user_id, score")
+        .eq("quiz_id", quizId)
+        .not("completed_at", "is", null),
+      supabase
+        .from("reports")
+        .select("id", { count: "exact" })
+        .eq("quiz_id", quizId)
+        .eq("status", "open"),
+    ]);
 
     setCourse((courseRes.data as DbCourse) ?? null);
     setCreator((creatorRes.data as DbProfile) ?? null);
@@ -532,7 +549,10 @@ export function AdminQuizContentPage() {
   );
 
   const selectedVersion = useMemo(
-    () => versions.find((version) => version.id === selectedVersionId) ?? versions[0] ?? null,
+    () =>
+      versions.find((version) => version.id === selectedVersionId) ??
+      versions[0] ??
+      null,
     [versions, selectedVersionId],
   );
 
@@ -889,7 +909,11 @@ export function AdminQuizContentPage() {
                     </p>
                   </div>
                   {displayedQuestions.map((q, i) => (
-                    <QuestionCard key={`${selectedVersion?.id ?? "live"}-${q.id}`} question={q} index={i} />
+                    <QuestionCard
+                      key={`${selectedVersion?.id ?? "live"}-${q.id}`}
+                      question={q}
+                      index={i}
+                    />
                   ))}
                 </>
               )}

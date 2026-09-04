@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   ArrowLeft,
   Sparkles,
@@ -80,6 +81,16 @@ export function CreatorProfilePage() {
   const [courses, setCourses] = useState<Map<string, DbCourse>>(new Map());
   const [myAttempts, setMyAttempts] = useState<DbQuizAttempt[]>([]);
   const [university, setUniversity] = useState<DbUniversity | null>(null);
+
+  // Dynamic tab title: loading → null, found → name, not found → fallback
+  usePageTitle(
+    profile === undefined
+      ? null
+      : profile
+        ? `${profile.full_name} on PrepUniv`
+        : "Creator not found",
+    { full: true },
+  );
 
   useEffect(() => {
     if (!id) return;

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   Search,
   Wallet as WalletIcon,
@@ -813,6 +814,9 @@ function Footer() {
 
 // ---------- PAGE EXPORT ----------
 export function LandingPage() {
+  usePageTitle("PrepUniv — CBT & Exam Prep for Nigerian Students", {
+    full: true,
+  });
   return (
     <div className="min-h-dvh w-full bg-background text-text">
       <LandingTopNav />

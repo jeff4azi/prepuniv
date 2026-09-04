@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   Clock,
   Search,
@@ -248,6 +249,8 @@ function HistorySkeleton() {
 
 export function HistoryPage() {
   const { currentUser } = useAuth();
+
+  usePageTitle("History");
 
   const [loading, setLoading] = useState(true);
   const [allAttempts, setAllAttempts] = useState<QuizAttempt[]>([]);

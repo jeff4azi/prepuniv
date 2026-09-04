@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import { User, Building2, LogOut, Bell, ChevronRight } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -90,13 +91,10 @@ function ProfileSection({
       description="Update your display name and creator bio. Email changes require contacting support."
     >
       <div className="flex items-center gap-4 pb-1">
-        <AvatarUpload
-          onError={onError}
-          onSuccess={() => onSaved()}
-        />
+        <AvatarUpload onError={onError} onSuccess={() => onSaved()} />
         <p className="text-xs text-muted leading-relaxed">
-          Tap the camera icon to upload a new photo. JPG, PNG, or WEBP —
-          it'll be resized and compressed automatically.
+          Tap the camera icon to upload a new photo. JPG, PNG, or WEBP — it'll
+          be resized and compressed automatically.
         </p>
       </div>
 
@@ -252,7 +250,8 @@ function BankDetailsSection() {
 function NotificationsSection() {
   const { currentUser } = useAuth();
   const { pathname } = useLocation();
-  const { permission, subscribed, loading, enable, disable } = usePushSubscription();
+  const { permission, subscribed, loading, enable, disable } =
+    usePushSubscription();
   const [, showToast] = useToast();
   const badges = useNavBadges({
     userId: currentUser.id,
@@ -268,7 +267,10 @@ function NotificationsSection() {
   async function handleEnable() {
     const res = await enable();
     if (!res.ok) {
-      showToast({ message: res.error || "Failed to enable notifications.", variant: "danger" });
+      showToast({
+        message: res.error || "Failed to enable notifications.",
+        variant: "danger",
+      });
     } else {
       showToast({ message: "Push notifications enabled." });
     }
@@ -277,7 +279,10 @@ function NotificationsSection() {
   async function handleDisable() {
     const res = await disable();
     if (!res.ok) {
-      showToast({ message: res.error || "Failed to disable notifications.", variant: "danger" });
+      showToast({
+        message: res.error || "Failed to disable notifications.",
+        variant: "danger",
+      });
     } else {
       showToast({ message: "Push notifications disabled." });
     }
@@ -333,21 +338,21 @@ function NotificationsSection() {
                   </span>
                 </div>
                 <p className="text-xs text-muted leading-relaxed">
-                  To re-enable, open your browser settings and allow notifications
-                  for this site.
+                  To re-enable, open your browser settings and allow
+                  notifications for this site.
                 </p>
               </div>
             ) : (
               <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-muted/50" />
-              <span className="text-sm font-heading font-medium text-muted">
-                Disabled
-              </span>
-            </div>
+                <span className="w-2 h-2 rounded-full bg-muted/50" />
+                <span className="text-sm font-heading font-medium text-muted">
+                  Disabled
+                </span>
+              </div>
             )}
           </div>
-          {!isBlocked && (
-            isEnabled ? (
+          {!isBlocked &&
+            (isEnabled ? (
               <Button
                 variant="outline"
                 size="sm"
@@ -365,8 +370,7 @@ function NotificationsSection() {
               >
                 Enable
               </Button>
-            )
-          )}
+            ))}
         </div>
       </div>
     </SettingsSection>
@@ -446,6 +450,9 @@ function DangerSection() {
 
 export function SettingsPage() {
   const { currentUser } = useAuth();
+
+  usePageTitle("Settings");
+
   const isCreator =
     currentUser.is_approved_creator || currentUser.role === "creator";
 
@@ -470,9 +477,7 @@ export function SettingsPage() {
             onSaved={() =>
               showToast({ message: "Profile updated successfully." })
             }
-            onError={(msg) =>
-              showToast({ message: msg, variant: "danger" })
-            }
+            onError={(msg) => showToast({ message: msg, variant: "danger" })}
           />
           {isCreator && <BankDetailsSection />}
           <NotificationsSection />

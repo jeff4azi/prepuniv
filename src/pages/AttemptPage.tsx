@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   X,
   ChevronLeft,
@@ -587,6 +588,11 @@ export function AttemptPage() {
   const currentAnswer = answers[currentQ?.id ?? ""] ?? "";
   const answeredCount = Object.values(answers).filter((v) => v.trim()).length;
   const progressPct = total > 0 ? ((displayIdx + 1) / total) * 100 : 0;
+
+  // Tab title updates on every question change: "Quiz Title — Q 3 of 20 | PrepUniv"
+  usePageTitle(
+    quiz ? `${quiz.title} — Question ${displayIdx + 1} of ${total}` : null,
+  );
 
   // ── Loading / error fallback ────────────────────────────────────────────
   if (loading) {

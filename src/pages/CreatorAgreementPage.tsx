@@ -9,6 +9,7 @@
  */
 import { useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import { CheckCircle2, Sparkles, Info, ArrowLeft } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Badge } from "../components/Badge";
@@ -169,6 +170,8 @@ function AgreementContent() {
 export function CreatorAgreementPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  usePageTitle("Creator Agreement");
   const { currentUser, acceptAgreement } = useAuth();
 
   // ?mode=accept → called from the apply flow; show sticky acceptance bar

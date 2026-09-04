@@ -8,6 +8,7 @@
  */
 import { useState, useMemo } from "react";
 import { Link, Navigate } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   Flag,
   ChevronRight,
@@ -643,6 +644,9 @@ function EmptyState({ tab }: { tab: FilterTab }) {
 
 export function AdminReportsPage() {
   const { currentUser } = useAuth();
+
+  usePageTitle("Admin · Reports");
+
   const [toast, showToast, dismissToast] = useToast();
   const [activeTab, setActiveTab] = useState<FilterTab>("open");
   const [reviewingId, setReviewingId] = useState<string | null>(null);

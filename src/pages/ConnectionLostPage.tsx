@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   WifiOff,
   RefreshCw,
@@ -25,10 +26,14 @@ interface ConnectionLostPageProps {
   onRetrySuccess?: () => void;
 }
 
-export function ConnectionLostPage({ onRetrySuccess }: ConnectionLostPageProps) {
+export function ConnectionLostPage({
+  onRetrySuccess,
+}: ConnectionLostPageProps) {
   const navigate = useNavigate();
   const { currentUser, isLoggedIn } = useAuth();
   const { isOnline, isChecking, checkConnection } = useNetwork();
+
+  usePageTitle("Connection Lost");
 
   const [troubleshootOpen, setTroubleshootOpen] = useState(false);
   const [retryAttempted, setRetryAttempted] = useState(false);
@@ -101,7 +106,10 @@ export function ConnectionLostPage({ onRetrySuccess }: ConnectionLostPageProps) 
           <div className="relative flex justify-center mb-6">
             <div className="relative">
               <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-3xl bg-warning-bg border border-warning/20 text-warning flex items-center justify-center shadow-card ring-8 ring-warning/5">
-                <WifiOff className="w-10 h-10 sm:w-12 sm:h-12" strokeWidth={1.8} />
+                <WifiOff
+                  className="w-10 h-10 sm:w-12 sm:h-12"
+                  strokeWidth={1.8}
+                />
               </div>
               <span className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-warning border-2 border-surface animate-ping" />
             </div>
@@ -200,20 +208,27 @@ export function ConnectionLostPage({ onRetrySuccess }: ConnectionLostPageProps) 
                 <li className="flex items-start gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
                   <span>
-                    Check your Wi-Fi or mobile data settings to verify connection.
+                    Check your Wi-Fi or mobile data settings to verify
+                    connection.
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                  <span>Try switching to a different Wi-Fi network or hotspot.</span>
+                  <span>
+                    Try switching to a different Wi-Fi network or hotspot.
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                  <span>Disable and re-enable Airplane Mode on your device.</span>
+                  <span>
+                    Disable and re-enable Airplane Mode on your device.
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                  <span>Wait a few moments and click <strong>Try Again</strong>.</span>
+                  <span>
+                    Wait a few moments and click <strong>Try Again</strong>.
+                  </span>
                 </li>
               </ul>
             )}

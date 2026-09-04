@@ -7,6 +7,7 @@
  */
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Link, Navigate } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   CreditCard,
   ChevronRight,
@@ -942,6 +943,9 @@ function EmptyState({ tab }: { tab: FilterTab }) {
 
 export function AdminPayoutsPage() {
   const { currentUser } = useAuth();
+
+  usePageTitle("Admin · Payouts");
+
   const [toast, showToast, dismissToast] = useToast();
   const [activeTab, setActiveTab] = useState<FilterTab>("pending");
   const [reviewingId, setReviewingId] = useState<string | null>(null);
