@@ -1,0 +1,52 @@
+User-agent: *
+
+# ── Publicly crawlable pages ──────────────────────────────────────────────────
+Allow: /$
+Allow: /browse
+Allow: /login
+Allow: /signup
+Allow: /apply-creator
+Allow: /terms
+Allow: /privacy
+
+# Individual quiz detail pages — allow the page, but NOT the leaderboard.
+# The leaderboard is public data but meaningless as a standalone search landing.
+Allow: /quiz/
+Disallow: /quiz/*/leaderboard
+
+# Creator public profile pages
+Allow: /profile/creator/
+
+# ── Authenticated / private routes ───────────────────────────────────────────
+
+# App shell routes that require login
+Disallow: /home
+Disallow: /browse$
+Disallow: /library
+Disallow: /wallet
+Disallow: /history
+Disallow: /settings
+Disallow: /notifications
+Disallow: /select-university
+
+# Quiz attempt and result — never crawlable (private session, meaningless out of context)
+Disallow: /attempt/
+
+# All creator dashboard routes
+Disallow: /creator
+Disallow: /creator/
+Disallow: /creator/*
+
+# All admin routes
+Disallow: /admin
+Disallow: /admin/
+Disallow: /admin/*
+
+# Auth utility pages — no standalone SEO value
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /confirm-email
+Disallow: /account-suspended
+Disallow: /connection-lost
+
+Sitemap: https://www.prepuniv.com/sitemap.xml
