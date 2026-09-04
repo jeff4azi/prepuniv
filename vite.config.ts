@@ -17,8 +17,8 @@ export default defineConfig({
         name: 'PrepUniv',
         short_name: 'PrepUniv',
         description: 'PrepUniv — Past quizzes, smarter prep.',
-        theme_color: '#1F8A70',
-        background_color: '#FFFDF7',
+        theme_color: '#44612e',
+        background_color: '#f2ecd7',
         display: 'standalone',
         start_url: '/',
         icons: [
