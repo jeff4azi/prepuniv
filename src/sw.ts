@@ -18,8 +18,8 @@ self.addEventListener('push', (event: PushEvent) => {
   const title = data.title || 'PrepUniv';
   const options: NotificationOptions = {
     body: data.body || '',
-    icon: data.icon || '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: data.icon || '/android-chrome-192x192.png',
+    badge: '/android-chrome-192x192.png',
     data: data.data || {},
     tag: data.tag || 'prepuniv-notification',
   };
