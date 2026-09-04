@@ -35,6 +35,11 @@ import {
 import type { Quiz, Course, Profile, QuizAttempt } from "../types";
 import { formatNaira } from "../components/QuizCard";
 import { apiFetch } from "../lib/api";
+import {
+  trackViewItem,
+  trackQuizBeginCheckout,
+  trackQuizPurchase,
+} from "../lib/analytics";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -159,6 +164,14 @@ export function QuizDetailPage() {
       setCourse(c);
       setCreator(p);
       setMyAttempts(attempts.filter((a) => a.quiz_id === id));
+
+      // Track quiz detail page view once data is ready
+      trackViewItem({
+        quiz_id: q.id,
+        quiz_title: q.title,
+        course_id: q.course_id,
+        price_kobo: q.price,
+      });
     })();
     return () => {
       cancelled = true;
@@ -273,6 +286,12 @@ export function QuizDetailPage() {
     if (!showConfirm) {
       setInsufficientFunds(false);
       setShowConfirm(true);
+      // begin_checkout: user has seen the price and tapped "Pay & Start"
+      trackQuizBeginCheckout({
+        quiz_id: quiz.id,
+        quiz_title: quiz.title,
+        price_kobo: quiz.price,
+      });
       return;
     }
     // confirm step — pay and create attempt in one backend call
@@ -285,6 +304,13 @@ export function QuizDetailPage() {
     );
     setIsPaying(false);
     if (result.ok && result.attempt_id) {
+      // spend_virtual_currency: wallet balance successfully spent
+      trackQuizPurchase({
+        quiz_id: quiz.id,
+        quiz_title: quiz.title,
+        price_kobo: quiz.price,
+        is_timed: isTimed,
+      });
       setShowConfirm(false);
       navigate(`/attempt/${result.attempt_id}`, {
         state: { quizId: quiz.id, isTimed },
@@ -399,6 +425,7 @@ export function QuizDetailPage() {
                     text={`Check out this quiz: ${quiz.title}`}
                     showToast={showToast}
                     label="Share quiz"
+                    itemId={quiz.id}
                   />
                 </div>
               </div>

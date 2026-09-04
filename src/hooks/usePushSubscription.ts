@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
+import {
+  trackPushNotificationsEnabled,
+  trackPushNotificationsDisabled,
+} from "../lib/analytics";
 
 export type PushPermissionState =
   | "granted"
@@ -30,7 +34,8 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 export function usePushSubscription(): UsePushSubscriptionReturn {
   const { isLoggedIn, authToken } = useAuth();
-  const [permission, setPermission] = useState<PushPermissionState>("unsupported");
+  const [permission, setPermission] =
+    useState<PushPermissionState>("unsupported");
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [vapidKey, setVapidKey] = useState<string | null>(null);
@@ -62,13 +67,16 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
       setPermission(p);
 
       try {
-        const resp = await apiFetch<{ enabled?: boolean; publicKey?: string; public_key?: string | null }>(
-          "/api/push/vapid-key",
-        );
+        const resp = await apiFetch<{
+          enabled?: boolean;
+          publicKey?: string;
+          public_key?: string | null;
+        }>("/api/push/vapid-key");
         if (resp.data?.enabled === false) {
           if (!cancelled) setSubscribed(false);
         }
-        if (!cancelled) setVapidKey(resp.data?.publicKey ?? resp.data?.public_key ?? null);
+        if (!cancelled)
+          setVapidKey(resp.data?.publicKey ?? resp.data?.public_key ?? null);
       } catch {
         if (!cancelled) setVapidKey(null);
       }
@@ -106,7 +114,9 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
         } else if (retries > 6) {
           clearInterval(retryInterval);
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }, 1500);
 
     try {
@@ -126,7 +136,9 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
           })
           .catch(() => {});
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     return () => {
       cancelled = true;
@@ -134,9 +146,20 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
     };
   }, [supported, isLoggedIn, authToken]);
 
-  const enable = useCallback(async (): Promise<{ ok: boolean; error?: string }> => {
-    if (!supported) return { ok: false, error: "Push notifications are not supported in this browser." };
-    if (!vapidKey) return { ok: false, error: "Push configuration missing on server — try again later." };
+  const enable = useCallback(async (): Promise<{
+    ok: boolean;
+    error?: string;
+  }> => {
+    if (!supported)
+      return {
+        ok: false,
+        error: "Push notifications are not supported in this browser.",
+      };
+    if (!vapidKey)
+      return {
+        ok: false,
+        error: "Push configuration missing on server — try again later.",
+      };
 
     setLoading(true);
     try {
@@ -144,13 +167,20 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
         const perm = await Notification.requestPermission();
         if (perm === "denied") {
           setPermission("denied");
-          return { ok: false, error: "Notifications blocked — re-enable them in browser settings." };
+          return {
+            ok: false,
+            error:
+              "Notifications blocked — re-enable them in browser settings.",
+          };
         }
         if (perm === "granted") setPermission("granted");
       }
       if (Notification.permission === "denied") {
         setPermission("denied");
-        return { ok: false, error: "Notifications blocked — re-enable them in browser settings." };
+        return {
+          ok: false,
+          error: "Notifications blocked — re-enable them in browser settings.",
+        };
       }
 
       const reg = await navigator.serviceWorker.ready;
@@ -158,14 +188,21 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
       if (!sub) {
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidKey) as unknown as BufferSource,
+          applicationServerKey: urlBase64ToUint8Array(
+            vapidKey,
+          ) as unknown as BufferSource,
         });
       }
       const rawKey = sub.getKey("p256dh");
       const rawAuth = sub.getKey("auth");
-      const p256dh = rawKey ? btoa(String.fromCharCode(...new Uint8Array(rawKey as ArrayBuffer))) : "";
-      const auth = rawAuth ? btoa(String.fromCharCode(...new Uint8Array(rawAuth as ArrayBuffer))) : "";
-      const userAgent = typeof navigator !== "undefined" ? navigator.userAgent : "";
+      const p256dh = rawKey
+        ? btoa(String.fromCharCode(...new Uint8Array(rawKey as ArrayBuffer)))
+        : "";
+      const auth = rawAuth
+        ? btoa(String.fromCharCode(...new Uint8Array(rawAuth as ArrayBuffer)))
+        : "";
+      const userAgent =
+        typeof navigator !== "undefined" ? navigator.userAgent : "";
 
       const { error } = await apiFetch<{ ok: boolean }>("/api/push/subscribe", {
         method: "POST",
@@ -177,16 +214,21 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
       setCurrentEndpoint(sub.endpoint);
       setSubscribed(true);
       setPermission("granted");
+      trackPushNotificationsEnabled();
       return { ok: true };
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Failed to enable notifications";
+      const msg =
+        e instanceof Error ? e.message : "Failed to enable notifications";
       return { ok: false, error: msg };
     } finally {
       setLoading(false);
     }
   }, [supported, vapidKey]);
 
-  const disable = useCallback(async (): Promise<{ ok: boolean; error?: string }> => {
+  const disable = useCallback(async (): Promise<{
+    ok: boolean;
+    error?: string;
+  }> => {
     if (!supported) return { ok: true };
     setLoading(true);
     try {
@@ -196,11 +238,15 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
         const endpoint = sub.endpoint;
         await sub.unsubscribe();
         if (endpoint) {
-          await apiFetch("/api/push/unsubscribe", { method: "POST", body: { endpoint } });
+          await apiFetch("/api/push/unsubscribe", {
+            method: "POST",
+            body: { endpoint },
+          });
         }
       }
       setCurrentEndpoint(null);
       setSubscribed(false);
+      trackPushNotificationsDisabled();
       return { ok: true };
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to disable push";

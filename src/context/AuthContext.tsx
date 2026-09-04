@@ -18,6 +18,12 @@ import {
 } from "../lib/supabase";
 import { apiFetch } from "../lib/api";
 import { formatNaira } from "../components/QuizCard";
+import {
+  trackSignUp,
+  trackLogin,
+  trackLogout,
+  trackQuizPurchase,
+} from "../lib/analytics";
 
 export type UserRole = "user" | "creator" | "admin";
 
@@ -151,17 +157,13 @@ const GUEST_USER: CurrentUser = {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [isPasswordRecovery, setIsPasswordRecovery] = useState<boolean>(
-    () => {
-      try {
-        return (
-          window.sessionStorage.getItem(PASSWORD_RECOVERY_FLAG_KEY) === "1"
-        );
-      } catch {
-        return false;
-      }
-    },
-  );
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState<boolean>(() => {
+    try {
+      return window.sessionStorage.getItem(PASSWORD_RECOVERY_FLAG_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   const [initialLoad, setInitialLoad] = useState(true);
 
   const [walletTxns, setWalletTxns] = useState<DbWalletTxn[]>([]);
@@ -285,6 +287,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user?.id) {
         await loadWalletData(session.user.id);
       }
+      // NOTE: quiz title and price are not available here in AuthContext —
+      // the caller (QuizDetailPage) tracks trackQuizBeginCheckout before
+      // calling purchaseQuiz, and trackQuizPurchase after it returns ok.
       return { ok: true, attempt_id: data.attempt_id };
     },
     [loadWalletData, session],
@@ -485,6 +490,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // If Supabase already returned a session, the project has email
       // confirmation disabled and the user is signed in immediately —
       // don't tell them to go check their inbox.
+      trackSignUp("email");
       return { error: null, needsConfirmation: !data.session };
     },
     [],
@@ -528,6 +534,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfile(profileRow as Profile);
         }
 
+        trackLogin("email");
         return {
           error: null,
           emailNotConfirmed: false,
@@ -547,6 +554,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logOut = useCallback(async () => {
+    trackLogout();
     await supabase.auth.signOut();
   }, []);
 

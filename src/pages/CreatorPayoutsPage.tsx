@@ -32,6 +32,7 @@ import { supabase, type DbPayoutRequest } from "../lib/supabase";
 import { apiFetch } from "../lib/api";
 import { formatNaira } from "./CreatorDashboardPage";
 import { markNavSectionViewed } from "../hooks/useNavBadges";
+import { trackPayoutRequested } from "../lib/analytics";
 
 const MINIMUM_PAYOUT_THRESHOLD = 200000;
 const PAYOUT_FREQUENCY_CAP_MS = 7 * 24 * 60 * 60 * 1000;
@@ -264,6 +265,7 @@ export function CreatorPayoutsPage() {
       await loadPayoutRequests();
     }
     await refreshProfile();
+    trackPayoutRequested({ value_naira: amountNaira });
     setPayoutSheetOpen(false);
     showToast({
       message: `Payout request for ${formatNaira(requestedAmountKobo)} submitted — our team will review within 2 business days.`,

@@ -15,6 +15,7 @@ import { FieldSelect } from "./CustomSelect";
 import type { ReportReason } from "../types";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
+import { trackReportSubmitted } from "../lib/analytics";
 
 // ─── Reason options ───────────────────────────────────────────────────────────
 
@@ -160,6 +161,7 @@ export function ReportModal({
       console.error("Report submit error:", error.message);
       setSubmitError("Failed to submit report. Please try again.");
     } else {
+      trackReportSubmitted({ quiz_id: quizId, reason: reason as string });
       onSuccess();
       onClose();
     }

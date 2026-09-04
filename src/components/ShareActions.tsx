@@ -8,6 +8,7 @@ import {
   Check,
   X,
 } from "lucide-react";
+import { trackShare } from "../lib/analytics";
 
 type ToastFn = (t: {
   message: string;
@@ -21,6 +22,8 @@ export async function handleShareOrCopy(
     text?: string;
     showToast: ToastFn;
     preferred?: "share" | "copy";
+    /** Quiz/item ID for analytics — pass this to get share events in GA4 */
+    itemId?: string;
   },
 ): Promise<"shared" | "copied" | "error"> {
   const showToast = opts.showToast;
@@ -35,6 +38,8 @@ export async function handleShareOrCopy(
         url: shareUrl,
       });
       showToast({ message: "Shared!", variant: "success" });
+      if (opts.itemId)
+        trackShare({ method: "native_share", item_id: opts.itemId });
       return "shared";
     } catch (e) {
       if ((e as Error).name === "AbortError") return "error";
@@ -59,6 +64,8 @@ export async function handleShareOrCopy(
       document.body.removeChild(ta);
     }
     showToast({ message: "Link copied to clipboard!", variant: "success" });
+    if (opts.itemId)
+      trackShare({ method: "clipboard_copy", item_id: opts.itemId });
     return "copied";
   } catch (e) {
     showToast({
@@ -78,6 +85,8 @@ type ShareActionsMenuProps = {
   className?: string;
   align?: "right" | "left";
   label?: string;
+  /** Quiz/item ID forwarded to analytics */
+  itemId?: string;
 };
 
 export function ShareActionsMenu({
@@ -89,6 +98,7 @@ export function ShareActionsMenu({
   className = "",
   align = "right",
   label = "Quiz actions",
+  itemId,
 }: ShareActionsMenuProps) {
   const [open, setOpen] = useState(false);
   const [justCopied, setJustCopied] = useState(false);
@@ -171,6 +181,7 @@ export function ShareActionsMenu({
                     text,
                     showToast,
                     preferred: "share",
+                    itemId,
                   });
                 }}
                 className="w-full h-9.5 px-3 rounded-xl text-[13px] font-heading font-semibold flex items-center gap-2.5 text-text hover:bg-surface/70 active:scale-[0.99] transition-all"
@@ -196,6 +207,7 @@ export function ShareActionsMenu({
                   text,
                   showToast,
                   preferred: "copy",
+                  itemId,
                 });
                 if (res === "copied") {
                   setJustCopied(true);
@@ -290,6 +302,8 @@ type ShareIconButtonProps = {
   size?: "sm" | "md";
   className?: string;
   label?: string;
+  /** Quiz/item ID forwarded to analytics */
+  itemId?: string;
 };
 
 export function ShareIconButton({
@@ -300,6 +314,7 @@ export function ShareIconButton({
   size = "md",
   className = "",
   label = "Share",
+  itemId,
 }: ShareIconButtonProps) {
   const btnCls =
     size === "md"
@@ -312,7 +327,7 @@ export function ShareIconButton({
       onClick={(e) => {
         e.stopPropagation();
         e.preventDefault();
-        void handleShareOrCopy(url, { title, text, showToast });
+        void handleShareOrCopy(url, { title, text, showToast, itemId });
       }}
       className={`${btnCls} inline-flex items-center font-heading font-semibold border border-border/50 bg-surface/40 text-text hover:border-primary/30 hover:text-primary hover:bg-surface active:scale-[0.98] transition-all duration-150 ${className}`}
     >

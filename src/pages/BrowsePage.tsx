@@ -24,6 +24,7 @@ import {
   fetchCoursePopularity,
   type CoursePopularity,
 } from "../lib/queries";
+import { trackSearch } from "../lib/analytics";
 
 type SortKey = "newest" | "popular" | "price-asc" | "price-desc";
 type LibraryFilter = "all" | "library";
@@ -56,9 +57,9 @@ export function BrowsePage() {
   const [allQuizzes, setAllQuizzes] = useState<Quiz[]>([]);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [allProfiles, setAllProfiles] = useState<DbProfile[]>([]);
-  const [coursePopularity, setCoursePopularity] = useState<
-    CoursePopularity[]
-  >([]);
+  const [coursePopularity, setCoursePopularity] = useState<CoursePopularity[]>(
+    [],
+  );
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [deptFilter, setDeptFilter] = useState<string>("all");
@@ -99,10 +100,11 @@ export function BrowsePage() {
   }, [userUniversityId, currentUser.role]);
 
   useEffect(() => {
-    const t = setTimeout(
-      () => setSearchQuery(searchInput.trim()),
-      SEARCH_DEBOUNCE_MS,
-    );
+    const t = setTimeout(() => {
+      const q = searchInput.trim();
+      setSearchQuery(q);
+      if (q) trackSearch(q);
+    }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [searchInput]);
 

@@ -22,6 +22,12 @@ import { formatNaira, formatDate } from "../components/QuizCard";
 import { useAuth, type DbWalletTxn, type DbQuiz } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import { apiFetch } from "../lib/api";
+import {
+  trackBeginCheckout,
+  trackTopupCompleted,
+  trackTopupFailed,
+  trackTopupPartial,
+} from "../lib/analytics";
 
 type FilterKey = "all" | "topups" | "payments";
 type TopUpStep = "amount" | "processing" | "success";
@@ -165,16 +171,28 @@ export function WalletPage() {
         if (status === "completed") {
           await refreshProfile();
           if (cancelled) return;
+          trackTopupCompleted({
+            value_naira: Number(
+              data?.amount_received ?? data?.amount_expected ?? 0,
+            ),
+            tx_ref: txRef,
+          });
           setVerifyState("success");
           return;
         } else if (status === "failed") {
           await refreshProfile();
           if (cancelled) return;
+          trackTopupFailed({ tx_ref: txRef });
           setVerifyState("failed");
           return;
         } else if (status === "partial") {
           await refreshProfile();
           if (cancelled) return;
+          trackTopupPartial({
+            expected_naira: Number(data?.amount_expected ?? 0),
+            received_naira: Number(data?.amount_received ?? 0),
+            tx_ref: txRef,
+          });
           setPartialAmounts({
             expected: Number(data?.amount_expected ?? 0),
             received: Number(data?.amount_received ?? 0),
@@ -342,6 +360,9 @@ export function WalletPage() {
       setTopUpStep("amount");
       return;
     }
+    // Fire begin_checkout just before the redirect — this is the last
+    // JS execution point before the page navigates away to Flutterwave.
+    trackBeginCheckout({ value_naira: selectedAmountNaira, tx_ref });
     window.location.href = payment_link;
   };
 

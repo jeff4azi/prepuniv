@@ -6,6 +6,7 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
+import { trackPageView } from "./lib/analytics";
 import { NetworkProvider, useNetwork } from "./context/NetworkContext";
 import { ConnectionLostPage } from "./pages/ConnectionLostPage";
 import { AuthProvider } from "./context/AuthContext";
@@ -89,6 +90,20 @@ function ScrollToTop() {
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [pathname]);
+  return null;
+}
+
+/**
+ * Fires a GA4 page_view on every SPA navigation.
+ * Must be rendered inside <BrowserRouter> so useLocation() works.
+ * Placed at the RoutingSwitch level so it covers ALL routes (public,
+ * app-shell, and attempt shell) with a single instance.
+ */
+function GAPageTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    trackPageView(location.pathname + location.search);
+  }, [location.pathname, location.search]);
   return null;
 }
 
@@ -468,10 +483,16 @@ function RoutingSwitch() {
       loc.pathname,
     );
 
-  if (isPublic) return <PublicRoutes />;
-  if (isAttempt) return <AttemptShell />;
-  if (isAppPath) return <AppShell />;
-  return <NotFoundPage />;
+  return (
+    <>
+      {/* Single tracker covers all shells — fires on every route change */}
+      <GAPageTracker />
+      {isPublic && <PublicRoutes />}
+      {isAttempt && <AttemptShell />}
+      {isAppPath && !isPublic && !isAttempt && <AppShell />}
+      {!isPublic && !isAttempt && !isAppPath && <NotFoundPage />}
+    </>
+  );
 }
 
 export function App() {

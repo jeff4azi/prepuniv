@@ -15,6 +15,10 @@ import type { Question, AttemptResult, Quiz } from "../types";
 import { fetchQuiz, fetchQuestions } from "../lib/queries";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
+import {
+  trackQuizAttemptStarted,
+  trackQuizAttemptCompleted,
+} from "../lib/analytics";
 
 // ─── Route state shape (from QuizDetailPage) ─────────────────────────────────
 interface AttemptLocationState {
@@ -380,6 +384,12 @@ export function AttemptPage() {
       setQuiz(q);
       setQuestions(shuffled);
       setLoading(false);
+
+      // Track attempt started once questions are ready and the timer seeds
+      trackQuizAttemptStarted({
+        quiz_id: q.id,
+        is_timed: (state.isTimed ?? false) && !!q.time_limit_seconds,
+      });
     })();
     return () => {
       cancelled = true;
@@ -511,6 +521,17 @@ export function AttemptPage() {
       started_at: startedAt,
       completed_at: completedAt,
     };
+
+    // Track completion before navigating away
+    const timeTakenMsForEvent =
+      new Date(completedAt).getTime() - new Date(startedAt).getTime();
+    trackQuizAttemptCompleted({
+      quiz_id: quiz?.id ?? "",
+      score,
+      total_questions: t,
+      is_timed: isTimed,
+      time_taken_seconds: Math.max(0, Math.round(timeTakenMsForEvent / 1000)),
+    });
 
     navigate(`/attempt/${attemptId}/result`, {
       state: { result, from: quiz?.id ? `/quiz/${quiz.id}` : "/browse" },

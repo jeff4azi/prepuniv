@@ -23,6 +23,7 @@ import { AppDialog } from "../components/AppDialog";
 import { useAuth } from "../context/AuthContext";
 import type { CreatorApplication, ApplicationStatus } from "../types";
 import { supabase } from "../lib/supabase";
+import { trackCreatorApplicationSubmitted } from "../lib/analytics";
 
 const BASE_INPUT =
   "w-full h-12 px-4 rounded-xl text-sm bg-cream text-text placeholder:text-muted/70 border border-border focus:outline-none ring-0 focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed";
@@ -519,6 +520,7 @@ export function CreatorApplyPage() {
   function handleSubmitted(submitted: CreatorApplication) {
     setLocalApp(submitted);
     setReApplying(false);
+    trackCreatorApplicationSubmitted();
     showToast({ message: "Application submitted! We'll be in touch soon." });
   }
 
