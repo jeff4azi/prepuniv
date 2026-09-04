@@ -25,6 +25,7 @@ import {
   Clock,
   GraduationCap,
   Megaphone,
+  Bell,
 } from "lucide-react";
 import { useAuth, type UserRole } from "../context/AuthContext";
 import { Avatar } from "./Avatar";
@@ -102,7 +103,7 @@ function NavItem({
 
 // ─── User header (shared by both modes) ──────────────────────────────────────
 
-function UserHeader() {
+function UserHeader({ unreadNotifications = 0 }: { unreadNotifications?: number }) {
   const { currentUser, walletBalance } = useAuth();
   const roleInfo = ROLE_LABELS[currentUser.role];
   return (
@@ -112,6 +113,8 @@ function UserHeader() {
         src={currentUser.avatar_url ?? undefined}
         size="md"
         ring
+        enlargeable={false}
+        badge={unreadNotifications > 0}
       />
       <div className="flex-1 min-w-0">
         <p className="font-heading font-semibold text-sm text-text truncate leading-tight">
@@ -150,12 +153,24 @@ function LogOutRow({ onLogOut }: { onLogOut: () => void }) {
   );
 }
 
-// ─── Desktop-only body: just the user header + log out ───────────────────────
-// The sidebar already shows everything else, so we don't repeat it.
+// ─── Desktop-only body: Notifications shortcut + log out ─────────────────────
+// The sidebar shows the rest of navigation, but the popover lives on the
+// sidebar user card — we surface the one tap target people miss most when
+// the unread dot appears on their avatar (their notification inbox).
 
 function DesktopMenuBody({ onClose }: { onClose: () => void }) {
-  const { logOut } = useAuth();
+  const { currentUser, logOut } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const role = currentUser.role;
+  const isApproved = currentUser.is_approved_creator;
+
+  const badges = useNavBadges({
+    userId: currentUser.id,
+    role,
+    isApprovedCreator: isApproved,
+    pathname,
+  });
 
   function handleLogOut() {
     logOut();
@@ -164,15 +179,43 @@ function DesktopMenuBody({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="py-2 px-4">
-      <button
-        type="button"
-        onClick={handleLogOut}
-        className="flex items-center gap-3 h-11 px-3 rounded-2xl text-sm font-heading font-medium text-warning/80 hover:bg-warning-bg hover:text-warning transition-colors w-full"
+    <div className="py-2 px-4 space-y-1">
+      <NavLink
+        to="/notifications"
+        onClick={onClose}
+        end
+        className={({ isActive }) =>
+          `flex items-center gap-3 h-11 px-3 rounded-2xl text-sm font-heading font-medium transition-colors w-full ${
+            isActive
+              ? "bg-primary/10 text-primary"
+              : "text-text hover:bg-surface/60 hover:text-text"
+          }`
+        }
       >
-        <LogOut className="w-4.5 h-4.5 shrink-0" strokeWidth={2.1} />
-        <span>Log out</span>
-      </button>
+        <Bell className="w-4.5 h-4.5 shrink-0 text-text-soft" strokeWidth={2.1} />
+        <span className="flex-1">Notifications</span>
+        <span
+          className={`inline-flex items-center justify-center rounded-full font-heading font-bold text-cream ring-2 ring-cream shadow-soft transition-opacity ${
+            badges.unreadNotifications > 0
+              ? "h-5 min-w-5 px-1.5 text-[10px] bg-warning opacity-100"
+              : "h-0 min-w-0 px-0 text-[0px] bg-warning opacity-0"
+          }`}
+        >
+          {badges.unreadNotifications > 0 && formatBadgeCount(badges.unreadNotifications)}
+        </span>
+        <ChevronRight className="w-4 h-4 opacity-40 shrink-0" />
+      </NavLink>
+
+      <div className="border-t border-border/50 mt-2 pt-2">
+        <button
+          type="button"
+          onClick={handleLogOut}
+          className="flex items-center gap-3 h-11 px-3 rounded-2xl text-sm font-heading font-medium text-warning/80 hover:bg-warning-bg hover:text-warning transition-colors w-full"
+        >
+          <LogOut className="w-4.5 h-4.5 shrink-0" strokeWidth={2.1} />
+          <span>Log out</span>
+        </button>
+      </div>
     </div>
   );
 }
@@ -202,7 +245,7 @@ function MobileMenuBody({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <UserHeader />
+      <UserHeader unreadNotifications={badges.unreadNotifications} />
 
       <div className="px-3 pb-1 space-y-0.5">
         {/* ── Home/Browse/Library/Wallet are on the bottom nav — not repeated here ── */}

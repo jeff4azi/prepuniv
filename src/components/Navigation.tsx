@@ -188,7 +188,6 @@ export function Sidebar() {
   const userNav = USER_NAV.filter((i) => !i.roles || i.roles.includes(role));
   const creatorNav = filterByRole(CREATOR_NAV, role, isApproved);
   const adminNav = filterByRole(ADMIN_NAV, role, isApproved);
-
   // Popover state
   const [popoverOpen, setPopoverOpen] = useState(false);
   const userCardRef = useRef<HTMLButtonElement>(null);
@@ -219,6 +218,8 @@ export function Sidebar() {
         <nav className="space-y-1">
           {userNav.map((item) => {
             const Icon = item.icon;
+            const badgeCount =
+              item.to === "/settings" ? badges.unreadNotifications : 0;
             return (
               <NavLink
                 key={item.to}
@@ -228,6 +229,7 @@ export function Sidebar() {
               >
                 <Icon className="w-4.5 h-4.5 shrink-0" strokeWidth={2.1} />
                 <span>{item.label}</span>
+                <NavBadgePill count={badgeCount} />
               </NavLink>
             );
           })}
@@ -362,6 +364,7 @@ export function Sidebar() {
             size="md"
             ring
             enlargeable={false}
+            badge={badges.unreadNotifications > 0}
           />
           <div className="flex-1 min-w-0 text-left">
             <p className="font-heading font-semibold text-sm text-text truncate">
@@ -390,7 +393,17 @@ interface TopBarProps {
 export function TopBar({ onOpenAccountMenu }: TopBarProps) {
   const { currentUser, walletBalance } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const role = currentUser.role;
+  const isApproved = currentUser.is_approved_creator;
   const [scrolled, setScrolled] = useState(false);
+
+  const badges = useNavBadges({
+    userId: currentUser.id,
+    role,
+    isApprovedCreator: isApproved,
+    pathname,
+  });
 
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 4);
@@ -448,6 +461,7 @@ export function TopBar({ onOpenAccountMenu }: TopBarProps) {
               size="sm"
               ring
               enlargeable={false}
+              badge={badges.unreadNotifications > 0}
             />
           </button>
         </div>

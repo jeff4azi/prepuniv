@@ -1,6 +1,7 @@
 import { useEffect, useState, type ImgHTMLAttributes } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { formatBadgeCount } from "../hooks/useNavBadges";
 
 type Size = "xs" | "sm" | "md" | "lg" | "xl";
 
@@ -17,7 +18,29 @@ interface AvatarProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, "size"> 
    * enlarge click doesn't fight the existing one for the same tap.
    */
   enlargeable?: boolean;
+  /**
+   * Top-right indicator.
+   * - `true` or `0+` → small red dot (use when you don't want the number)
+   * - number > 0 → shows the number capped at "9+" (same style as NavBadgePill)
+   */
+  badge?: boolean | number;
 }
+
+const BADGE_SIZE: Record<Size, string> = {
+  xs: "h-2 w-2 -top-0.5 -right-0.5",
+  sm: "h-2.5 w-2.5 -top-0.5 -right-0.5",
+  md: "h-3 w-3 -top-1 -right-1",
+  lg: "h-3.5 w-3.5 -top-1 -right-1",
+  xl: "h-4 w-4 -top-1.5 -right-1.5",
+};
+
+const NUM_BADGE_SIZE: Record<Size, string> = {
+  xs: "text-[8px] h-4 min-w-4 px-1 -top-1.5 -right-1.5",
+  sm: "text-[9px] h-5 min-w-5 px-1 -top-2 -right-2",
+  md: "text-[10px] h-5 min-w-5 px-1.5 -top-2 -right-2",
+  lg: "text-[11px] h-6 min-w-6 px-1.5 -top-2.5 -right-2.5",
+  xl: "text-[11px] h-6 min-w-6 px-2 -top-3 -right-3",
+};
 
 const SIZE_MAP: Record<Size, string> = {
   xs: "h-7 w-7 text-[10px]",
@@ -98,6 +121,7 @@ export function Avatar({
   enlargeable = true,
   className = "",
   alt,
+  badge,
   ...props
 }: AvatarProps) {
   const [imgError, setImgError] = useState(false);
@@ -119,6 +143,9 @@ export function Avatar({
   const showImage = !!src && !imgError;
   const canEnlarge = enlargeable && showImage;
   const displayAlt = alt ?? name;
+
+  const showBadge = badge === true || (typeof badge === "number" && badge > 0);
+  const showNumberBadge = typeof badge === "number" && badge > 0;
 
   return (
     <>
@@ -143,6 +170,19 @@ export function Avatar({
           />
         ) : (
           <span>{initials}</span>
+        )}
+        {showBadge && (
+          showNumberBadge ? (
+            <span
+              className={`absolute z-10 inline-flex items-center justify-center rounded-full font-heading font-bold bg-warning text-cream ring-2 ring-cream shadow-soft ${NUM_BADGE_SIZE[size]}`}
+            >
+              {formatBadgeCount(badge as number)}
+            </span>
+          ) : (
+            <span
+              className={`absolute z-10 rounded-full bg-warning ring-2 ring-cream shadow-soft ${BADGE_SIZE[size]}`}
+            />
+          )
         )}
       </div>
       {enlarged && showImage && (
