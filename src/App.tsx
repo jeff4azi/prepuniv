@@ -1,17 +1,12 @@
 import { useState } from "react";
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Navigate,
-  useLocation,
-} from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { trackPageView } from "./lib/analytics";
 import { NetworkProvider, useNetwork } from "./context/NetworkContext";
 import { ConnectionLostPage } from "./pages/ConnectionLostPage";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { RequireAuth, IfLoggedOut } from "./lib/routeGuard";
 import { Sidebar, TopBar, BottomNav } from "./components/Navigation";
+import { LandingTopNav } from "./components/LandingTopNav";
 import { AccountSheet } from "./components/AccountMenu";
 import { TermsPage } from "./pages/TermsPage";
 import { PrivacyPage } from "./pages/PrivacyPage";
@@ -107,6 +102,35 @@ function GAPageTracker() {
   return null;
 }
 
+/**
+ * PublicShell — wraps the publicly accessible pages (browse, quiz detail,
+ * creator profile, apply-creator). Uses LandingTopNav which already handles
+ * both unauthenticated and authenticated visitor states gracefully.
+ * No Sidebar / BottomNav — those require an authenticated session.
+ */
+function PublicShell() {
+  return (
+    <div className="min-h-dvh w-full bg-background text-text flex flex-col">
+      <ScrollToTop />
+      <LandingTopNav />
+      <main className="flex-1 w-full">
+        <PageTransition>
+          <Routes>
+            {/* Publicly accessible — no RequireAuth wrapper */}
+            <Route path="/browse" element={<BrowsePage />} />
+            <Route path="/quiz/:id" element={<QuizDetailPage />} />
+            <Route
+              path="/profile/creator/:id"
+              element={<CreatorProfilePage />}
+            />
+            <Route path="/apply-creator" element={<CreatorApplyPage />} />
+          </Routes>
+        </PageTransition>
+      </main>
+    </div>
+  );
+}
+
 function AppShell() {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
@@ -127,6 +151,11 @@ function AppShell() {
                   </RequireAuth>
                 }
               />
+              {/*
+               * /browse is also in PublicShell (unauthenticated access).
+               * When a logged-in user navigates to /browse they land in the
+               * AppShell version which has the full sidebar/nav chrome.
+               */}
               <Route
                 path="/browse"
                 element={
@@ -185,6 +214,10 @@ function AppShell() {
                 }
               />
 
+              {/*
+               * /quiz/:id is also in PublicShell (unauthenticated access).
+               * Authenticated users see the full AppShell chrome.
+               */}
               <Route
                 path="/quiz/:id"
                 element={
@@ -201,6 +234,10 @@ function AppShell() {
                   </RequireAuth>
                 }
               />
+              {/*
+               * /profile/creator/:id is also in PublicShell.
+               * Authenticated users see AppShell chrome.
+               */}
               <Route
                 path="/profile/creator/:id"
                 element={
@@ -442,10 +479,6 @@ function PublicRoutes() {
           </IfLoggedOut>
         }
       />
-      <Route
-        path="/apply-creator"
-        element={<Navigate to="/creator/apply" replace />}
-      />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/confirm-email" element={<ConfirmEmailPage />} />
@@ -459,8 +492,9 @@ function PublicRoutes() {
 
 function RoutingSwitch() {
   const loc = useLocation();
+  const { isLoggedIn, isLoading } = useAuth();
 
-  const publicPaths = [
+  const staticPublicPaths = [
     "/",
     "/login",
     "/signup",
@@ -474,8 +508,19 @@ function RoutingSwitch() {
     "/account-suspended",
     "/connection-lost",
   ];
-  const isPublic = publicPaths.includes(loc.pathname);
+  const isStaticPublic = staticPublicPaths.includes(loc.pathname);
   const isAttempt = /^\/attempt\//.test(loc.pathname);
+
+  // These paths are publicly accessible (no auth required).
+  // /quiz/:id is public but /quiz/:id/leaderboard is not.
+  const isPublicAppPath = (() => {
+    const p = loc.pathname;
+    if (p === "/browse" || p === "/apply-creator") return true;
+    if (/^\/profile\/creator\/[^/]+/.test(p)) return true;
+    // /quiz/:id is public; /quiz/:id/leaderboard is NOT public
+    if (/^\/quiz\/[^/]+$/.test(p)) return true;
+    return false;
+  })();
 
   // Known app-shell paths — anything else is a 404, rendered shell-free
   const isAppPath =
@@ -483,14 +528,29 @@ function RoutingSwitch() {
       loc.pathname,
     );
 
+  // Show AppShell for app paths that are NOT also public app paths
+  const showAppShellAlways =
+    isAppPath && !isStaticPublic && !isAttempt && !isPublicAppPath;
+
+  // For public app paths: while auth is still initialising show PublicShell
+  // (it works perfectly without a session). Once loading resolves, if the
+  // user IS logged in the AppShell takes over — they get the full sidebar
+  // chrome. If not logged in, PublicShell stays. This prevents a blank
+  // screen on direct navigation to e.g. /quiz/123.
+  const publicAppShellChoice =
+    isLoggedIn && !isLoading ? <AppShell /> : <PublicShell />;
+
   return (
     <>
       {/* Single tracker covers all shells — fires on every route change */}
       <GAPageTracker />
-      {isPublic && <PublicRoutes />}
+      {isStaticPublic && <PublicRoutes />}
       {isAttempt && <AttemptShell />}
-      {isAppPath && !isPublic && !isAttempt && <AppShell />}
-      {!isPublic && !isAttempt && !isAppPath && <NotFoundPage />}
+      {/* Public app paths: show PublicShell for guests, AppShell for logged-in users */}
+      {isPublicAppPath && !isStaticPublic && !isAttempt && publicAppShellChoice}
+      {/* Non-public app paths: always AppShell (RequireAuth handles redirect) */}
+      {showAppShellAlways && <AppShell />}
+      {!isStaticPublic && !isAttempt && !isAppPath && <NotFoundPage />}
     </>
   );
 }

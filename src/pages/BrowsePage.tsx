@@ -51,8 +51,11 @@ const SEARCH_DEBOUNCE_MS = 150;
 export function BrowsePage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { hasPurchasedQuiz, currentUser } = useAuth();
-  const userUniversityId = currentUser.university_id || undefined;
+  const { hasPurchasedQuiz, currentUser, isLoggedIn } = useAuth();
+  // Unauthenticated visitors have no university affiliation — show all
+  const userUniversityId = isLoggedIn
+    ? currentUser.university_id || undefined
+    : undefined;
 
   usePageTitle("Browse Quizzes");
 
@@ -69,6 +72,11 @@ export function BrowsePage() {
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("newest");
   const [libraryFilter, setLibraryFilter] = useState<LibraryFilter>("all");
+
+  // Reset library filter when user is not authenticated
+  useEffect(() => {
+    if (!isLoggedIn) setLibraryFilter("all");
+  }, [isLoggedIn]);
 
   useEffect(() => {
     let cancelled = false;
@@ -380,22 +388,24 @@ export function BrowsePage() {
                 aria-label="Sort quizzes"
               />
 
-              {/* Library toggle */}
-              <div className="inline-flex rounded-xl border border-border/60 bg-cream p-0.5">
-                <LibraryToggle
-                  active={libraryFilter === "all"}
-                  onClick={() => setLibraryFilter("all")}
-                >
-                  All
-                </LibraryToggle>
-                <LibraryToggle
-                  active={libraryFilter === "library"}
-                  onClick={() => setLibraryFilter("library")}
-                >
-                  <Library className="w-3.5 h-3.5" />
-                  My Library
-                </LibraryToggle>
-              </div>
+              {/* Library toggle — only shown when authenticated */}
+              {isLoggedIn && (
+                <div className="inline-flex rounded-xl border border-border/60 bg-cream p-0.5">
+                  <LibraryToggle
+                    active={libraryFilter === "all"}
+                    onClick={() => setLibraryFilter("all")}
+                  >
+                    All
+                  </LibraryToggle>
+                  <LibraryToggle
+                    active={libraryFilter === "library"}
+                    onClick={() => setLibraryFilter("library")}
+                  >
+                    <Library className="w-3.5 h-3.5" />
+                    My Library
+                  </LibraryToggle>
+                </div>
+              )}
 
               {hasActiveFilters && (
                 <Button

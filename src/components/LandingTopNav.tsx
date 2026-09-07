@@ -17,19 +17,31 @@ export function LandingTopNav() {
       }`}
     >
       <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <Link
-          to="/"
-          className="flex items-center gap-2.5 -ml-1 pl-1 pr-2 h-11 rounded-2xl active:scale-[0.98] transition-transform"
-        >
-          <img
-            src={new URL("../assets/prepUniv.png", import.meta.url).href}
-            alt="PrepUniv"
-            className="h-8 w-8 rounded-xl object-contain"
-          />
-          <span className="font-heading font-bold text-xl tracking-tight text-primary">
-            PrepUniv
-          </span>
-        </Link>
+        <div className="flex items-center gap-6">
+          <Link
+            to="/"
+            className="flex items-center gap-2.5 -ml-1 pl-1 pr-2 h-11 rounded-2xl active:scale-[0.98] transition-transform"
+          >
+            <img
+              src={new URL("../assets/prepUniv.png", import.meta.url).href}
+              alt="PrepUniv"
+              className="h-8 w-8 rounded-xl object-contain"
+            />
+            <span className="font-heading font-bold text-xl tracking-tight text-primary">
+              PrepUniv
+            </span>
+          </Link>
+
+          {/* Browse link shown on public pages other than the landing page */}
+          {!isLanding && (
+            <Link
+              to="/browse"
+              className="hidden sm:inline-flex items-center text-sm font-heading font-medium text-text-soft hover:text-text transition-colors"
+            >
+              Browse Quizzes
+            </Link>
+          )}
+        </div>
 
         {isLanding ? (
           !isLoading && isLoggedIn ? (
@@ -60,11 +72,25 @@ export function LandingTopNav() {
               </Button>
             </div>
           )
-        ) : (
-          <Link to="/" className="text-primary font-medium hover:underline">
-            Back to PrepUniv
-          </Link>
-        )}
+        ) : /* Non-landing public pages: show auth buttons for guests */
+        !isLoading && !isLoggedIn ? (
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => (window.location.href = "/login")}
+            >
+              Log in
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => (window.location.href = "/signup")}
+            >
+              Sign up
+            </Button>
+          </div>
+        ) : null}
       </div>
     </header>
   );

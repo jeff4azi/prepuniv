@@ -473,7 +473,7 @@ function ApplicationForm({
 }
 
 export function CreatorApplyPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, isLoggedIn } = useAuth();
 
   usePageTitle("Apply to Become a Creator");
 
@@ -483,7 +483,7 @@ export function CreatorApplyPage() {
   const [toast, showToast, dismissToast] = useToast();
 
   useEffect(() => {
-    if (!currentUser?.id) return;
+    if (!isLoggedIn || !currentUser?.id) return;
     supabase
       .from("creator_applications")
       .select("*")
@@ -505,9 +505,10 @@ export function CreatorApplyPage() {
           });
         }
       });
-  }, [currentUser?.id]);
+  }, [currentUser?.id, isLoggedIn]);
 
   function effectiveStatus(): ApplicationStatus | "none" {
+    if (!isLoggedIn) return "none";
     if (localApp) return localApp.status;
     if (realApp) return realApp.status;
     if (currentUser.is_approved_creator) return "approved";
@@ -515,6 +516,7 @@ export function CreatorApplyPage() {
   }
 
   function effectiveApp(): CreatorApplication | null {
+    if (!isLoggedIn) return null;
     return localApp ?? realApp ?? null;
   }
 
@@ -533,7 +535,7 @@ export function CreatorApplyPage() {
   }
 
   const prefill =
-    (status === "rejected" || reApplying) && app
+    isLoggedIn && (status === "rejected" || reApplying) && app
       ? {
           courses: app.courses,
           background: app.background,
@@ -542,7 +544,7 @@ export function CreatorApplyPage() {
         }
       : undefined;
 
-  const showForm = status === "none" || reApplying;
+  const showForm = isLoggedIn && (status === "none" || reApplying);
 
   return (
     <>
@@ -577,6 +579,61 @@ export function CreatorApplyPage() {
               userId={currentUser.id}
               onSubmitted={handleSubmitted}
             />
+          )}
+
+          {/* ── Guest: show the value prop + sign-in prompt ── */}
+          {!isLoggedIn && (
+            <>
+              <Card className="bg-primary/5 border-primary/20">
+                <div className="flex items-start gap-4">
+                  <div className="h-10 w-10 rounded-2xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
+                    <Sparkles className="w-5 h-5" strokeWidth={2} />
+                  </div>
+                  <div className="space-y-1 min-w-0">
+                    <h3 className="font-heading font-bold text-base text-text leading-tight">
+                      Earn from quizzes you already know
+                    </h3>
+                    <p className="text-sm text-text-soft leading-relaxed">
+                      You keep{" "}
+                      <span className="font-heading font-bold text-primary">
+                        65%
+                      </span>{" "}
+                      of every sale. Set your own price between{" "}
+                      <span className="font-semibold text-text">
+                        ₦50 – ₦500
+                      </span>{" "}
+                      per quiz. Approval is required before you can publish — we
+                      review every application personally.
+                    </p>
+                  </div>
+                </div>
+              </Card>
+              <Card>
+                <div className="flex flex-col items-center text-center py-4 gap-4">
+                  <p className="text-sm text-text-soft leading-relaxed max-w-md">
+                    You need a PrepUniv account to apply as a creator. Sign in
+                    or create a free account to get started.
+                  </p>
+                  <div className="flex gap-3">
+                    <Link
+                      to={`/signup?redirect=${encodeURIComponent("/apply-creator")}`}
+                    >
+                      <Button variant="primary" size="md">
+                        <Sparkles className="w-4 h-4" />
+                        Create a free account
+                      </Button>
+                    </Link>
+                    <Link
+                      to={`/login?redirect=${encodeURIComponent("/apply-creator")}`}
+                    >
+                      <Button variant="outline" size="md">
+                        Log in
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </Card>
+            </>
           )}
 
           {!showForm && status === "pending" && app && (

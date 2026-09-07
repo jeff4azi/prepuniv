@@ -85,7 +85,9 @@ export function RequireAuth({ children, role, redirectTo }: RequireAuthProps) {
   }
 
   if (role === "admin" && !isAdmin) {
-    return <Navigate to={redirectTo ?? getDefaultDashboard(currentUser)} replace />;
+    return (
+      <Navigate to={redirectTo ?? getDefaultDashboard(currentUser)} replace />
+    );
   }
 
   if (role === "approvedCreator" && !isApprovedCreator) {
@@ -101,6 +103,8 @@ export function RequireAuth({ children, role, redirectTo }: RequireAuthProps) {
 /**
  * Redirect logged-in users AWAY from auth-only pages (e.g. /login, /signup).
  * Optional `fallback` overrides the default role-based redirect target.
+ * Respects the `?redirect=` query param so users returning from a public page
+ * (e.g. /quiz/123) land on their intended destination after sign-up.
  */
 export function IfLoggedOut({
   children,
@@ -110,6 +114,7 @@ export function IfLoggedOut({
   fallback?: string;
 }) {
   const { isLoggedIn, isLoading, currentUser } = useAuth();
+  const { search } = useLocation();
 
   if (isLoading) {
     return (
@@ -120,7 +125,11 @@ export function IfLoggedOut({
   }
 
   if (isLoggedIn) {
-    const target = fallback ?? getDefaultDashboard(currentUser);
+    // Honour the ?redirect= param if present (set by our guest CTAs)
+    const params = new URLSearchParams(search);
+    const redirectParam = params.get("redirect");
+    const target =
+      fallback ?? redirectParam ?? getDefaultDashboard(currentUser);
     return <Navigate to={target} replace />;
   }
   return <>{children}</>;
@@ -141,4 +150,3 @@ export function useRedirectIf(condition: boolean, destination: string) {
     if (condition) window.location.href = destination;
   }, [condition, destination]);
 }
-

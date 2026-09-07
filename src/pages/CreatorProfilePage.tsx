@@ -70,7 +70,7 @@ function StatChip({
 export function CreatorProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { currentUser, hasPurchasedQuiz } = useAuth();
+  const { currentUser, hasPurchasedQuiz, isLoggedIn } = useAuth();
   const [toast, showToast, dismissToast] = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -158,8 +158,8 @@ export function CreatorProfilePage() {
         }
       }
 
-      // Fetch current user's attempts on this creator's quizzes
-      if (currentUser.id && publishedQuizzes.length) {
+      // Fetch current user's attempts on this creator's quizzes (authenticated only)
+      if (isLoggedIn && currentUser.id && publishedQuizzes.length) {
         const quizIds = publishedQuizzes.map((q) => q.id);
         const { data: attemptRows } = await supabase
           .from("quiz_attempts")
@@ -176,7 +176,7 @@ export function CreatorProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [id, currentUser.id]);
+  }, [id, currentUser.id, isLoggedIn]);
 
   // Best attempt per quiz for the current user
   const lastAttemptByQuizId = useMemo(() => {
@@ -345,7 +345,7 @@ export function CreatorProfilePage() {
               label="Total attempts"
               value={totalAttempts.toLocaleString()}
             />
-            {avgScore !== null ? (
+            {isLoggedIn && avgScore !== null ? (
               <StatChip
                 icon={BarChart2}
                 label="Your avg. score"
@@ -402,7 +402,7 @@ export function CreatorProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
               {quizzes.map((quiz) => {
                 const lastAttempt = lastAttemptByQuizId.get(quiz.id);
-                const purchased = hasPurchasedQuiz(quiz.id);
+                const purchased = isLoggedIn && hasPurchasedQuiz(quiz.id);
                 const variant = lastAttempt
                   ? "attempted"
                   : purchased

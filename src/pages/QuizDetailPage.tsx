@@ -17,6 +17,8 @@ import {
   History,
   ChevronRight,
   Trophy,
+  LogIn,
+  UserPlus,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -111,8 +113,13 @@ export function QuizDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { hasPurchasedQuiz, purchaseQuiz, walletBalance, currentUser } =
-    useAuth();
+  const {
+    hasPurchasedQuiz,
+    purchaseQuiz,
+    walletBalance,
+    currentUser,
+    isLoggedIn,
+  } = useAuth();
 
   // Resolve where to go back to, in priority order:
   // 1. Explicit `from` passed via router state (most reliable)
@@ -159,15 +166,21 @@ export function QuizDetailPage() {
       setQuiz(q);
       if (!q) return;
 
-      const [c, p, attempts] = await Promise.all([
+      // Fetch public data unconditionally
+      const [c, p] = await Promise.all([
         q.course_id ? fetchCourse(q.course_id) : Promise.resolve(null),
         q.creator_id ? fetchProfile(q.creator_id) : Promise.resolve(null),
-        fetchUserAttempts(currentUser.id),
       ]);
       if (cancelled) return;
       setCourse(c);
       setCreator(p);
-      setMyAttempts(attempts.filter((a) => a.quiz_id === id));
+
+      // Fetch user-specific data only when authenticated
+      if (isLoggedIn && currentUser.id) {
+        const attempts = await fetchUserAttempts(currentUser.id);
+        if (cancelled) return;
+        setMyAttempts(attempts.filter((a) => a.quiz_id === id));
+      }
 
       // Track quiz detail page view once data is ready
       trackViewItem({
@@ -180,7 +193,7 @@ export function QuizDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [id, currentUser.id]);
+  }, [id, currentUser.id, isLoggedIn]);
 
   const bestScore = useMemo(
     () =>
@@ -250,8 +263,11 @@ export function QuizDetailPage() {
 
   // Block cross-university access: if the quiz belongs to a different
   // university than the current user, treat it as not found.
+  // Skip this check for unauthenticated visitors — they should be able
+  // to see any public quiz detail page.
   const isAdmin = currentUser.role === "admin";
   if (
+    isLoggedIn &&
     !isAdmin &&
     currentUser.university_id &&
     quiz.university_id !== currentUser.university_id
@@ -281,6 +297,7 @@ export function QuizDetailPage() {
   const isPurchased = hasPurchasedQuiz(quiz.id);
 
   async function handlePayAndStart() {
+    if (!quiz) return;
     if (isPurchased) return; // shouldn't happen
     if (walletBalance < quiz.price) {
       setInsufficientFunds(true);
@@ -290,7 +307,6 @@ export function QuizDetailPage() {
     if (!showConfirm) {
       setInsufficientFunds(false);
       setShowConfirm(true);
-      // begin_checkout: user has seen the price and tapped "Pay & Start"
       trackQuizBeginCheckout({
         quiz_id: quiz.id,
         quiz_title: quiz.title,
@@ -298,7 +314,6 @@ export function QuizDetailPage() {
       });
       return;
     }
-    // confirm step — pay and create attempt in one backend call
     setIsPaying(true);
     const isTimed = timingChoice === "timed";
     const result = await purchaseQuiz(
@@ -308,7 +323,6 @@ export function QuizDetailPage() {
     );
     setIsPaying(false);
     if (result.ok && result.attempt_id) {
-      // spend_virtual_currency: wallet balance successfully spent
       trackQuizPurchase({
         quiz_id: quiz.id,
         quiz_title: quiz.title,
@@ -326,6 +340,7 @@ export function QuizDetailPage() {
   }
 
   async function handleStartAttempt() {
+    if (!quiz) return;
     setStartError(null);
     setIsStarting(true);
     const isTimed = timingChoice === "timed";
@@ -482,9 +497,29 @@ export function QuizDetailPage() {
                 </Link>
               )}
 
-              {/* ── STATE SPLIT: purchased vs not ── */}
+              {/* ── STATE SPLIT: guest / purchased / not purchased ── */}
               <div className="border-t border-border/40 pt-4 space-y-4">
-                {isPurchased ? (
+                {!isLoggedIn ? (
+                  /* ─── STATE C: Guest / Unauthenticated ─────────────── */
+                  <div className="space-y-3">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="font-heading font-bold text-3xl text-primary leading-none">
+                        {formatNaira(quiz.price)}
+                      </span>
+                      <span className="text-sm text-text-soft">one-time</span>
+                    </div>
+                    <p className="text-sm text-text-soft leading-relaxed">
+                      Pay once and this quiz is yours forever — retake it as
+                      many times as you need.
+                    </p>
+                    <div className="flex items-start gap-3 px-4 py-3 rounded-2xl bg-surface/60 border border-border/50">
+                      <Lock className="w-5 h-5 text-muted shrink-0 mt-0.5" />
+                      <p className="text-sm text-text-soft leading-relaxed">
+                        Create a free account to purchase and start practising.
+                      </p>
+                    </div>
+                  </div>
+                ) : isPurchased ? (
                   /* ─── STATE B: Purchased ─────────────────────────────── */
                   <div className="space-y-3">
                     {/* reassurance */}
@@ -710,9 +745,10 @@ export function QuizDetailPage() {
 
           {/* ── Report link (Only available to users who have purchased/unlocked the quiz, the creator, or admins) ── */}
           <div className="flex justify-center pb-2">
-            {isPurchased ||
-            currentUser.id === quiz.creator_id ||
-            currentUser.role === "admin" ? (
+            {isLoggedIn &&
+            (isPurchased ||
+              currentUser.id === quiz.creator_id ||
+              currentUser.role === "admin") ? (
               <button
                 type="button"
                 onClick={() => setShowReport(true)}
@@ -721,20 +757,48 @@ export function QuizDetailPage() {
                 <Flag className="w-3.5 h-3.5" />
                 Report this quiz
               </button>
-            ) : (
+            ) : isLoggedIn ? (
               <p className="text-[11px] text-muted/80 font-heading text-center">
                 Unlock this quiz to submit feedback or report issues.
               </p>
-            )}
+            ) : null}
           </div>
         </div>
       </PageContainer>
 
       {/* ── Sticky CTA bar (mobile) — hidden when ReportModal is open ── */}
       {!showReport && (
-        <div className="lg:hidden fixed bottom-14 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50">
+        <div
+          className={`lg:hidden fixed ${isLoggedIn ? "bottom-14" : "bottom-0"} left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50`}
+        >
           <div className="px-4 pt-3 pb-3 max-w-[720px] mx-auto">
-            {isPurchased ? (
+            {!isLoggedIn ? (
+              /* Guest CTA */
+              <div className="flex gap-2.5">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  className="flex-1"
+                  onClick={() =>
+                    (window.location.href = `/login?redirect=${encodeURIComponent(`/quiz/${quiz.id}`)}`)
+                  }
+                >
+                  <LogIn className="w-5 h-5" />
+                  Sign in to practice
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="!w-auto px-4"
+                  onClick={() =>
+                    (window.location.href = `/signup?redirect=${encodeURIComponent(`/quiz/${quiz.id}`)}`)
+                  }
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Sign up
+                </Button>
+              </div>
+            ) : isPurchased ? (
               <Button
                 variant="primary"
                 size="lg"
@@ -798,7 +862,32 @@ export function QuizDetailPage() {
       {/* ── Desktop inline CTA (below mode selector, above about) ── */}
       <div className="hidden lg:block fixed bottom-6 right-6 z-30">
         <div className="bg-cream shadow-elevated rounded-3xl border border-border/50 px-5 py-4 flex items-center gap-4 min-w-[320px]">
-          {isPurchased ? (
+          {!isLoggedIn ? (
+            /* Guest CTA */
+            <div className="flex-1 flex gap-2.5">
+              <Button
+                variant="primary"
+                size="lg"
+                className="flex-1"
+                onClick={() =>
+                  (window.location.href = `/login?redirect=${encodeURIComponent(`/quiz/${quiz.id}`)}`)
+                }
+              >
+                <LogIn className="w-5 h-5" />
+                Sign in to practice
+              </Button>
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() =>
+                  (window.location.href = `/signup?redirect=${encodeURIComponent(`/quiz/${quiz.id}`)}`)
+                }
+              >
+                <UserPlus className="w-4 h-4" />
+                Sign up
+              </Button>
+            </div>
+          ) : isPurchased ? (
             <Button
               variant="primary"
               size="lg"
