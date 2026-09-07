@@ -428,11 +428,11 @@ export function BrowsePage() {
         ) : filteredQuizzes.length === 0 ? (
           <BrowseEmptyState onClear={clearFilters} />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5 items-stretch">
             {filteredQuizzes.map((quiz) => (
               <div
                 key={quiz.id}
-                className="cursor-pointer"
+                className="cursor-pointer h-full"
                 onClick={(e) => handleCardClick(e, quiz.id)}
                 role="presentation"
               >
@@ -441,6 +441,7 @@ export function BrowsePage() {
                   course={coursesById.get(quiz.course_id)}
                   creator={profilesById.get(quiz.creator_id)}
                   variant={hasPurchasedQuiz(quiz.id) ? "purchased" : "locked"}
+                  className="h-full"
                 />
               </div>
             ))}
