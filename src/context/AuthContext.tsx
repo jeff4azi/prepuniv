@@ -101,6 +101,7 @@ interface AuthContextValue {
     full_name: string;
     email: string;
     password: string;
+    university_id?: string;
   }) => Promise<{ error: AuthError | null; needsConfirmation: boolean }>;
 
   logIn: (args: { email: string; password: string }) => Promise<{
@@ -456,12 +457,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session, fetchProfile, loadWalletData]);
 
   const signUp = useCallback(
-    async (args: { full_name: string; email: string; password: string }) => {
+    async (args: {
+      full_name: string;
+      email: string;
+      password: string;
+      university_id?: string;
+    }) => {
       const { data, error } = await supabase.auth.signUp({
         email: args.email,
         password: args.password,
         options: {
-          data: { full_name: args.full_name },
+          data: {
+            full_name: args.full_name,
+            ...(args.university_id
+              ? { university_id: args.university_id }
+              : {}),
+          },
           emailRedirectTo: `${origin}/confirm-email`,
         },
       });

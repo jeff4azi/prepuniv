@@ -112,6 +112,7 @@ export function SignupPage() {
       full_name: fullName.trim(),
       email: email.trim(),
       password,
+      university_id: universityId,
     });
 
     if (error) {
