@@ -153,7 +153,7 @@ export function Avatar({
   return (
     <>
       <div
-        className={`relative inline-flex shrink-0 ${SIZE_MAP[size]} ${className}`}
+        className={`relative inline-flex shrink-0 rounded-2xl ${SIZE_MAP[size]} ${className}`}
       >
         {/* Inner circle — overflow-hidden only here so the badge isn't clipped */}
         <div

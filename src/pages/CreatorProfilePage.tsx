@@ -266,15 +266,15 @@ export function CreatorProfilePage() {
           <div className="h-20 bg-linear-to-br from-primary/12 via-secondary/8 to-transparent" />
 
           <div className="px-5 sm:px-7 pb-6 -mt-10 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4">
               <Avatar
                 name={profile.full_name}
                 src={profile.avatar_url ?? undefined}
                 size="xl"
                 ring
-                className="h-20 w-20 text-xl ring-cream ring-4 shadow-elevated"
+                className="h-20 w-20 text-xl ring-cream ring-4 shadow-elevated shrink-0"
               />
-              <div className="flex-1 min-w-0 space-y-1.5 pb-1">
+              <div className="flex-1 min-w-0 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="secondary" size="sm" dot>
                     <Sparkles className="w-3 h-3" />
