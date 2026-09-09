@@ -5,7 +5,10 @@ import { formatBadgeCount } from "../hooks/useNavBadges";
 
 type Size = "xs" | "sm" | "md" | "lg" | "xl";
 
-interface AvatarProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, "size"> {
+interface AvatarProps extends Omit<
+  ImgHTMLAttributes<HTMLImageElement>,
+  "size"
+> {
   name: string;
   src?: string;
   size?: Size;
@@ -150,29 +153,35 @@ export function Avatar({
   return (
     <>
       <div
-        className={`relative inline-flex shrink-0 items-center justify-center rounded-2xl overflow-hidden font-heading font-semibold text-cream ${SIZE_MAP[size]} ${ring ? "ring-2 ring-cream shadow-soft" : ""} ${BG_COLORS[bgIndex]} ${className}`}
+        className={`relative inline-flex shrink-0 ${SIZE_MAP[size]} ${className}`}
       >
-        {showImage ? (
-          <img
-            src={src}
-            alt={displayAlt}
-            className={`h-full w-full object-cover ${canEnlarge ? "cursor-zoom-in" : ""}`}
-            onError={() => setImgError(true)}
-            onClick={
-              canEnlarge
-                ? (e) => {
-                    e.stopPropagation();
-                    setEnlarged(true);
-                  }
-                : undefined
-            }
-            {...props}
-          />
-        ) : (
-          <span>{initials}</span>
-        )}
-        {showBadge && (
-          showNumberBadge ? (
+        {/* Inner circle — overflow-hidden only here so the badge isn't clipped */}
+        <div
+          className={`h-full w-full inline-flex items-center justify-center rounded-2xl overflow-hidden font-heading font-semibold text-cream ${ring ? "ring-2 ring-cream shadow-soft" : ""} ${BG_COLORS[bgIndex]}`}
+        >
+          {showImage ? (
+            <img
+              src={src}
+              alt={displayAlt}
+              className={`h-full w-full object-cover ${canEnlarge ? "cursor-zoom-in" : ""}`}
+              onError={() => setImgError(true)}
+              onClick={
+                canEnlarge
+                  ? (e) => {
+                      e.stopPropagation();
+                      setEnlarged(true);
+                    }
+                  : undefined
+              }
+              {...props}
+            />
+          ) : (
+            <span>{initials}</span>
+          )}
+        </div>
+        {/* Badge sits on the outer wrapper — never clipped */}
+        {showBadge &&
+          (showNumberBadge ? (
             <span
               className={`absolute z-10 inline-flex items-center justify-center rounded-full font-heading font-bold bg-warning text-cream ring-2 ring-cream shadow-soft ${NUM_BADGE_SIZE[size]}`}
             >
@@ -182,8 +191,7 @@ export function Avatar({
             <span
               className={`absolute z-10 rounded-full bg-warning ring-2 ring-cream shadow-soft ${BADGE_SIZE[size]}`}
             />
-          )
-        )}
+          ))}
       </div>
       {enlarged && showImage && (
         <AvatarLightbox
