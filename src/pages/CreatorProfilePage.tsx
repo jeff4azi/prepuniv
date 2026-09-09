@@ -204,14 +204,95 @@ export function CreatorProfilePage() {
     return (
       <PageContainer className="max-w-290!">
         <div className="space-y-5 animate-pulse">
-          <div className="h-5 w-20 rounded-lg bg-surface" />
+          {/* Back link */}
+          <div className="h-5 w-16 rounded-lg bg-surface" />
+
+          {/* Header card */}
           <Card padded={false} className="overflow-hidden">
-            <div className="h-20 bg-surface" />
-            <div className="px-7 pb-6 -mt-10 space-y-4">
-              <div className="h-20 w-20 rounded-full bg-surface" />
-              <div className="h-6 w-48 rounded-lg bg-surface" />
+            <div className="p-5 sm:p-6">
+              {/* Mobile: stack / Desktop: row */}
+              <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-5">
+                {/* Avatar */}
+                <div className="h-32 w-32 rounded-2xl bg-surface shrink-0" />
+
+                {/* Info block */}
+                <div className="flex-1 min-w-0 space-y-3">
+                  {/* Badges row */}
+                  <div className="flex flex-wrap gap-2">
+                    <div className="h-6 w-20 rounded-xl bg-surface" />
+                    <div className="h-6 w-24 rounded-xl bg-surface" />
+                    <div className="h-6 w-36 rounded-xl bg-surface" />
+                  </div>
+                  {/* Name */}
+                  <div className="h-8 w-3/4 rounded-lg bg-surface" />
+                  {/* School / location */}
+                  <div className="flex flex-wrap gap-3">
+                    <div className="h-4 w-52 rounded-lg bg-surface" />
+                    <div className="h-4 w-28 rounded-lg bg-surface" />
+                  </div>
+                  {/* Bio lines */}
+                  <div className="space-y-2 pt-1">
+                    <div className="h-3.5 w-full rounded-lg bg-surface" />
+                    <div className="h-3.5 w-5/6 rounded-lg bg-surface" />
+                    <div className="h-3.5 w-4/6 rounded-lg bg-surface" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats strip */}
+            <div className="border-t border-border/40 grid grid-cols-2 sm:grid-cols-3 divide-x divide-border/40">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="flex flex-col items-center gap-2 px-5 py-4"
+                >
+                  <div className="h-9 w-9 rounded-2xl bg-surface" />
+                  <div className="h-5 w-10 rounded-lg bg-surface" />
+                  <div className="h-3 w-20 rounded-lg bg-surface" />
+                </div>
+              ))}
             </div>
           </Card>
+
+          {/* Quizzes section heading */}
+          <div className="space-y-1.5">
+            <div className="h-6 w-44 rounded-lg bg-surface" />
+            <div className="h-4 w-28 rounded-lg bg-surface" />
+          </div>
+
+          {/* Quiz card skeletons */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
+            {[0, 1, 2].map((i) => (
+              <Card key={i} padded={false} className="overflow-hidden">
+                <div className="px-5 pt-5 pb-4 space-y-4">
+                  <div className="flex justify-between gap-3">
+                    <div className="flex-1 space-y-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="h-5 w-16 rounded-lg bg-surface" />
+                        <div className="h-3 w-20 rounded-lg bg-surface" />
+                      </div>
+                      <div className="h-4 w-full rounded-lg bg-surface" />
+                      <div className="h-4 w-3/4 rounded-lg bg-surface" />
+                    </div>
+                    <div className="h-6 w-14 rounded-xl bg-surface shrink-0" />
+                  </div>
+                  <div className="h-3.5 w-28 rounded-lg bg-surface" />
+                  <div className="h-1 w-full rounded-full bg-surface" />
+                  <div className="flex justify-between items-center pt-1">
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-full bg-surface" />
+                      <div className="h-3 w-24 rounded-lg bg-surface" />
+                    </div>
+                    <div className="h-5 w-14 rounded-lg bg-surface" />
+                  </div>
+                </div>
+                <div className="px-5 pb-5 pt-1">
+                  <div className="h-11 w-full rounded-2xl bg-surface" />
+                </div>
+              </Card>
+            ))}
+          </div>
         </div>
       </PageContainer>
     );
@@ -263,18 +344,21 @@ export function CreatorProfilePage() {
 
         {/* ── Header card ── */}
         <Card padded={false} className="overflow-hidden">
-          <div className="h-20 bg-linear-to-br from-primary/12 via-secondary/8 to-transparent" />
-
-          <div className="px-5 sm:px-7 pb-6 -mt-10 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+          <div className="p-5 sm:p-6">
+            {/* Mobile: vertical stack. Desktop (sm+): avatar left, info right side-by-side */}
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-5">
+              {/* Avatar */}
               <Avatar
                 name={profile.full_name}
                 src={profile.avatar_url ?? undefined}
                 size="xl"
                 ring
-                className="h-20 w-20 text-xl ring-cream ring-4 shadow-elevated shrink-0"
+                className="h-32 w-32 text-2xl rounded-2xl shadow-card shrink-0"
               />
-              <div className="flex-1 min-w-0 space-y-1.5">
+
+              {/* Info block */}
+              <div className="flex-1 min-w-0 space-y-2">
+                {/* Badges row */}
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="secondary" size="sm" dot>
                     <Sparkles className="w-3 h-3" />
@@ -293,7 +377,9 @@ export function CreatorProfilePage() {
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-3">
+
+                {/* Name + share */}
+                <div className="flex items-start justify-between gap-3">
                   <h1 className="font-heading font-bold text-2xl lg:text-3xl text-text tracking-tight leading-tight">
                     {profile.full_name}
                   </h1>
@@ -306,8 +392,10 @@ export function CreatorProfilePage() {
                     size="sm"
                   />
                 </div>
+
+                {/* School / location / bio */}
                 {(university || profile.bio) && (
-                  <div className="pt-1 space-y-1.5 max-w-2xl">
+                  <div className="space-y-1.5 max-w-2xl">
                     {university && (
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-soft font-body">
                         <span className="inline-flex items-center gap-1">
