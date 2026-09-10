@@ -20,7 +20,7 @@ import type {
   DbQuizAttempt,
 } from "../lib/supabase";
 
-type QuizCardVariant = "purchased" | "locked" | "attempted";
+type QuizCardVariant = "purchased" | "owned" | "locked" | "attempted";
 
 export interface QuizCardProps {
   quiz: DbQuiz;
@@ -62,6 +62,7 @@ export function shortCourseName(code: string, fallback?: string) {
 
 const VARIANT_BG: Record<QuizCardVariant, string> = {
   purchased: "ring-primary/15 bg-cream",
+  owned: "ring-primary/15 bg-cream",
   locked: "bg-cream",
   attempted: "bg-cream",
 };
@@ -99,7 +100,7 @@ export function QuizCard({
     : `Take this ${course?.name ?? "quiz"} on PrepUniv — ${quiz.question_count ?? 0} questions.`;
 
   const ctaRow = (() => {
-    if (variant === "purchased") {
+    if (variant === "purchased" || variant === "owned") {
       return (
         <Link
           to={`/quiz/${quiz.id}`}
@@ -162,6 +163,14 @@ export function QuizCard({
   })();
 
   const topRightBadge = (() => {
+    if (variant === "owned") {
+      return (
+        <Badge variant="primary" size="md" dot>
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          Your quiz
+        </Badge>
+      );
+    }
     if (variant === "purchased") {
       return (
         <Badge variant="primary" size="md" dot>
@@ -272,7 +281,7 @@ export function QuizCard({
               className="h-full rounded-full bg-linear-to-r from-primary/60 to-secondary/50"
               style={{
                 width:
-                  variant === "purchased"
+                  variant === "purchased" || variant === "owned"
                     ? "100%"
                     : String(
                         Math.min(

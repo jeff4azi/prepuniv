@@ -294,7 +294,8 @@ export function QuizDetailPage() {
     );
   }
 
-  const isPurchased = hasPurchasedQuiz(quiz.id);
+  const isPurchased =
+    hasPurchasedQuiz(quiz.id) || currentUser.id === quiz.creator_id;
 
   async function handlePayAndStart() {
     if (!quiz) return;

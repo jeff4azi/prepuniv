@@ -664,7 +664,7 @@ export function HomePage() {
                 quiz={q}
                 course={coursesById.get(q.course_id)}
                 creator={profilesById.get(q.creator_id)}
-                variant="locked"
+                variant={q.creator_id === currentUser.id ? "owned" : "locked"}
               />
             ))}
           </QuizGrid>

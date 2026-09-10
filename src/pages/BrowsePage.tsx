@@ -450,7 +450,13 @@ export function BrowsePage() {
                   quiz={quiz}
                   course={coursesById.get(quiz.course_id)}
                   creator={profilesById.get(quiz.creator_id)}
-                  variant={hasPurchasedQuiz(quiz.id) ? "purchased" : "locked"}
+                  variant={
+                    quiz.creator_id === currentUser.id
+                      ? "owned"
+                      : hasPurchasedQuiz(quiz.id)
+                        ? "purchased"
+                        : "locked"
+                  }
                   className="h-full"
                 />
               </div>

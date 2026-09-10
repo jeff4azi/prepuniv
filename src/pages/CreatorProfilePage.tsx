@@ -491,11 +491,14 @@ export function CreatorProfilePage() {
               {quizzes.map((quiz) => {
                 const lastAttempt = lastAttemptByQuizId.get(quiz.id);
                 const purchased = isLoggedIn && hasPurchasedQuiz(quiz.id);
+                const isOwner = isLoggedIn && currentUser.id === quiz.creator_id;
                 const variant = lastAttempt
                   ? "attempted"
-                  : purchased
-                    ? "purchased"
-                    : "locked";
+                  : isOwner
+                    ? "owned"
+                    : purchased
+                      ? "purchased"
+                      : "locked";
                 return (
                   <QuizCard
                     key={quiz.id}
