@@ -586,50 +586,12 @@ export function AdminNotificationsPage() {
     }
     setUserSearchLoading(true);
     try {
-      const pattern = `%${trimmed}%`;
-      const { data: profilesData, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, full_name, avatar_url")
-        .or(`full_name.ilike.${pattern}`)
-        .order("created_at", { ascending: false })
-        .limit(20);
-
-      if (profilesError) throw profilesError;
-
-      const profileIds = (profilesData || []).map((p) => p.id);
-
-      let emailMap: Record<string, string> = {};
-      if (profileIds.length > 0) {
-        const idsJoined = profileIds.join(",");
-        const escapedPattern = pattern.replace(/'/g, "''");
-        const { data: authUsers, error: authError } = await supabase.rpc(
-          "get_user_emails_by_ids",
-          { user_ids: profileIds },
-        );
-        if (!authError && Array.isArray(authUsers)) {
-          (authUsers as Array<{ id: string; email?: string }>).forEach((u) => {
-            if (u.email) emailMap[u.id] = u.email;
-          });
-        } else {
-          const { data: emailMatchProfiles } = await supabase
-            .from("profiles")
-            .select("id")
-            .textSearch("full_name", trimmed)
-            .limit(20);
-          void emailMatchProfiles;
-          void idsJoined;
-          void escapedPattern;
-        }
-      }
-
-      const combined: UserSearchMatch[] = (profilesData || []).map((p) => ({
-        id: p.id,
-        full_name: p.full_name,
-        email: emailMap[p.id] || "no-email@prepuniv.ng",
-        avatar_url: p.avatar_url,
-      }));
-
-      setUserSearchResults(combined);
+      const res = await apiFetch<{ users: UserSearchMatch[] }>(
+        "/api/admin/users/search",
+        { query: { q: trimmed } },
+      );
+      if (res.error) throw new Error(res.error);
+      setUserSearchResults(res.data?.users ?? []);
     } catch (err) {
       console.warn("User search failed:", err);
       setUserSearchResults([]);
@@ -941,7 +903,7 @@ export function AdminNotificationsPage() {
 
             {/* Audience picker */}
             <div className="space-y-2">
-              <label className="text-[13px] font-heading font-semibold text-text">
+              <label className="text-[13px] font-heading font-semibold text-text mr-2">
                 Audience
               </label>
               <div className="inline-flex p-1 rounded-2xl bg-surface/50 border border-border/40">
