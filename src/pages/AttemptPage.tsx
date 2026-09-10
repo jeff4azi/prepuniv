@@ -83,15 +83,17 @@ function gradeAnswer(given: string, correct_answer: string): boolean {
 function ExitDialog({
   onCancel,
   onLeave,
+  isLeaving,
 }: {
   onCancel: () => void;
   onLeave: () => void;
+  isLeaving: boolean;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-text/50 backdrop-blur-sm"
-        onClick={onCancel}
+        onClick={isLeaving ? undefined : onCancel}
       />
       <div className="relative w-full max-w-sm rounded-3xl bg-cream shadow-elevated p-6 space-y-4">
         <div className="flex items-start gap-3">
@@ -113,6 +115,7 @@ function ExitDialog({
             size="md"
             className="flex-1"
             onClick={onCancel}
+            disabled={isLeaving}
           >
             Cancel
           </Button>
@@ -121,8 +124,10 @@ function ExitDialog({
             size="md"
             className="flex-1"
             onClick={onLeave}
+            isLoading={isLeaving}
+            disabled={isLeaving}
           >
-            Leave anyway
+            {!isLeaving && "Leave anyway"}
           </Button>
         </div>
       </div>
@@ -436,6 +441,7 @@ export function AttemptPage() {
   // ── UI state ───────────────────────────────────────────────────────────────
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   // ── Grading + navigation to result ────────────────────────────────────────
   // Use a ref so timer effects always call the latest version without
@@ -716,6 +722,7 @@ export function AttemptPage() {
         ? "opacity-0 -translate-x-2"
         : "opacity-100 translate-x-0";
   async function handleLeaveAttempt() {
+    setLeaving(true);
     if (attemptId) {
       const { error } = await apiFetch(`/api/attempt/${attemptId}`, {
         method: "DELETE",
@@ -733,6 +740,7 @@ export function AttemptPage() {
         <ExitDialog
           onCancel={() => setShowExitDialog(false)}
           onLeave={handleLeaveAttempt}
+          isLeaving={leaving}
         />
       )}
       {showSubmitDialog && (
