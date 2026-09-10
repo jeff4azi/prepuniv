@@ -16,6 +16,7 @@ import type { Question, AttemptResult, Quiz } from "../types";
 import { fetchQuiz, fetchQuestions } from "../lib/queries";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
+import { apiFetch } from "../lib/api";
 import {
   trackQuizAttemptStarted,
   trackQuizAttemptCompleted,
@@ -716,14 +717,11 @@ export function AttemptPage() {
         : "opacity-100 translate-x-0";
   async function handleLeaveAttempt() {
     if (attemptId) {
-      try {
-        await supabase
-          .from("quiz_attempts")
-          .delete()
-          .eq("id", attemptId)
-          .is("completed_at", null);
-      } catch (e) {
-        console.warn("Failed to delete abandoned attempt:", e);
+      const { error } = await apiFetch(`/api/attempt/${attemptId}`, {
+        method: "DELETE",
+      });
+      if (error) {
+        console.warn("Failed to delete abandoned attempt:", error);
       }
     }
     navigate(quiz ? `/quiz/${quiz.id}` : "/browse");
