@@ -124,6 +124,10 @@ function PublicShell() {
               element={<CreatorProfilePage />}
             />
             <Route path="/apply-creator" element={<CreatorApplyPage />} />
+            <Route
+              path="/creator/agreement"
+              element={<CreatorAgreementPage />}
+            />
           </Routes>
         </PageTransition>
       </main>
@@ -266,7 +270,7 @@ function AppShell() {
               <Route
                 path="/creator/agreement"
                 element={
-                  <RequireAuth role="approvedCreator">
+                  <RequireAuth>
                     <CreatorAgreementPage />
                   </RequireAuth>
                 }
@@ -516,6 +520,7 @@ function RoutingSwitch() {
   const isPublicAppPath = (() => {
     const p = loc.pathname;
     if (p === "/browse" || p === "/apply-creator") return true;
+    if (p === "/creator/agreement") return true;
     if (/^\/profile\/creator\/[^/]+/.test(p)) return true;
     // /quiz/:id is public; /quiz/:id/leaderboard is NOT public
     if (/^\/quiz\/[^/]+$/.test(p)) return true;
