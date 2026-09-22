@@ -703,17 +703,11 @@ export function QuizBuilderPage() {
         quizId = newQuiz.id;
       }
 
-      // ── 3. Replace questions ──────────────────────────────────────────────
-      // Delete all existing questions for this quiz, then re-insert.
-      // Simple and safe — avoids complex diff logic.
-      if (isEdit) {
-        const { error: delErr } = await supabase
-          .from("questions")
-          .delete()
-          .eq("quiz_id", quizId);
-        if (delErr) throw new Error(delErr.message);
-      }
-
+      // ── 3 + 4. Replace questions + persist preview_question_ids via backend ─
+      // The backend endpoint uses the service role which:
+      //   a) bypasses RLS on DELETE (avoids the 404 the client role gets)
+      //   b) writes preview_question_ids as text[] matching the actual column
+      //      type (questions.id is text, not uuid — avoids array_remove error)
       const questionsPayload = draftQuestions.map((dq, i) => ({
         quiz_id: quizId,
         type: dq.type,
@@ -723,47 +717,26 @@ export function QuizBuilderPage() {
         order_index: i + 1,
       }));
 
-      // Map of localId → newly inserted DB question ID
-      const localIdToDbId = new Map<string, string>();
+      const { data: saveData, error: saveErr } = await apiFetch<{
+        inserted_ids: string[];
+        preview_question_ids: string[];
+      }>(`/api/creator/quiz/${quizId}/save-questions`, {
+        method: "POST",
+        body: {
+          questions: questionsPayload,
+          // Send the selected preview questions as 0-based position indices
+          // into questionsPayload. The backend resolves these to real DB IDs
+          // after insertion, so the order is always consistent.
+          preview_question_ids: previewLocalIds
+            .map((lid) => draftQuestions.findIndex((q) => q.localId === lid))
+            .filter((i) => i >= 0),
+          preview_by_index: true,
+        },
+      });
 
-      if (questionsPayload.length > 0) {
-        const { data: insertedQs, error: qInsertErr } = await supabase
-          .from("questions")
-          .insert(questionsPayload)
-          .select("id, order_index");
-        if (qInsertErr) throw new Error(qInsertErr.message);
-
-        // insertedQs come back in insertion order (same as draftQuestions order)
-        if (insertedQs) {
-          // Sort by order_index to be safe, then map back to localIds
-          const sorted = [...insertedQs].sort(
-            (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0),
-          );
-          sorted.forEach((row, idx) => {
-            const draft = draftQuestions[idx];
-            if (draft) localIdToDbId.set(draft.localId, row.id as string);
-          });
-        }
+      if (saveErr || !saveData) {
+        throw new Error(saveErr ?? "Failed to save questions.");
       }
-
-      // ── 4. Persist preview_question_ids ──────────────────────────────────
-      // Resolve localIds → new DB IDs, keeping order, dropping any that didn't
-      // survive (e.g. question was deleted before save).
-      const resolvedPreviewIds = previewLocalIds
-        .map((lid) => localIdToDbId.get(lid))
-        .filter((id): id is string => id !== undefined)
-        .slice(0, 5);
-
-      // Use first 5 as default if creator hasn't selected any
-      const finalPreviewIds =
-        resolvedPreviewIds.length > 0
-          ? resolvedPreviewIds
-          : [...localIdToDbId.values()].slice(0, 5);
-
-      await supabase
-        .from("quizzes")
-        .update({ preview_question_ids: finalPreviewIds })
-        .eq("id", quizId);
 
       showToast({
         message: isEdit
