@@ -46,6 +46,7 @@ import { ConfirmEmailPage } from "./pages/ConfirmEmailPage";
 import { CreatorAgreementPage } from "./pages/CreatorAgreementPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { QuizDetailPage } from "./pages/QuizDetailPage";
+import { QuizPreviewPage } from "./pages/QuizPreviewPage";
 import { AttemptPage } from "./pages/AttemptPage";
 import { AttemptResultPage } from "./pages/AttemptResultPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
@@ -119,6 +120,7 @@ function PublicShell() {
             {/* Publicly accessible — no RequireAuth wrapper */}
             <Route path="/browse" element={<BrowsePage />} />
             <Route path="/quiz/:id" element={<QuizDetailPage />} />
+            <Route path="/quiz/:id/preview" element={<QuizPreviewPage />} />
             <Route
               path="/profile/creator/:id"
               element={<CreatorProfilePage />}
@@ -227,6 +229,14 @@ function AppShell() {
                 element={
                   <RequireAuth>
                     <QuizDetailPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/quiz/:id/preview"
+                element={
+                  <RequireAuth>
+                    <QuizPreviewPage />
                   </RequireAuth>
                 }
               />
@@ -524,6 +534,8 @@ function RoutingSwitch() {
     if (/^\/profile\/creator\/[^/]+/.test(p)) return true;
     // /quiz/:id is public; /quiz/:id/leaderboard is NOT public
     if (/^\/quiz\/[^/]+$/.test(p)) return true;
+    // /quiz/:id/preview is also public
+    if (/^\/quiz\/[^/]+\/preview$/.test(p)) return true;
     return false;
   })();
 

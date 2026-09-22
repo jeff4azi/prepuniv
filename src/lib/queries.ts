@@ -63,6 +63,13 @@ function toCourse(row: any): Course {
 /** Map a DB quiz row to the mock Quiz shape */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function toQuiz(row: any): Quiz {
+  const rawIds = row.preview_question_ids;
+  const previewIds: string[] | null =
+    Array.isArray(rawIds) && rawIds.length > 0
+      ? (rawIds as unknown[]).filter(
+          (v): v is string => typeof v === "string",
+        )
+      : null;
   return {
     id: row.id,
     creator_id: row.creator_id,
@@ -77,6 +84,7 @@ function toQuiz(row: any): Quiz {
     attempt_count: row.attempt_count ?? 0,
     created_at: row.created_at,
     time_limit_seconds: row.time_limit_seconds ?? undefined,
+    preview_question_ids: previewIds,
   };
 }
 
@@ -279,6 +287,62 @@ export async function fetchQuestions(quizId: string): Promise<Question[]> {
     .eq("quiz_id", quizId)
     .order("order_index", { ascending: true });
   return (data ?? []).map(toQuestion);
+}
+
+/**
+ * Fetch the preview questions for a quiz.
+ *
+ * ALWAYS calls the backend API (/api/quiz/:id/preview-questions) which uses
+ * the Supabase service role — this means it works correctly for:
+ *   - guests / unauthenticated visitors
+ *   - logged-in users who haven't purchased the quiz
+ *   - purchasers & creators (though they can view full questions anyway)
+ *
+ * The backend handles ALL resolution & fallback logic (see backend index.js):
+ *   1. If preview_question_ids is set, use those (drop deleted IDs)
+ *   2. Fill remaining slots (up to 5) from the start of the quiz
+ *   3. If preview_question_ids is NULL (legacy quizzes), return first 5
+ *   4. If quiz has 0 valid questions, return []
+ *
+ * The backend is the SOURCE OF TRUTH for preview selection — the frontend
+ * must NOT try to decide which questions are "preview-eligible" because
+ * the Supabase RLS policies (migration 042) intentionally block direct
+ * question access for non-purchasers.
+ */
+export async function fetchPreviewQuestions(
+  quizId: string,
+): Promise<Question[]> {
+  const { apiFetch } = await import("./api");
+  const { data, error } = await apiFetch<{
+    preview_count: number;
+    questions: Question[];
+  }>(`/api/quiz/${quizId}/preview-questions`, {
+    method: "GET",
+  });
+  if (error || !data || !Array.isArray(data.questions)) {
+    return [];
+  }
+  return data.questions;
+}
+
+/**
+ * Lightweight helper — returns just the number of available preview questions
+ * for a quiz. Uses the same backend endpoint as fetchPreviewQuestions.
+ *
+ * Returns 0 if the quiz has no valid preview questions (or doesn't exist /
+ * is unpublished / admin-blocked). The QuizDetailPage hides the "Try preview"
+ * CTA when this returns 0.
+ */
+export async function fetchPreviewCount(quizId: string): Promise<number> {
+  const { apiFetch } = await import("./api");
+  const { data, error } = await apiFetch<{
+    preview_count: number;
+    questions: Question[];
+  }>(`/api/quiz/${quizId}/preview-questions`, {
+    method: "GET",
+  });
+  if (error || !data) return 0;
+  return Number(data.preview_count) || 0;
 }
 
 /** All courses, optionally scoped to a university */

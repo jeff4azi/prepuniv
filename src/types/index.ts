@@ -59,6 +59,9 @@ export interface Quiz {
   attempt_count: number;
   created_at: string;
   time_limit_seconds?: number;
+  /** Up to 5 question IDs (in display order) for the free preview sample.
+   *  Null/undefined means "use first 5 questions automatically". */
+  preview_question_ids?: string[] | null;
 }
 
 export type TransactionType =

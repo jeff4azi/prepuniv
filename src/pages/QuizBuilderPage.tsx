@@ -32,6 +32,8 @@ import {
   Loader2,
   CheckCircle2,
   BookOpen,
+  Eye,
+  Wand2,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -151,6 +153,9 @@ export function QuizBuilderPage() {
   const [loadingEdit, setLoadingEdit] = useState(isEdit);
   const [existingQuiz, setExistingQuiz] = useState<Quiz | undefined>(undefined);
   const [existingQuestions, setExistingQuestions] = useState<Question[]>([]);
+  // Raw preview_question_ids from DB — the Quiz type doesn't carry this field
+  // so we store it separately from the mapped Quiz object.
+  const [existingPreviewIds, setExistingPreviewIds] = useState<string[]>([]);
 
   // Tab title: placed after existingQuiz declaration to avoid "used before declaration" TS error.
   // "Edit: Quiz Title | PrepUniv" once loaded in edit mode; "New Quiz" in create mode.
@@ -193,6 +198,16 @@ export function QuizBuilderPage() {
           time_limit_seconds: qzData.time_limit_seconds ?? undefined,
         };
         setExistingQuiz(quiz);
+
+        // Preserve preview_question_ids separately — the Quiz type doesn't carry it
+        const rawPreviewIds = qzData.preview_question_ids;
+        if (Array.isArray(rawPreviewIds)) {
+          setExistingPreviewIds(
+            (rawPreviewIds as unknown[]).filter(
+              (v): v is string => typeof v === "string",
+            ),
+          );
+        }
       }
       if (qsData) {
         const qs: Question[] = qsData.map((r) => ({
@@ -371,23 +386,42 @@ export function QuizBuilderPage() {
   // ── Questions state ──
   const [draftQuestions, setDraftQuestions] = useState<DraftQuestion[]>([]);
 
+  // ── Preview question selection ──
+  // Stores localIds of questions selected for the preview (up to 5, in order).
+  // On save these are resolved to real DB IDs after questions are re-inserted.
+  const [previewLocalIds, setPreviewLocalIds] = useState<string[]>([]);
+
   // Hydrate draft questions once remote data loads
   useEffect(() => {
     if (!isEdit || loadingEdit) return;
-    setDraftQuestions(
-      existingQuestions.map((q) => ({
-        localId: makeLocalId(),
-        id: q.id,
-        type: q.type,
-        question_text: q.question_text,
-        options: q.options ?? ["", "", "", ""],
-        correct_answer: q.correct_answer,
-        correct_answers:
-          q.type === "fill_blank"
-            ? q.correct_answer.split("|").filter(Boolean)
-            : [],
-      })),
-    );
+    const drafts = existingQuestions.map((q) => ({
+      localId: makeLocalId(),
+      id: q.id,
+      type: q.type,
+      question_text: q.question_text,
+      options: q.options ?? ["", "", "", ""],
+      correct_answer: q.correct_answer,
+      correct_answers:
+        q.type === "fill_blank"
+          ? q.correct_answer.split("|").filter(Boolean)
+          : [],
+    }));
+    setDraftQuestions(drafts);
+
+    // Hydrate preview selection from existing quiz data
+    // existingPreviewIds contains the raw DB question IDs loaded alongside the quiz.
+    // We map them to localIds using the drafts array we just built.
+    if (existingPreviewIds.length > 0) {
+      const dbIdToLocalId = new Map(
+        drafts
+          .filter((d) => d.id !== undefined)
+          .map((d) => [d.id as string, d.localId]),
+      );
+      const resolvedLocalIds = existingPreviewIds
+        .map((dbId) => dbIdToLocalId.get(dbId))
+        .filter((lid): lid is string => lid !== undefined);
+      setPreviewLocalIds(resolvedLocalIds);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEdit, loadingEdit]);
 
@@ -688,12 +722,47 @@ export function QuizBuilderPage() {
         order_index: i + 1,
       }));
 
+      // Map of localId → newly inserted DB question ID
+      const localIdToDbId = new Map<string, string>();
+
       if (questionsPayload.length > 0) {
-        const { error: qInsertErr } = await supabase
+        const { data: insertedQs, error: qInsertErr } = await supabase
           .from("questions")
-          .insert(questionsPayload);
+          .insert(questionsPayload)
+          .select("id, order_index");
         if (qInsertErr) throw new Error(qInsertErr.message);
+
+        // insertedQs come back in insertion order (same as draftQuestions order)
+        if (insertedQs) {
+          // Sort by order_index to be safe, then map back to localIds
+          const sorted = [...insertedQs].sort(
+            (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0),
+          );
+          sorted.forEach((row, idx) => {
+            const draft = draftQuestions[idx];
+            if (draft) localIdToDbId.set(draft.localId, row.id as string);
+          });
+        }
       }
+
+      // ── 4. Persist preview_question_ids ──────────────────────────────────
+      // Resolve localIds → new DB IDs, keeping order, dropping any that didn't
+      // survive (e.g. question was deleted before save).
+      const resolvedPreviewIds = previewLocalIds
+        .map((lid) => localIdToDbId.get(lid))
+        .filter((id): id is string => id !== undefined)
+        .slice(0, 5);
+
+      // Use first 5 as default if creator hasn't selected any
+      const finalPreviewIds =
+        resolvedPreviewIds.length > 0
+          ? resolvedPreviewIds
+          : [...localIdToDbId.values()].slice(0, 5);
+
+      await supabase
+        .from("quizzes")
+        .update({ preview_question_ids: finalPreviewIds })
+        .eq("id", quizId);
 
       showToast({
         message: isEdit
@@ -712,6 +781,69 @@ export function QuizBuilderPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  // ─── Preview question selection helpers ──────────────────────────────────
+
+  const MAX_PREVIEW = 5;
+
+  /**
+   * "Let PrepUniv choose" — scores each draft question and picks the best ones.
+   *
+   * Scoring heuristics (higher = more representative):
+   * - MCQ questions are preferred over fill_blank (more self-contained in preview)
+   * - Questions with longer, clearer text score higher
+   * - Picks a spread across the quiz rather than clustering at start/end
+   * - Avoids picking questions that are very close together by index
+   */
+  function recommendPreviewQuestions(): string[] {
+    if (draftQuestions.length === 0) return [];
+
+    const n = draftQuestions.length;
+    const take = Math.min(MAX_PREVIEW, n);
+
+    if (n <= MAX_PREVIEW) {
+      // Fewer questions than max — take all
+      return draftQuestions.map((q) => q.localId);
+    }
+
+    // Score each question
+    interface Scored {
+      localId: string;
+      index: number;
+      score: number;
+    }
+    const scored: Scored[] = draftQuestions.map((q, i) => {
+      let score = 0;
+
+      // Prefer MCQ (clearer in a preview context)
+      if (q.type === "mcq") score += 3;
+
+      // Prefer questions with reasonable text length (not too short, not a wall of text)
+      const textLen = q.question_text.trim().length;
+      if (textLen >= 30 && textLen <= 300) score += 2;
+      else if (textLen >= 15) score += 1;
+
+      // MCQ: prefer questions with all 4 options non-empty
+      if (q.type === "mcq") {
+        const filledOpts = q.options.filter((o) => o.trim().length > 0).length;
+        if (filledOpts === 4) score += 1;
+      }
+
+      // Prefer questions not at the very end of a large quiz (those tend to be niche)
+      if (n > 10 && i > n * 0.85) score -= 1;
+
+      return { localId: q.localId, index: i, score };
+    });
+
+    // Sort by score descending, then by index to keep earlier questions as tiebreaker
+    scored.sort((a, b) => b.score - a.score || a.index - b.index);
+
+    // Pick top `take` candidates, then sort them back by original index
+    const picked = scored.slice(0, take);
+    picked.sort((a, b) => a.index - b.index);
+
+    return picked.map((p) => p.localId);
   }
 
   // ─── Append questions from AI import ─────────────────────────────────────
@@ -1263,6 +1395,17 @@ export function QuizBuilderPage() {
               </div>
             )}
           </Card>
+
+          {/* ── 3. Preview Questions ──────────────────────────────────── */}
+          {draftQuestions.length > 0 && (
+            <PreviewSelectionCard
+              draftQuestions={draftQuestions}
+              previewLocalIds={previewLocalIds}
+              onPreviewLocalIdsChange={setPreviewLocalIds}
+              onRecommend={recommendPreviewQuestions}
+            />
+          )}
+
           <div className="hidden lg:block lg:h-5" />
         </div>
       </PageContainer>
@@ -1323,20 +1466,329 @@ export function QuizBuilderPage() {
   );
 }
 
-// Need ChevronDown for the select
-function ChevronDown(props: React.SVGProps<SVGSVGElement>) {
+// ─── PreviewSelectionCard ──────────────────────────────────────────────────────
+
+const MAX_PREVIEW_SELECTION = 5;
+
+function PreviewSelectionCard({
+  draftQuestions,
+  previewLocalIds,
+  onPreviewLocalIdsChange,
+  onRecommend,
+}: {
+  draftQuestions: DraftQuestion[];
+  previewLocalIds: string[];
+  onPreviewLocalIdsChange: (ids: string[]) => void;
+  onRecommend: () => string[];
+}) {
+  const [showManual, setShowManual] = useState(false);
+  const [justRecommended, setJustRecommended] = useState(false);
+
+  const selectedSet = new Set(previewLocalIds);
+  const selectedCount = previewLocalIds.length;
+  const maxReached = selectedCount >= MAX_PREVIEW_SELECTION;
+
+  function handleRecommend() {
+    const recommended = onRecommend();
+    onPreviewLocalIdsChange(recommended);
+    setJustRecommended(true);
+    setShowManual(true); // Show so creator can review
+    setTimeout(() => setJustRecommended(false), 2500);
+  }
+
+  function handleToggle(localId: string) {
+    if (selectedSet.has(localId)) {
+      onPreviewLocalIdsChange(previewLocalIds.filter((id) => id !== localId));
+    } else if (!maxReached) {
+      onPreviewLocalIdsChange([...previewLocalIds, localId]);
+    }
+  }
+
+  function handleRemove(localId: string) {
+    onPreviewLocalIdsChange(previewLocalIds.filter((id) => id !== localId));
+  }
+
+  function handleMoveUp(localId: string) {
+    const idx = previewLocalIds.indexOf(localId);
+    if (idx <= 0) return;
+    const next = [...previewLocalIds];
+    [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+    onPreviewLocalIdsChange(next);
+  }
+
+  function handleMoveDown(localId: string) {
+    const idx = previewLocalIds.indexOf(localId);
+    if (idx < 0 || idx >= previewLocalIds.length - 1) return;
+    const next = [...previewLocalIds];
+    [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+    onPreviewLocalIdsChange(next);
+  }
+
+  const questionByLocalId = new Map(draftQuestions.map((q) => [q.localId, q]));
+
+  // Resolved selected questions (in order), skipping any orphaned localIds
+  const resolvedSelected = previewLocalIds
+    .map((id) => questionByLocalId.get(id))
+    .filter((q): q is DraftQuestion => q !== undefined);
+
+  // Global index of each question in draftQuestions (for display numbering)
+  const globalIndexMap = new Map(draftQuestions.map((q, i) => [q.localId, i]));
+
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
+    <Card padded={false}>
+      {/* Section header */}
+      <div className="px-5 py-4 border-b border-border/50">
+        <div className="flex items-start gap-3">
+          <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+            <Eye className="w-4 h-4" strokeWidth={2} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="font-heading font-bold text-base text-text">
+                Preview questions
+              </h2>
+              <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-md bg-primary/10 text-primary text-[11px] font-heading font-bold tabular-nums">
+                {selectedCount}/{MAX_PREVIEW_SELECTION}
+              </span>
+            </div>
+            <p className="text-[12px] text-text-soft mt-0.5 leading-relaxed">
+              Give students a chance to try{" "}
+              {Math.min(MAX_PREVIEW_SELECTION, draftQuestions.length)} questions
+              before purchasing. If you don't select any, the first{" "}
+              {Math.min(MAX_PREVIEW_SELECTION, draftQuestions.length)} questions
+              are used automatically.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-5 py-4 space-y-4">
+        {/* Action row */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <button
+            type="button"
+            onClick={handleRecommend}
+            className={`h-9 px-4 rounded-xl text-[12px] font-heading font-semibold flex items-center gap-2 border transition-all ${
+              justRecommended
+                ? "bg-success/15 border-success/30 text-success"
+                : "bg-primary/8 border-primary/25 text-primary hover:bg-primary/12"
+            }`}
+          >
+            {justRecommended ? (
+              <>
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Selected — review below
+              </>
+            ) : (
+              <>
+                <Wand2 className="w-3.5 h-3.5" />
+                Let PrepUniv choose
+              </>
+            )}
+          </button>
+
+          <span className="text-[11px] text-muted font-heading">or</span>
+
+          <button
+            type="button"
+            onClick={() => setShowManual((v) => !v)}
+            className="h-9 px-4 rounded-xl text-[12px] font-heading font-semibold flex items-center gap-2 border border-border/60 bg-cream text-text hover:bg-surface transition-colors"
+          >
+            {showManual ? (
+              <>
+                <ChevronUp className="w-3.5 h-3.5" />
+                Hide question list
+              </>
+            ) : (
+              <>
+                <ChevronDown className="w-3.5 h-3.5" />
+                Choose manually
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Helper text for AI recommendation */}
+        {justRecommended && (
+          <div className="flex items-start gap-2.5 px-4 py-3 rounded-2xl bg-primary/5 border border-primary/15">
+            <Info
+              className="w-4 h-4 text-primary shrink-0 mt-0.5"
+              strokeWidth={2}
+            />
+            <p className="text-[12px] text-text leading-relaxed">
+              PrepUniv chose up to {MAX_PREVIEW_SELECTION} questions that best
+              represent the quality, coverage, and difficulty of your quiz. You
+              can review and change the selection below.
+            </p>
+          </div>
+        )}
+
+        {/* Manual question list (collapsible) */}
+        {showManual && (
+          <div className="rounded-2xl border border-border/50 overflow-hidden">
+            <div className="px-4 py-2.5 bg-surface/40 border-b border-border/40 flex items-center justify-between">
+              <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted">
+                All questions — tap to select/deselect
+              </p>
+              {maxReached && (
+                <span className="text-[11px] font-heading font-semibold text-warning">
+                  Max {MAX_PREVIEW_SELECTION} selected
+                </span>
+              )}
+            </div>
+            <div className="divide-y divide-border/30 max-h-72 overflow-y-auto">
+              {draftQuestions.map((q, idx) => {
+                const isSelected = selectedSet.has(q.localId);
+                const canSelect = isSelected || !maxReached;
+                return (
+                  <button
+                    key={q.localId}
+                    type="button"
+                    onClick={() => handleToggle(q.localId)}
+                    disabled={!canSelect}
+                    className={`w-full text-left flex items-center gap-3 px-4 py-3 transition-colors ${
+                      isSelected
+                        ? "bg-primary/6 hover:bg-primary/8"
+                        : canSelect
+                          ? "hover:bg-surface/50"
+                          : "opacity-40 cursor-not-allowed"
+                    }`}
+                  >
+                    {/* Checkbox indicator */}
+                    <div
+                      className={`h-5 w-5 rounded-lg border-2 shrink-0 flex items-center justify-center transition-all ${
+                        isSelected
+                          ? "border-primary bg-primary"
+                          : "border-border/60 bg-cream"
+                      }`}
+                    >
+                      {isSelected && (
+                        <Check
+                          className="w-3 h-3 text-cream"
+                          strokeWidth={2.5}
+                        />
+                      )}
+                    </div>
+                    {/* Q number */}
+                    <span className="text-[11px] font-heading font-bold text-muted w-6 shrink-0 text-center">
+                      {idx + 1}
+                    </span>
+                    {/* Text */}
+                    <p className="flex-1 text-[13px] font-heading text-text leading-snug line-clamp-2 min-w-0">
+                      {q.question_text ? (
+                        <MathText text={q.question_text} />
+                      ) : (
+                        <span className="italic text-muted">No text</span>
+                      )}
+                    </p>
+                    {/* Type badge */}
+                    <Badge
+                      variant={q.type === "mcq" ? "primary" : "secondary"}
+                      size="sm"
+                      className="shrink-0 hidden sm:inline-flex"
+                    >
+                      {q.type === "mcq" ? "MCQ" : "Fill-in"}
+                    </Badge>
+                    {isSelected && (
+                      <span className="text-[10px] font-heading font-bold text-primary shrink-0 hidden sm:block">
+                        Preview
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Selected preview order */}
+        {resolvedSelected.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-muted">
+              Preview order
+            </p>
+            <div className="rounded-2xl border border-border/50 overflow-hidden divide-y divide-border/30">
+              {resolvedSelected.map((q, previewIdx) => {
+                const globalIdx = globalIndexMap.get(q.localId) ?? 0;
+                return (
+                  <div
+                    key={q.localId}
+                    className="flex items-center gap-3 px-4 py-3 bg-cream hover:bg-surface/30 transition-colors"
+                  >
+                    {/* Preview position */}
+                    <span className="inline-flex items-center justify-center h-6 w-6 rounded-lg bg-primary/10 text-primary text-[11px] font-heading font-bold shrink-0">
+                      {previewIdx + 1}
+                    </span>
+                    {/* Global Q number */}
+                    <span className="text-[11px] font-heading font-bold text-muted w-6 shrink-0 text-center">
+                      Q{globalIdx + 1}
+                    </span>
+                    {/* Text */}
+                    <p className="flex-1 text-[13px] font-heading text-text leading-snug line-clamp-1 min-w-0">
+                      {q.question_text ? (
+                        <MathText text={q.question_text} />
+                      ) : (
+                        <span className="italic text-muted">No text</span>
+                      )}
+                    </p>
+                    {/* Reorder + remove */}
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleMoveUp(q.localId)}
+                        disabled={previewIdx === 0}
+                        className="h-7 w-7 rounded-lg flex items-center justify-center text-muted hover:text-text hover:bg-surface/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Move up in preview"
+                      >
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMoveDown(q.localId)}
+                        disabled={previewIdx === resolvedSelected.length - 1}
+                        className="h-7 w-7 rounded-lg flex items-center justify-center text-muted hover:text-text hover:bg-surface/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Move down in preview"
+                      >
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemove(q.localId)}
+                        className="h-7 w-7 rounded-lg flex items-center justify-center text-muted hover:text-danger hover:bg-danger-bg transition-colors"
+                        aria-label="Remove from preview"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-muted leading-relaxed">
+              Students will see these {resolvedSelected.length} question
+              {resolvedSelected.length !== 1 ? "s" : ""} in this order when they
+              click "Try preview" on the quiz detail page.
+            </p>
+          </div>
+        )}
+
+        {/* Empty state when nothing selected */}
+        {selectedCount === 0 && (
+          <div className="flex items-start gap-2.5 px-4 py-3 rounded-2xl bg-surface/60 border border-border/40">
+            <Info
+              className="w-4 h-4 text-muted shrink-0 mt-0.5"
+              strokeWidth={2}
+            />
+            <p className="text-[12px] text-text-soft leading-relaxed">
+              No preview questions selected. The first{" "}
+              {Math.min(MAX_PREVIEW_SELECTION, draftQuestions.length)} questions
+              will be shown automatically as the preview. You don't have to
+              configure this.
+            </p>
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
 

@@ -71,6 +71,9 @@ export type DbQuiz = {
   question_count: number | null;
   attempt_count: number | null;
   university_id: string | null;
+  /** Up to 5 question IDs (in display order) to show in the preview experience.
+   *  If null/empty, the first 5 questions by order_index are used automatically. */
+  preview_question_ids: string[] | null;
   created_at: string;
   updated_at: string;
 };

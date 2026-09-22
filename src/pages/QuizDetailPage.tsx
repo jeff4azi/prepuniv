@@ -19,6 +19,7 @@ import {
   Trophy,
   LogIn,
   UserPlus,
+  Eye,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -34,6 +35,7 @@ import {
   fetchCourse,
   fetchProfile,
   fetchUserAttempts,
+  fetchPreviewCount,
 } from "../lib/queries";
 import type { Quiz, Course, Profile, QuizAttempt } from "../types";
 import { formatNaira } from "../components/QuizCard";
@@ -153,6 +155,7 @@ export function QuizDetailPage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [creator, setCreator] = useState<Profile | null>(null);
   const [myAttempts, setMyAttempts] = useState<QuizAttempt[]>([]);
+  const [previewCount, setPreviewCount] = useState<number>(0);
 
   // Dynamic tab title — shows quiz title once loaded, "Loading…" before that
   usePageTitle(quiz === undefined ? null : (quiz?.title ?? null));
@@ -166,6 +169,10 @@ export function QuizDetailPage() {
       setQuiz(q);
       if (!q) return;
 
+      // Fetch preview count (unauthenticated-safe — uses backend API with service role)
+      // Even if the user hasn't purchased, this tells us how many preview questions are available
+      const previewP = fetchPreviewCount(id);
+
       // Fetch public data unconditionally
       const [c, p] = await Promise.all([
         q.course_id ? fetchCourse(q.course_id) : Promise.resolve(null),
@@ -174,6 +181,10 @@ export function QuizDetailPage() {
       if (cancelled) return;
       setCourse(c);
       setCreator(p);
+
+      // Resolve preview count (already started in parallel above)
+      const pc = await previewP;
+      if (!cancelled) setPreviewCount(pc);
 
       // Fetch user-specific data only when authenticated
       if (isLoggedIn && currentUser.id) {
@@ -513,6 +524,16 @@ export function QuizDetailPage() {
                       Pay once and this quiz is yours forever — retake it as
                       many times as you need.
                     </p>
+                    {/* Preview CTA for guests */}
+                    {previewCount > 0 && (
+                      <Link
+                        to={`/quiz/${quiz.id}/preview`}
+                        className="inline-flex items-center gap-2 text-sm font-heading font-semibold text-primary hover:text-primary/80 hover:underline underline-offset-2 transition-colors"
+                      >
+                        <Eye className="w-4 h-4 shrink-0" />
+                        Try {previewCount}-question preview
+                      </Link>
+                    )}
                     <div className="flex items-start gap-3 px-4 py-3 rounded-2xl bg-surface/60 border border-border/50">
                       <Lock className="w-5 h-5 text-muted shrink-0 mt-0.5" />
                       <p className="text-sm text-text-soft leading-relaxed">
@@ -581,6 +602,17 @@ export function QuizDetailPage() {
                       Pay once and this quiz is yours forever — retake it as
                       many times as you need.
                     </p>
+
+                    {/* Preview CTA — only shown when quiz has ≥1 question */}
+                    {previewCount > 0 && (
+                      <Link
+                        to={`/quiz/${quiz.id}/preview`}
+                        className="inline-flex items-center gap-2 text-sm font-heading font-semibold text-primary hover:text-primary/80 hover:underline underline-offset-2 transition-colors"
+                      >
+                        <Eye className="w-4 h-4 shrink-0" />
+                        Try {previewCount}-question preview
+                      </Link>
+                    )}
 
                     {/* insufficient funds warning */}
                     {insufficientFunds && !showConfirm && (
@@ -845,16 +877,26 @@ export function QuizDetailPage() {
                 </div>
               </div>
             ) : (
-              <Button
-                variant="primary"
-                size="lg"
-                fullWidth
-                onClick={handlePayAndStart}
-                disabled={isPaying}
-              >
-                <Lock className="w-5 h-5" />
-                Pay &amp; Start — {formatNaira(quiz.price)}
-              </Button>
+              <div className="space-y-2.5">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  onClick={handlePayAndStart}
+                  disabled={isPaying}
+                >
+                  <Lock className="w-5 h-5" />
+                  Pay &amp; Start — {formatNaira(quiz.price)}
+                </Button>
+                {previewCount > 0 && (
+                  <Link to={`/quiz/${quiz.id}/preview`} className="block">
+                    <Button variant="outline" size="md" fullWidth>
+                      <Eye className="w-4 h-4" />
+                      Try {previewCount}-question preview
+                    </Button>
+                  </Link>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -924,15 +966,25 @@ export function QuizDetailPage() {
               </Button>
             </div>
           ) : (
-            <Button
-              variant="primary"
-              size="lg"
-              className="flex-1"
-              onClick={handlePayAndStart}
-            >
-              <Lock className="w-5 h-5" />
-              Pay &amp; Start — {formatNaira(quiz.price)}
-            </Button>
+            <div className="flex-1 flex flex-col gap-2">
+              <Button
+                variant="primary"
+                size="lg"
+                className="flex-1"
+                onClick={handlePayAndStart}
+              >
+                <Lock className="w-5 h-5" />
+                Pay &amp; Start — {formatNaira(quiz.price)}
+              </Button>
+              {previewCount > 0 && (
+                <Link to={`/quiz/${quiz.id}/preview`} className="block">
+                  <Button variant="outline" size="sm" fullWidth>
+                    <Eye className="w-3.5 h-3.5" />
+                    Try {previewCount}-question preview
+                  </Button>
+                </Link>
+              )}
+            </div>
           )}
         </div>
       </div>
