@@ -46,6 +46,7 @@ import { MathText } from "../components/MathText";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import { apiFetch } from "../lib/api";
+import { recommendPreviewQuestions as _recommendPreviewQuestions } from "../lib/recommendPreviewQuestions";
 import type { Quiz, Question, QuestionType } from "../types";
 import {
   COURSE_PREFIX_SUBJECT_AREA,
@@ -788,62 +789,16 @@ export function QuizBuilderPage() {
   const MAX_PREVIEW = 5;
 
   /**
-   * "Let PrepUniv choose" — scores each draft question and picks the best ones.
-   *
-   * Scoring heuristics (higher = more representative):
-   * - MCQ questions are preferred over fill_blank (more self-contained in preview)
-   * - Questions with longer, clearer text score higher
-   * - Picks a spread across the quiz rather than clustering at start/end
-   * - Avoids picking questions that are very close together by index
+   * "Let PrepUniv choose" — delegates to the industry-standard weighted
+   * scoring + greedy coverage algorithm in lib/recommendPreviewQuestions.ts.
+   * Returns up to MAX_PREVIEW localIds in original quiz order.
    */
-  function recommendPreviewQuestions(): string[] {
-    if (draftQuestions.length === 0) return [];
-
-    const n = draftQuestions.length;
-    const take = Math.min(MAX_PREVIEW, n);
-
-    if (n <= MAX_PREVIEW) {
-      // Fewer questions than max — take all
-      return draftQuestions.map((q) => q.localId);
-    }
-
-    // Score each question
-    interface Scored {
-      localId: string;
-      index: number;
-      score: number;
-    }
-    const scored: Scored[] = draftQuestions.map((q, i) => {
-      let score = 0;
-
-      // Prefer MCQ (clearer in a preview context)
-      if (q.type === "mcq") score += 3;
-
-      // Prefer questions with reasonable text length (not too short, not a wall of text)
-      const textLen = q.question_text.trim().length;
-      if (textLen >= 30 && textLen <= 300) score += 2;
-      else if (textLen >= 15) score += 1;
-
-      // MCQ: prefer questions with all 4 options non-empty
-      if (q.type === "mcq") {
-        const filledOpts = q.options.filter((o) => o.trim().length > 0).length;
-        if (filledOpts === 4) score += 1;
-      }
-
-      // Prefer questions not at the very end of a large quiz (those tend to be niche)
-      if (n > 10 && i > n * 0.85) score -= 1;
-
-      return { localId: q.localId, index: i, score };
-    });
-
-    // Sort by score descending, then by index to keep earlier questions as tiebreaker
-    scored.sort((a, b) => b.score - a.score || a.index - b.index);
-
-    // Pick top `take` candidates, then sort them back by original index
-    const picked = scored.slice(0, take);
-    picked.sort((a, b) => a.index - b.index);
-
-    return picked.map((p) => p.localId);
+  function handleRecommendPreview(): string[] {
+    return _recommendPreviewQuestions(
+      draftQuestions,
+      (q) => q.localId,
+      MAX_PREVIEW,
+    );
   }
 
   // ─── Append questions from AI import ─────────────────────────────────────
@@ -1402,7 +1357,7 @@ export function QuizBuilderPage() {
               draftQuestions={draftQuestions}
               previewLocalIds={previewLocalIds}
               onPreviewLocalIdsChange={setPreviewLocalIds}
-              onRecommend={recommendPreviewQuestions}
+              onRecommend={handleRecommendPreview}
             />
           )}
 
