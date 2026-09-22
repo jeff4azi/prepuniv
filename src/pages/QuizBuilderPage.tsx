@@ -438,10 +438,9 @@ export function QuizBuilderPage() {
   const [editorErrors, setEditorErrors] = useState<Record<string, string>>({});
   const questionEditorRef = useRef<HTMLDivElement>(null);
 
-  // Editing an existing question opens the inline editor after the question
-  // list, so bring it into view as soon as React has rendered it.
+  // Opening the inline editor (add or edit) scrolls it into view.
   useEffect(() => {
-    if (editorMode !== "edit") return;
+    if (editorMode === "none") return;
     const frame = requestAnimationFrame(() => {
       questionEditorRef.current?.scrollIntoView({
         behavior: "smooth",
