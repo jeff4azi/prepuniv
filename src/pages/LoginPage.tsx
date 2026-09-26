@@ -93,7 +93,17 @@ export function LoginPage() {
     }
 
     if (error) {
-      setErrors({ form: error.message });
+      // Make Supabase's generic error messages more human-friendly
+      let msg = error.message;
+      if (
+        msg.toLowerCase().includes("invalid login credentials") ||
+        msg.toLowerCase().includes("invalid_credentials")
+      ) {
+        msg = "Incorrect email or password. Please try again.";
+      } else if (msg.toLowerCase().includes("too many requests")) {
+        msg = "Too many attempts. Please wait a moment and try again.";
+      }
+      setErrors({ form: msg });
       setLoading(false);
       return;
     }

@@ -118,10 +118,21 @@ export function SignupPage() {
     if (error) {
       clearPendingUniversity();
       setLoading(false);
-      setErrors({
-        ...errs,
-        form: error.message,
-      });
+      // Make Supabase's raw error messages more human-friendly
+      let msg = error.message;
+      if (
+        msg.toLowerCase().includes("user already registered") ||
+        msg.toLowerCase().includes("already exists") ||
+        msg.toLowerCase().includes("already been registered")
+      ) {
+        msg =
+          "An account with this email already exists. Try logging in instead.";
+      } else if (msg.toLowerCase().includes("too many requests")) {
+        msg = "Too many attempts. Please wait a moment and try again.";
+      } else if (msg.toLowerCase().includes("password should be")) {
+        msg = "Password must be at least 8 characters.";
+      }
+      setErrors({ ...errs, form: msg });
       return;
     }
 
@@ -363,6 +374,13 @@ export function SignupPage() {
             }}
             error={live.confirm ?? undefined}
           />
+
+          {errors.form && (
+            <p className="text-xs text-danger flex items-center gap-1.5 px-1">
+              <span className="w-1 h-1 rounded-full bg-danger inline-block shrink-0" />
+              {errors.form}
+            </p>
+          )}
 
           <Button
             fullWidth
