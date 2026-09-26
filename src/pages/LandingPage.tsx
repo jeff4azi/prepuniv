@@ -502,8 +502,7 @@ function FeaturedQuizCard({
               {course?.code ?? "Quiz"}
             </Badge>
             <Badge variant="primary" size="sm">
-              <BadgePoundSterling className="w-3 h-3 -ml-0.5" />
-              {quiz.price.toLocaleString()}
+              ₦{(quiz.price / 100).toLocaleString()}
             </Badge>
           </div>
           <h3 className="font-heading font-bold text-lg sm:text-xl text-text tracking-tight leading-snug mb-3">
@@ -536,7 +535,10 @@ function FeaturedQuizCard({
             </li>
           </ul>
         </div>
-        <Link to="/signup" className="block border-t border-border/60">
+        <Link
+          to={`/quiz/${quiz.id}`}
+          className="block border-t border-border/60"
+        >
           <div className="px-5 py-4 flex items-center justify-between group">
             <div>
               <p className="text-[11px] font-heading uppercase tracking-wider font-semibold text-muted mb-0.5">
