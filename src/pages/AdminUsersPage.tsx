@@ -312,6 +312,14 @@ function UserDetailPanel({
 
       {/* Footer */}
       <DrawerShell.Footer className="space-y-2">
+        {profile.role === "creator" && (
+          <Link to={`/profile/creator/${profile.id}`} className="block">
+            <Button variant="outline" size="md" fullWidth>
+              <ExternalLink className="w-4 h-4" />
+              View Creator Profile
+            </Button>
+          </Link>
+        )}
         <Button
           variant="outline"
           size="md"
@@ -375,11 +383,7 @@ function UserRow({
   return (
     <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border/30 last:border-0 hover:bg-surface/20 transition-colors">
       {/* Avatar */}
-      <button
-        type="button"
-        onClick={isCreator ? undefined : onDetail}
-        className="shrink-0"
-      >
+      <button type="button" onClick={onDetail} className="shrink-0">
         <Avatar
           name={profile.full_name}
           src={profile.avatar_url ?? undefined}
@@ -424,7 +428,7 @@ function UserRow({
       </button>
       <button
         type="button"
-        onClick={isCreator ? undefined : onDetail}
+        onClick={onDetail}
         className="shrink-0 h-8 w-8 rounded-xl flex items-center justify-center text-muted hover:text-text hover:bg-surface/60 transition-colors"
       >
         <ChevronRight className="w-3.5 h-3.5" />
