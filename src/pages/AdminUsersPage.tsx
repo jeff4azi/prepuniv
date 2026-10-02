@@ -199,12 +199,14 @@ function UserDetailPanel({
   profile,
   attemptCount,
   topUpTotal,
+  universityName,
   onClose,
   onSuspendClick,
 }: {
   profile: AdminProfile;
   attemptCount: number;
   topUpTotal: number;
+  universityName: string | null;
   onClose: () => void;
   onSuspendClick: () => void;
 }) {
@@ -239,34 +241,72 @@ function UserDetailPanel({
               Suspended
             </Badge>
           )}
+          {profile.is_approved_creator && profile.role !== "admin" && (
+            <Badge variant="secondary" size="sm">
+              Approved Creator
+            </Badge>
+          )}
         </div>
-        {/* Meta */}
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center gap-2 text-text-soft">
+
+        {/* Details grid */}
+        <div className="rounded-2xl border border-border/50 bg-surface/30 divide-y divide-border/40 text-sm">
+          <div className="flex items-center gap-3 px-4 py-3">
             <Clock className="w-4 h-4 text-muted shrink-0" strokeWidth={2} />
-            Joined {formatDate(profile.created_at)}
+            <span className="text-text-soft flex-1">Joined</span>
+            <span className="font-heading font-semibold text-text">
+              {formatDate(profile.created_at)}
+            </span>
           </div>
-          <div className="flex items-center gap-2 text-text-soft">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <Users className="w-4 h-4 text-muted shrink-0" strokeWidth={2} />
+            <span className="text-text-soft flex-1">University</span>
+            <span className="font-heading font-semibold text-text text-right max-w-[55%] leading-snug">
+              {universityName ?? (
+                <span className="text-muted font-normal">Not set</span>
+              )}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 px-4 py-3">
             <FileQuestion
               className="w-4 h-4 text-muted shrink-0"
               strokeWidth={2}
             />
-            <span>
-              <span className="font-heading font-semibold text-text">
-                {attemptCount}
-              </span>{" "}
-              quiz attempts
+            <span className="text-text-soft flex-1">Quiz attempts</span>
+            <span className="font-heading font-semibold text-text">
+              {attemptCount.toLocaleString()}
             </span>
           </div>
-          <div className="flex items-center gap-2 text-text-soft">
+          <div className="flex items-center gap-3 px-4 py-3">
             <Wallet className="w-4 h-4 text-muted shrink-0" strokeWidth={2} />
-            <span>
-              <span className="font-heading font-semibold text-text">
-                {formatLedgerNaira(topUpTotal)}
-              </span>{" "}
-              topped up
+            <span className="text-text-soft flex-1">Total topped up</span>
+            <span className="font-heading font-semibold text-text">
+              {formatLedgerNaira(topUpTotal)}
             </span>
           </div>
+          {profile.bio && (
+            <div className="flex items-start gap-3 px-4 py-3">
+              <FileQuestion
+                className="w-4 h-4 text-muted shrink-0 mt-0.5"
+                strokeWidth={2}
+              />
+              <span className="text-text-soft shrink-0">Bio</span>
+              <span className="text-text leading-relaxed text-right flex-1">
+                {profile.bio}
+              </span>
+            </div>
+          )}
+          {profile.agreement_accepted_at && (
+            <div className="flex items-center gap-3 px-4 py-3">
+              <CheckCircle2
+                className="w-4 h-4 text-success shrink-0"
+                strokeWidth={2}
+              />
+              <span className="text-text-soft flex-1">Creator agreement</span>
+              <span className="font-heading font-semibold text-success">
+                Accepted
+              </span>
+            </div>
+          )}
         </div>
       </DrawerShell.Body>
 
@@ -776,6 +816,12 @@ export function AdminUsersPage() {
           profile={detailTarget}
           attemptCount={detailAttemptCount}
           topUpTotal={detailTopUpTotal}
+          universityName={
+            detailTarget.university_id
+              ? (universities.find((u) => u.id === detailTarget.university_id)
+                  ?.name ?? null)
+              : null
+          }
           onClose={() => setDetailId(null)}
           onSuspendClick={() => {
             if (detailTarget.role !== "admin") {
