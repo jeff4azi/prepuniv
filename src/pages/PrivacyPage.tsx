@@ -68,7 +68,7 @@ export function PrivacyPage() {
         Under Nigerian data protection law, you have the right to access,
         correct, or request deletion of your personal data, subject to our legal
         obligation to retain financial transaction records. Contact us at
-        [support email placeholder] to exercise these rights.
+        support@prepuniv.com to exercise these rights.
       </p>
 
       <h2 id="children">7. Children's Privacy</h2>
@@ -92,7 +92,7 @@ export function PrivacyPage() {
       </p>
 
       <h2 id="contact">10. Contact</h2>
-      <p>Questions about this policy: [support email placeholder].</p>
+      <p>Questions about this policy: support@prepuniv.com.</p>
     </LegalPage>
   );
 }

@@ -129,7 +129,7 @@ export function TermsPage() {
       <h2 id="contact">13. Contact</h2>
       <p>
         Questions about these Terms, or payment issues covered under Section 6's
-        exception, can be sent to [support email placeholder].
+        exception, can be sent to support@prepuniv.com.
       </p>
     </LegalPage>
   );
