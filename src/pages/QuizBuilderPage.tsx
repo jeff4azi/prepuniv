@@ -34,6 +34,7 @@ import {
   BookOpen,
   Eye,
   Wand2,
+  PlayCircle,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -453,6 +454,9 @@ export function QuizBuilderPage() {
   // ── AI Import modal ──
   const [aiModalOpen, setAiModalOpen] = useState(false);
 
+  // ── Tutorial modal ──
+  const [tutorialOpen, setTutorialOpen] = useState(false);
+
   // ── Saving state ──
   const [saving, setSaving] = useState(false);
 
@@ -802,7 +806,7 @@ export function QuizBuilderPage() {
                 <ArrowLeft className="w-4 h-4" />
               </button>
             </Link>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-0.5">
                 <Badge variant="secondary" size="sm" dot>
                   <Sparkles className="w-3 h-3" />
@@ -813,6 +817,15 @@ export function QuizBuilderPage() {
                 {isEdit ? "Edit quiz" : "Create new quiz"}
               </h1>
             </div>
+            {/* Tutorial button */}
+            <button
+              type="button"
+              onClick={() => setTutorialOpen(true)}
+              className="shrink-0 inline-flex items-center gap-2 h-9 px-3.5 rounded-xl border border-primary/25 bg-primary/8 text-primary hover:bg-primary/14 transition-colors text-[12px] font-heading font-semibold"
+            >
+              <PlayCircle className="w-3.5 h-3.5 shrink-0" strokeWidth={2.2} />
+              <span className="hidden sm:inline">Watch tutorial</span>
+            </button>
           </div>
 
           {/* ── 1. Quiz Details ───────────────────────────────────────── */}
@@ -1380,6 +1393,60 @@ export function QuizBuilderPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Tutorial modal ───────────────────────────────────────────────── */}
+      {tutorialOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+          onClick={() => setTutorialOpen(false)}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-text/60 backdrop-blur-sm" />
+          {/* Modal */}
+          <div
+            className="relative w-full max-w-3xl rounded-3xl overflow-hidden shadow-elevated bg-text"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header bar */}
+            <div className="flex items-center justify-between px-5 py-3.5 bg-cream/95 backdrop-blur-sm">
+              <div className="flex items-center gap-2.5">
+                <div className="h-7 w-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                  <PlayCircle className="w-4 h-4" strokeWidth={2.2} />
+                </div>
+                <div>
+                  <p className="font-heading font-semibold text-sm text-text leading-tight">
+                    How to create a quiz
+                  </p>
+                  <p className="text-[11px] text-muted font-heading">
+                    PrepUniv Creator Tutorial
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTutorialOpen(false)}
+                className="h-8 w-8 rounded-xl flex items-center justify-center text-muted hover:text-text hover:bg-surface transition-colors"
+                aria-label="Close tutorial"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {/* Video — 16:9 aspect ratio */}
+            <div
+              className="relative w-full"
+              style={{ paddingBottom: "56.25%" }}
+            >
+              <iframe
+                className="absolute inset-0 w-full h-full"
+                src="https://www.youtube.com/embed/G5JrTXCeggo?autoplay=1&rel=0&modestbranding=1"
+                title="How to create a quiz on PrepUniv"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── AI Question Reformat modal ────────────────────────────────────── */}
       {aiModalOpen && (
