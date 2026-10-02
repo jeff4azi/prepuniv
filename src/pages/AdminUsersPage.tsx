@@ -37,7 +37,6 @@ import type { DbUniversity, DbWalletTxn } from "../lib/supabase";
 import {
   useAdminUsers,
   adminSuspendUser,
-  AdminLoadingState,
   type AdminProfile,
 } from "../hooks/useAdminData";
 
@@ -448,8 +447,6 @@ export function AdminUsersPage() {
     }
   }, []);
 
-  if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
-
   // ── Fetch data from Supabase ─────────────────────────────────────────────
 
   const {
@@ -586,14 +583,6 @@ export function AdminUsersPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <PageContainer className="max-w-290!">
-        <AdminLoadingState label="Loading users…" />
-      </PageContainer>
-    );
-  }
-
   return (
     <>
       {toast && (
@@ -716,7 +705,22 @@ export function AdminUsersPage() {
               <div className="w-20" />
               <div className="w-8" />
             </div>
-            {filtered.length === 0 ? (
+            {loading ? (
+              <div className="divide-y divide-border/30 animate-pulse">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 px-5 py-3.5">
+                    <div className="h-8 w-8 rounded-full bg-surface shrink-0" />
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <div className="h-3.5 w-36 rounded-lg bg-surface" />
+                      <div className="h-3 w-48 rounded-lg bg-surface" />
+                    </div>
+                    <div className="h-5 w-16 rounded-lg bg-surface hidden sm:block" />
+                    <div className="h-3.5 w-20 rounded-lg bg-surface hidden md:block" />
+                    <div className="h-8 w-20 rounded-xl bg-surface" />
+                  </div>
+                ))}
+              </div>
+            ) : filtered.length === 0 ? (
               <EmptyState
                 hasSearch={searchInput.trim().length > 0 || activeTab !== "all"}
               />

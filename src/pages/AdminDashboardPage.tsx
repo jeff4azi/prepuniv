@@ -424,27 +424,14 @@ export function AdminDashboardPage() {
     [allTxns],
   );
 
-  // Gate: only admin role
-  if (currentUser.role !== "admin") {
-    return <Navigate to="/home" replace />;
-  }
+  // Gate: only admin role (checked in JSX to avoid hooks ordering violations)
 
-  if (loading || !data) {
-    return (
-      <PageContainer className="max-w-290!">
-        <AdminLoadingState label="Loading dashboard…" />
-      </PageContainer>
-    );
-  }
-
-  const {
-    profiles: allProfiles,
-    quizzes: allQuizzes,
-    attemptCount: totalAttempts,
-    payouts: allPayouts,
-    applications: allApplications,
-    reports: allReports,
-  } = data;
+  const allProfiles = data?.profiles ?? [];
+  const allQuizzes = data?.quizzes ?? [];
+  const totalAttempts = data?.attemptCount ?? 0;
+  const allPayouts = data?.payouts ?? [];
+  const allApplications = data?.applications ?? [];
+  const allReports = data?.reports ?? [];
 
   const totalUsers = allProfiles.filter((p) => p.role === "user").length;
   const totalCreators = allProfiles.filter(
@@ -601,6 +588,10 @@ export function AdminDashboardPage() {
   const hasPendingItems =
     pendingApplications > 0 || pendingPayouts > 0 || openReports > 0;
 
+  if (currentUser.role !== "admin") {
+    return <Navigate to="/home" replace />;
+  }
+
   return (
     <PageContainer className="max-w-290!">
       <div className="space-y-7 lg:space-y-8">
@@ -618,7 +609,7 @@ export function AdminDashboardPage() {
               Platform overview and pending items. All data is live.
             </p>
           </div>
-          {hasPendingItems && (
+          {!loading && hasPendingItems && (
             <div className="shrink-0 hidden sm:flex items-center gap-2 px-3 py-2 rounded-2xl bg-warning-bg border border-warning/20">
               <AlertCircle
                 className="w-4 h-4 text-warning shrink-0"
@@ -638,29 +629,47 @@ export function AdminDashboardPage() {
             <span className="h-5 w-1 rounded-full bg-warning inline-block" />
             Action Queue
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:gap-4">
-            <PendingCard
-              label="Pending Creator Applications"
-              count={pendingApplications}
-              to="/admin/applications"
-              icon={ListChecks}
-              tone="warning"
-            />
-            <PendingCard
-              label="Pending Payout Requests"
-              count={pendingPayouts}
-              to="/admin/payouts"
-              icon={CreditCard}
-              tone="primary"
-            />
-            <PendingCard
-              label="Open Reports"
-              count={openReports}
-              to="/admin/reports"
-              icon={Flag}
-              tone="danger"
-            />
-          </div>
+          {loading || !data ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:gap-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Card
+                  key={i}
+                  padded={false}
+                  className="p-5 flex items-center gap-4 animate-pulse"
+                >
+                  <div className="h-10 w-10 rounded-xl bg-surface shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-6 w-10 rounded-lg bg-surface" />
+                    <div className="h-3 w-32 rounded-lg bg-surface" />
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:gap-4">
+              <PendingCard
+                label="Pending Creator Applications"
+                count={pendingApplications}
+                to="/admin/applications"
+                icon={ListChecks}
+                tone="warning"
+              />
+              <PendingCard
+                label="Pending Payout Requests"
+                count={pendingPayouts}
+                to="/admin/payouts"
+                icon={CreditCard}
+                tone="primary"
+              />
+              <PendingCard
+                label="Open Reports"
+                count={openReports}
+                to="/admin/reports"
+                icon={Flag}
+                tone="danger"
+              />
+            </div>
+          )}
         </section>
 
         {/* ── 2. Platform & Financial Overview ───────────────────────────── */}
@@ -669,61 +678,79 @@ export function AdminDashboardPage() {
             <span className="h-5 w-1 rounded-full bg-primary inline-block" />
             Platform & Financial Overview
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
-            <StatCard
-              label="Gross Top-Up Volume"
-              value={formatLedgerNaira(grossTopUpVolume)}
-              sub="Total customer top-ups"
-              icon={Wallet}
-              tone="warning"
-            />
-            <StatCard
-              label="Platform Payment Fees"
-              value={formatLedgerNaira(platformPaymentFees)}
-              sub="Flutterwave processing fees"
-              icon={CreditCard}
-              tone="muted"
-            />
-            <StatCard
-              label="Net Top-Up Cash"
-              value={formatLedgerNaira(netTopUpCash)}
-              sub="Gross top-ups minus fees"
-              icon={TrendingUp}
-              tone="success"
-            />
-            <StatCard
-              label="Quiz Share Revenue (35%)"
-              value={formatLedgerNaira(platformRevenue)}
-              sub="PrepUniv 35% quiz fee cut"
-              icon={TrendingUp}
-              tone="primary"
-            />
-            <StatCard
-              label="Total Users"
-              value={totalUsers}
-              icon={Users}
-              tone="primary"
-            />
-            <StatCard
-              label="Approved Creators"
-              value={totalCreators}
-              icon={UserCheck}
-              tone="secondary"
-            />
-            <StatCard
-              label="Published Quizzes"
-              value={publishedQuizzes}
-              sub={`of ${allQuizzes.length} total`}
-              icon={BookOpen}
-              tone="muted"
-            />
-            <StatCard
-              label="Total Attempts"
-              value={totalAttempts}
-              icon={Repeat2}
-              tone="muted"
-            />
-          </div>
+          {loading || !data ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Card
+                  key={i}
+                  padded={false}
+                  className="p-5 flex flex-col gap-3 animate-pulse"
+                >
+                  <div className="h-10 w-10 rounded-xl bg-surface" />
+                  <div className="space-y-2">
+                    <div className="h-6 w-24 rounded-lg bg-surface" />
+                    <div className="h-3 w-32 rounded-lg bg-surface" />
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
+              <StatCard
+                label="Gross Top-Up Volume"
+                value={formatLedgerNaira(grossTopUpVolume)}
+                sub="Total customer top-ups"
+                icon={Wallet}
+                tone="warning"
+              />
+              <StatCard
+                label="Platform Payment Fees"
+                value={formatLedgerNaira(platformPaymentFees)}
+                sub="Flutterwave processing fees"
+                icon={CreditCard}
+                tone="muted"
+              />
+              <StatCard
+                label="Net Top-Up Cash"
+                value={formatLedgerNaira(netTopUpCash)}
+                sub="Gross top-ups minus fees"
+                icon={TrendingUp}
+                tone="success"
+              />
+              <StatCard
+                label="Quiz Share Revenue (35%)"
+                value={formatLedgerNaira(platformRevenue)}
+                sub="PrepUniv 35% quiz fee cut"
+                icon={TrendingUp}
+                tone="primary"
+              />
+              <StatCard
+                label="Total Users"
+                value={totalUsers}
+                icon={Users}
+                tone="primary"
+              />
+              <StatCard
+                label="Approved Creators"
+                value={totalCreators}
+                icon={UserCheck}
+                tone="secondary"
+              />
+              <StatCard
+                label="Published Quizzes"
+                value={publishedQuizzes}
+                sub={`of ${allQuizzes.length} total`}
+                icon={BookOpen}
+                tone="muted"
+              />
+              <StatCard
+                label="Total Attempts"
+                value={totalAttempts}
+                icon={Repeat2}
+                tone="muted"
+              />
+            </div>
+          )}
         </section>
 
         {/* ── 3. Revenue trend + Activity feed (2-col on lg) ───────────────── */}
@@ -734,96 +761,105 @@ export function AdminDashboardPage() {
               <span className="h-5 w-1 rounded-full bg-success inline-block" />
               Revenue Trend — Last 30 Days
             </h2>
-            <Card padded={false} className="p-5">
-              {revenueTrendData.every((d) => d.revenue === 0) ? (
-                <div className="flex flex-col items-center justify-center h-48 text-center gap-2">
-                  <BarChart2 className="w-8 h-8 text-muted" strokeWidth={1.5} />
-                  <p className="text-sm text-muted">No revenue data yet</p>
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart
-                    data={revenueTrendData}
-                    margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
-                  >
-                    <defs>
-                      <linearGradient
-                        id="adminRevGrad"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="5%"
-                          stopColor="var(--color-success)"
-                          stopOpacity={0.25}
-                        />
-                        <stop
-                          offset="95%"
-                          stopColor="var(--color-success)"
-                          stopOpacity={0.02}
-                        />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="var(--color-border)"
-                      strokeOpacity={0.5}
+            {loading || !data ? (
+              <Card padded={false} className="p-5 animate-pulse">
+                <div className="h-[220px] rounded-xl bg-surface" />
+              </Card>
+            ) : (
+              <Card padded={false} className="p-5">
+                {revenueTrendData.every((d) => d.revenue === 0) ? (
+                  <div className="flex flex-col items-center justify-center h-48 text-center gap-2">
+                    <BarChart2
+                      className="w-8 h-8 text-muted"
+                      strokeWidth={1.5}
                     />
-                    <XAxis
-                      dataKey="label"
-                      tick={{
-                        fontSize: 11,
-                        fontFamily: "var(--font-heading)",
-                        fill: "var(--color-muted)",
-                      }}
-                      axisLine={false}
-                      tickLine={false}
-                      dy={6}
-                    />
-                    <YAxis
-                      tick={{
-                        fontSize: 11,
-                        fontFamily: "var(--font-heading)",
-                        fill: "var(--color-muted)",
-                      }}
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(v) => formatLedgerNaira(v)}
-                      width={64}
-                    />
-                    <Tooltip
-                      content={<RevenueTooltip />}
-                      cursor={{
-                        stroke: "var(--color-success)",
-                        strokeWidth: 1,
-                        strokeDasharray: "4 4",
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="var(--color-success)"
-                      strokeWidth={2.5}
-                      fill="url(#adminRevGrad)"
-                      dot={{
-                        r: 4,
-                        fill: "var(--color-success)",
-                        stroke: "var(--color-cream)",
-                        strokeWidth: 2,
-                      }}
-                      activeDot={{
-                        r: 5,
-                        fill: "var(--color-success)",
-                        stroke: "var(--color-cream)",
-                        strokeWidth: 2,
-                      }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </Card>
+                    <p className="text-sm text-muted">No revenue data yet</p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <AreaChart
+                      data={revenueTrendData}
+                      margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
+                    >
+                      <defs>
+                        <linearGradient
+                          id="adminRevGrad"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="5%"
+                            stopColor="var(--color-success)"
+                            stopOpacity={0.25}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor="var(--color-success)"
+                            stopOpacity={0.02}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="var(--color-border)"
+                        strokeOpacity={0.5}
+                      />
+                      <XAxis
+                        dataKey="label"
+                        tick={{
+                          fontSize: 11,
+                          fontFamily: "var(--font-heading)",
+                          fill: "var(--color-muted)",
+                        }}
+                        axisLine={false}
+                        tickLine={false}
+                        dy={6}
+                      />
+                      <YAxis
+                        tick={{
+                          fontSize: 11,
+                          fontFamily: "var(--font-heading)",
+                          fill: "var(--color-muted)",
+                        }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(v) => formatLedgerNaira(v)}
+                        width={64}
+                      />
+                      <Tooltip
+                        content={<RevenueTooltip />}
+                        cursor={{
+                          stroke: "var(--color-success)",
+                          strokeWidth: 1,
+                          strokeDasharray: "4 4",
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="revenue"
+                        stroke="var(--color-success)"
+                        strokeWidth={2.5}
+                        fill="url(#adminRevGrad)"
+                        dot={{
+                          r: 4,
+                          fill: "var(--color-success)",
+                          stroke: "var(--color-cream)",
+                          strokeWidth: 2,
+                        }}
+                        activeDot={{
+                          r: 5,
+                          fill: "var(--color-success)",
+                          stroke: "var(--color-cream)",
+                          strokeWidth: 2,
+                        }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </Card>
+            )}
           </div>
 
           {/* Activity feed (spans 2 cols) */}
@@ -832,18 +868,40 @@ export function AdminDashboardPage() {
               <span className="h-5 w-1 rounded-full bg-secondary inline-block" />
               Recent Activity
             </h2>
-            <Card padded={false} className="px-5 py-1">
-              {activityFeed.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
-                  <Sparkles className="w-7 h-7 text-muted" strokeWidth={1.5} />
-                  <p className="text-sm text-muted">No activity yet</p>
+            {loading || !data ? (
+              <Card padded={false} className="px-5 py-1 animate-pulse">
+                <div className="space-y-1 py-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="flex items-start gap-3 py-3 border-b border-border/30 last:border-0"
+                    >
+                      <div className="h-8 w-8 rounded-xl bg-surface shrink-0 mt-0.5" />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-3.5 w-48 rounded-lg bg-surface" />
+                        <div className="h-3 w-32 rounded-lg bg-surface" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                activityFeed.map((item) => (
-                  <ActivityRow key={item.id} item={item} />
-                ))
-              )}
-            </Card>
+              </Card>
+            ) : (
+              <Card padded={false} className="px-5 py-1">
+                {activityFeed.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
+                    <Sparkles
+                      className="w-7 h-7 text-muted"
+                      strokeWidth={1.5}
+                    />
+                    <p className="text-sm text-muted">No activity yet</p>
+                  </div>
+                ) : (
+                  activityFeed.map((item) => (
+                    <ActivityRow key={item.id} item={item} />
+                  ))
+                )}
+              </Card>
+            )}
           </div>
         </div>
 
