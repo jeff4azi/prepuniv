@@ -12,16 +12,7 @@ import {
   validatePasswordMatch,
   validateFullName,
 } from "../components/Form";
-import {
-  UniversitySelect,
-  type University,
-} from "../components/UniversitySelect";
 import { useAuth } from "../context/AuthContext";
-import { supabase } from "../lib/supabase";
-import {
-  stashPendingUniversity,
-  clearPendingUniversity,
-} from "../lib/pendingUniversity";
 import { useApplyPendingUniversity } from "../hooks/useApplyPendingUniversity";
 
 interface SignupErrors {
@@ -29,14 +20,13 @@ interface SignupErrors {
   email?: string | null;
   password?: string | null;
   confirm?: string | null;
-  university?: string | null;
   form?: string | null;
 }
 
 const RESEND_COOLDOWN = 60;
 
 export function SignupPage() {
-  const { signUp, resendSignup, updateProfilePatch } = useAuth();
+  const { signUp, resendSignup } = useAuth();
 
   usePageTitle("Sign Up");
 
@@ -50,31 +40,14 @@ export function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [universityId, setUniversityId] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<SignupErrors>({});
-  const [universities, setUniversities] = useState<University[]>([]);
 
   const [signupEmail, setSignupEmail] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
   const [cooldown, setCooldown] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from("universities")
-        .select("id, name, abbreviation, state")
-        .order("name");
-      if (cancelled || !data) return;
-      setUniversities(data as University[]);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -88,7 +61,6 @@ export function SignupPage() {
       email: validateEmail(email),
       password: validatePassword(password),
       confirm: validatePasswordMatch(password, confirm),
-      university: universityId ? null : "Please select your university.",
     };
   }
 
@@ -97,26 +69,16 @@ export function SignupPage() {
     setSubmitted(true);
     const errs = runValidation();
     setErrors(errs);
-    if (
-      errs.full_name ||
-      errs.email ||
-      errs.password ||
-      errs.confirm ||
-      errs.university
-    )
-      return;
+    if (errs.full_name || errs.email || errs.password || errs.confirm) return;
 
     setLoading(true);
-    stashPendingUniversity(universityId);
     const { error, needsConfirmation } = await signUp({
       full_name: fullName.trim(),
       email: email.trim(),
       password,
-      university_id: universityId,
     });
 
     if (error) {
-      clearPendingUniversity();
       setLoading(false);
       // Make Supabase's raw error messages more human-friendly
       let msg = error.message;
@@ -138,20 +100,9 @@ export function SignupPage() {
 
     if (!needsConfirmation) {
       // Email confirmation is off for this project — the user is already
-      // signed in. Apply university_id right away rather than waiting on
-      // the pending-university effect, and surface any failure instead of
-      // silently leaving it unset.
-      const { error: patchErr } = await updateProfilePatch({
-        university_id: universityId,
-      });
-      clearPendingUniversity();
+      // signed in. The /select-university fallback will handle university
+      // selection once they land in the app.
       setLoading(false);
-      if (patchErr) {
-        setErrors({
-          ...errs,
-          form: "Your account was created, but we couldn't save your university. You can set it from Settings.",
-        });
-      }
       // No explicit navigation needed: the /signup route is wrapped in
       // IfLoggedOut, which redirects to /home as soon as isLoggedIn flips
       // true (once the profile finishes loading).
@@ -318,24 +269,6 @@ export function SignupPage() {
                 }));
             }}
             error={live.email ?? undefined}
-          />
-
-          <UniversitySelect
-            id="university"
-            label="University"
-            placeholder="Select your university…"
-            universities={universities}
-            value={universityId}
-            onChange={(id) => {
-              setUniversityId(id);
-              if (submitted)
-                setErrors((p) => ({
-                  ...p,
-                  university: id ? null : "Please select your university.",
-                }));
-            }}
-            error={submitted ? (live.university ?? undefined) : undefined}
-            hint="Quizzes and courses are scoped to your university."
           />
 
           <PasswordInput
