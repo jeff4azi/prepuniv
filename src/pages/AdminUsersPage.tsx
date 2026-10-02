@@ -258,6 +258,18 @@ function UserDetailPanel({
             </span>
           </div>
           <div className="flex items-center gap-3 px-4 py-3">
+            <CheckCircle2
+              className={`w-4 h-4 shrink-0 ${profile.email_confirmed_at ? "text-success" : "text-warning"}`}
+              strokeWidth={2}
+            />
+            <span className="text-text-soft flex-1">Email</span>
+            <span
+              className={`font-heading font-semibold text-sm ${profile.email_confirmed_at ? "text-success" : "text-warning"}`}
+            >
+              {profile.email_confirmed_at ? "Confirmed" : "Unconfirmed"}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 px-4 py-3">
             <Users className="w-4 h-4 text-muted shrink-0" strokeWidth={2} />
             <span className="text-text-soft flex-1">University</span>
             <span className="font-heading font-semibold text-text text-right max-w-[55%] leading-snug">
@@ -394,7 +406,14 @@ function UserRow({
       {/* Name + email */}
       <div className="flex-1 min-w-0">
         {nameCell}
-        <p className="text-xs text-muted mt-0.5 truncate">{profile.email}</p>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <p className="text-xs text-muted truncate">{profile.email}</p>
+          {!profile.email_confirmed_at && (
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-warning-bg border border-warning/30 text-warning text-[10px] font-heading font-semibold shrink-0">
+              Unconfirmed
+            </span>
+          )}
+        </div>
       </div>
       {/* Role */}
       <div className="shrink-0 hidden sm:block">

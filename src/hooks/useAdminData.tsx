@@ -20,7 +20,10 @@ import { apiFetch } from "../lib/api";
 
 // ─── Enriched types (DB types + joined fields) ───────────────────────────────
 
-export type AdminProfile = DbProfile & { email: string | null };
+export type AdminProfile = DbProfile & {
+  email: string | null;
+  email_confirmed_at: string | null;
+};
 export type AdminUsersPage = {
   users: AdminProfile[];
   total: number;
@@ -82,7 +85,13 @@ export function useAdminUsers(params: {
     if (res.error || !res.data?.users)
       throw new Error(res.error || "Failed to fetch users");
     return res.data;
-  }, [params.page, params.pageSize, params.role, params.universityId, params.search]);
+  }, [
+    params.page,
+    params.pageSize,
+    params.role,
+    params.universityId,
+    params.search,
+  ]);
 }
 
 // ─── Profiles (direct Supabase — no email needed) ────────────────────────────
