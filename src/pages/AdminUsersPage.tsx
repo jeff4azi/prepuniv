@@ -50,7 +50,13 @@ function formatLedgerNaira(amount: number) {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type FilterTab = "all" | "users" | "creators" | "admins" | "suspended";
+type FilterTab =
+  | "all"
+  | "users"
+  | "creators"
+  | "admins"
+  | "suspended"
+  | "unconfirmed";
 
 const TABS: { value: FilterTab; label: string }[] = [
   { value: "all", label: "All" },
@@ -58,6 +64,7 @@ const TABS: { value: FilterTab; label: string }[] = [
   { value: "creators", label: "Creators" },
   { value: "admins", label: "Admins" },
   { value: "suspended", label: "Suspended" },
+  { value: "unconfirmed", label: "Unconfirmed" },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -573,6 +580,8 @@ export function AdminUsersPage() {
       list = list.filter((p) => p.role === "creator");
     if (activeTab === "admins") list = list.filter((p) => p.role === "admin");
     if (activeTab === "suspended") list = list.filter((p) => p.is_suspended);
+    if (activeTab === "unconfirmed")
+      list = list.filter((p) => !p.email_confirmed_at);
     if (uniFilter !== "all") {
       list = list.filter((p) => p.university_id === uniFilter);
     }
@@ -599,6 +608,7 @@ export function AdminUsersPage() {
       creators: profiles.filter((p) => p.role === "creator").length,
       admins: profiles.filter((p) => p.role === "admin").length,
       suspended: profiles.filter((p) => p.is_suspended).length,
+      unconfirmed: profiles.filter((p) => !p.email_confirmed_at).length,
     }),
     [profiles],
   );
@@ -741,7 +751,12 @@ export function AdminUsersPage() {
                           ? activeTab === "suspended"
                             ? "bg-danger text-cream"
                             : "bg-danger/15 text-danger"
-                          : "bg-border text-muted"
+                          : tab.value === "unconfirmed" &&
+                              counts.unconfirmed > 0
+                            ? activeTab === "unconfirmed"
+                              ? "bg-warning text-cream"
+                              : "bg-warning/15 text-warning"
+                            : "bg-border text-muted"
                       }`}
                     >
                       {counts[tab.value]}
