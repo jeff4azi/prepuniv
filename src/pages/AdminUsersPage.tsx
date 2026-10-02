@@ -22,6 +22,7 @@ import {
   Clock,
   FileQuestion,
   Wallet,
+  Trash2,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -37,6 +38,7 @@ import type { DbUniversity, DbWalletTxn } from "../lib/supabase";
 import {
   useAdminUsers,
   adminSuspendUser,
+  adminDeleteUnconfirmedUser,
   type AdminProfile,
 } from "../hooks/useAdminData";
 
@@ -209,6 +211,7 @@ function UserDetailPanel({
   universityName,
   onClose,
   onSuspendClick,
+  onDeleteClick,
 }: {
   profile: AdminProfile;
   attemptCount: number;
@@ -216,7 +219,9 @@ function UserDetailPanel({
   universityName: string | null;
   onClose: () => void;
   onSuspendClick: () => void;
+  onDeleteClick: () => void;
 }) {
+  const isUnconfirmed = !profile.email_confirmed_at;
   return (
     <DrawerShell open={true} onClose={onClose} ariaLabel="User detail">
       <DrawerShell.Header
@@ -339,27 +344,40 @@ function UserDetailPanel({
             </Button>
           </Link>
         )}
-        <Button
-          variant="outline"
-          size="md"
-          fullWidth
-          onClick={onSuspendClick}
-          className={
-            profile.is_suspended
-              ? ""
-              : "border-danger/40 text-danger hover:bg-danger-bg"
-          }
-        >
-          {profile.is_suspended ? (
-            <>
-              <CheckCircle2 className="w-4 h-4" /> Unsuspend
-            </>
-          ) : (
-            <>
-              <Ban className="w-4 h-4" /> Suspend
-            </>
-          )}
-        </Button>
+        {isUnconfirmed ? (
+          <Button
+            variant="outline"
+            size="md"
+            fullWidth
+            onClick={onDeleteClick}
+            className="border-danger/40 text-danger hover:bg-danger-bg"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete account
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            size="md"
+            fullWidth
+            onClick={onSuspendClick}
+            className={
+              profile.is_suspended
+                ? ""
+                : "border-danger/40 text-danger hover:bg-danger-bg"
+            }
+          >
+            {profile.is_suspended ? (
+              <>
+                <CheckCircle2 className="w-4 h-4" /> Unsuspend
+              </>
+            ) : (
+              <>
+                <Ban className="w-4 h-4" /> Suspend
+              </>
+            )}
+          </Button>
+        )}
         <Button variant="ghost" size="md" fullWidth onClick={onClose}>
           Close
         </Button>
@@ -374,12 +392,15 @@ function UserRow({
   profile,
   onDetail,
   onSuspend,
+  onDelete,
 }: {
   profile: AdminProfile;
   onDetail: () => void;
   onSuspend: () => void;
+  onDelete: () => void;
 }) {
   const isCreator = profile.role === "creator";
+  const isUnconfirmed = !profile.email_confirmed_at;
   const nameCell = isCreator ? (
     <Link
       to={`/profile/creator/${profile.id}`}
@@ -441,17 +462,28 @@ function UserRow({
         </Badge>
       )}
       {/* Actions */}
-      <button
-        type="button"
-        onClick={onSuspend}
-        className={`shrink-0 h-8 px-2.5 rounded-xl text-[11px] font-heading font-semibold border transition-all ${
-          profile.is_suspended
-            ? "border-success/40 text-success hover:bg-success-bg"
-            : "border-border/60 text-muted hover:border-danger/40 hover:text-danger hover:bg-danger-bg"
-        }`}
-      >
-        {profile.is_suspended ? "Unsuspend" : "Suspend"}
-      </button>
+      {isUnconfirmed ? (
+        <button
+          type="button"
+          onClick={onDelete}
+          className="shrink-0 h-8 px-2.5 rounded-xl text-[11px] font-heading font-semibold border border-danger/30 text-danger hover:bg-danger-bg transition-all flex items-center gap-1"
+        >
+          <Trash2 className="w-3 h-3" />
+          Delete
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={onSuspend}
+          className={`shrink-0 h-8 px-2.5 rounded-xl text-[11px] font-heading font-semibold border transition-all ${
+            profile.is_suspended
+              ? "border-success/40 text-success hover:bg-success-bg"
+              : "border-border/60 text-muted hover:border-danger/40 hover:text-danger hover:bg-danger-bg"
+          }`}
+        >
+          {profile.is_suspended ? "Unsuspend" : "Suspend"}
+        </button>
+      )}
       <button
         type="button"
         onClick={onDetail}
@@ -501,6 +533,8 @@ export function AdminUsersPage() {
   const [suspendCreatorPublishedCount, setSuspendCreatorPublishedCount] =
     useState<number>(0);
   const [suspending, setSuspending] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Helper: open the suspend confirm modal and pre-fetch published quiz count
   // for creators so the warning message can show an accurate number.
@@ -651,6 +685,25 @@ export function AdminUsersPage() {
           ? `${target?.full_name ?? "User"} has been suspended.`
           : `${target?.full_name ?? "User"} has been unsuspended.`,
         variant: newSuspended ? undefined : "success",
+      });
+      void refetch();
+    }
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteId) return;
+    setDeleting(true);
+    const target = profiles.find((p) => p.id === deleteId);
+    const { error } = await adminDeleteUnconfirmedUser(deleteId);
+    setDeleting(false);
+    setDeleteId(null);
+    setDetailId(null);
+    if (error) {
+      showToast({ message: String(error), variant: "danger" as "success" });
+    } else {
+      showToast({
+        message: `${target?.full_name ?? "Account"} has been deleted.`,
+        variant: "success",
       });
       void refetch();
     }
@@ -811,6 +864,7 @@ export function AdminUsersPage() {
                   onSuspend={() => {
                     if (p.role !== "admin") void openSuspendConfirm(p);
                   }}
+                  onDelete={() => setDeleteId(p.id)}
                 />
               ))
             )}
@@ -867,6 +921,10 @@ export function AdminUsersPage() {
               setDetailId(null);
             }
           }}
+          onDeleteClick={() => {
+            setDeleteId(detailTarget.id);
+            setDetailId(null);
+          }}
         />
       )}
 
@@ -880,6 +938,56 @@ export function AdminUsersPage() {
           loading={suspending}
         />
       )}
+
+      {/* Delete confirm */}
+      {deleteId &&
+        (() => {
+          const deleteTarget = profiles.find((p) => p.id === deleteId);
+          if (!deleteTarget) return null;
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div
+                className="absolute inset-0 bg-text/40 backdrop-blur-sm"
+                onClick={() => setDeleteId(null)}
+                aria-hidden
+              />
+              <div className="relative z-10 w-full max-w-sm bg-cream rounded-3xl shadow-elevated p-6 space-y-4">
+                <div className="h-12 w-12 rounded-2xl bg-danger-bg text-danger flex items-center justify-center mx-auto">
+                  <Trash2 className="w-6 h-6" strokeWidth={2} />
+                </div>
+                <div className="text-center space-y-1.5">
+                  <h2 className="font-heading font-bold text-base text-text">
+                    Delete {deleteTarget.full_name}?
+                  </h2>
+                  <p className="text-sm text-text-soft leading-relaxed">
+                    This account never confirmed its email. Deleting it is
+                    permanent and cannot be undone.
+                  </p>
+                </div>
+                <div className="flex gap-2.5">
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    className="flex-1"
+                    onClick={() => setDeleteId(null)}
+                    disabled={deleting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="md"
+                    className="flex-1 bg-danger! text-cream! hover:bg-danger/90!"
+                    isLoading={deleting}
+                    onClick={handleDeleteConfirm}
+                  >
+                    {!deleting && <Trash2 className="w-4 h-4" />}
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
     </>
   );
 }

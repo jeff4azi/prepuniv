@@ -219,6 +219,12 @@ export async function adminSuspendUser(userId: string, suspend: boolean) {
   });
 }
 
+export async function adminDeleteUnconfirmedUser(userId: string) {
+  return apiFetch("/api/admin/users/" + userId, {
+    method: "DELETE",
+  });
+}
+
 export async function adminUnpublishQuiz(quizId: string) {
   return apiFetch("/api/admin/quizzes/" + quizId + "/unpublish", {
     method: "POST",

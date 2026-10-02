@@ -279,6 +279,7 @@ function RevenueTooltip({
 
 interface DashboardData {
   profiles: DbProfile[];
+  unconfirmedIds: Set<string>;
   quizzes: DbQuiz[];
   attemptCount: number;
   txns: DbWalletTxn[];
@@ -310,6 +311,7 @@ export function AdminDashboardPage() {
         payoutsRes,
         appsRes,
         reportsRes,
+        usersRes,
       ] = await Promise.all([
         supabase
           .from("profiles")
@@ -335,10 +337,23 @@ export function AdminDashboardPage() {
           .from("reports")
           .select("*")
           .order("created_at", { ascending: false }),
+        apiFetch<{
+          users: Array<{ id: string; email_confirmed_at: string | null }>;
+        }>("/api/admin/users?page=1&pageSize=200").catch(() => ({
+          data: null,
+          error: null,
+        })),
       ]);
+
+      const unconfirmedIds = new Set<string>(
+        (usersRes.data?.users ?? [])
+          .filter((u) => !u.email_confirmed_at)
+          .map((u) => u.id),
+      );
 
       setData({
         profiles: profilesRes.data || [],
+        unconfirmedIds,
         quizzes: quizzesRes.data || [],
         attemptCount: attemptCountRes.count || 0,
         txns: txnsRes.data || [],
@@ -427,6 +442,7 @@ export function AdminDashboardPage() {
   // Gate: only admin role (checked in JSX to avoid hooks ordering violations)
 
   const allProfiles = data?.profiles ?? [];
+  const unconfirmedIds = data?.unconfirmedIds ?? new Set<string>();
   const allQuizzes = data?.quizzes ?? [];
   const totalAttempts = data?.attemptCount ?? 0;
   const allPayouts = data?.payouts ?? [];
@@ -493,12 +509,17 @@ export function AdminDashboardPage() {
   allProfiles
     .filter((p) => p.role === "user" && p.created_at)
     .forEach((p) => {
+      const isUnconfirmed = unconfirmedIds.has(p.id);
       activityItems.push({
         id: `signup-${p.id}`,
         icon: Users,
-        iconTone: "bg-primary/10 text-primary",
+        iconTone: isUnconfirmed
+          ? "bg-warning-bg text-warning"
+          : "bg-primary/10 text-primary",
         label: `${p.full_name} joined`,
-        meta: "New user sign-up",
+        meta: isUnconfirmed
+          ? "New user sign-up · email not confirmed"
+          : "New user sign-up",
         ts: p.created_at,
       });
     });
