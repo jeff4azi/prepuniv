@@ -19,6 +19,7 @@ import {
   Check,
   ExternalLink,
   MoreHorizontal,
+  PlayCircle,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -472,26 +473,55 @@ export function CreatorQuizzesPage() {
               </div>
             </>
           ) : quizList.length === 0 ? (
-            <Card padded className="py-12 lg:py-16">
-              <div className="flex flex-col items-center text-center">
-                <div className="h-20 w-20 rounded-3xl bg-secondary/10 text-secondary flex items-center justify-center mb-5 shadow-card">
-                  <FileText className="w-10 h-10" strokeWidth={1.8} />
+            <div className="space-y-4">
+              {/* Tutorial callout — only for new creators */}
+              <div className="rounded-3xl border border-primary/20 bg-primary/5 px-5 py-4 flex items-start gap-4">
+                <div className="h-10 w-10 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                  <PlayCircle className="w-5 h-5" strokeWidth={2.1} />
                 </div>
-                <h2 className="font-heading font-bold text-xl text-text">
-                  You haven't created any quizzes yet
-                </h2>
-                <p className="mt-2 text-sm text-text-soft max-w-sm leading-relaxed">
-                  Your quizzes will appear here once you create them. Start with
-                  your first quiz and it'll be live for students in minutes.
-                </p>
-                <Link to="/creator/quizzes/new" className="mt-6">
-                  <Button variant="primary" size="lg">
-                    <Plus className="w-4 h-4" />
-                    Create your first quiz
-                  </Button>
-                </Link>
+                <div className="flex-1 min-w-0">
+                  <p className="font-heading font-semibold text-sm text-text leading-tight">
+                    New to creating quizzes?
+                  </p>
+                  <p className="text-xs text-text-soft mt-0.5 leading-relaxed">
+                    Watch our 6-minute walkthrough and you'll have your first
+                    quiz live in no time.
+                  </p>
+                </div>
+                <a
+                  href="https://youtu.be/G5JrTXCeggo?si=jAJI8NJ6kPGU1Vf3"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-primary text-cream text-[12px] font-heading font-semibold hover:bg-primary/90 transition-colors"
+                >
+                  <PlayCircle className="w-3.5 h-3.5" strokeWidth={2.2} />
+                  Watch
+                </a>
               </div>
-            </Card>
+
+              {/* Empty state card */}
+              <Card padded className="py-12 lg:py-16">
+                <div className="flex flex-col items-center text-center">
+                  <div className="h-20 w-20 rounded-3xl bg-secondary/10 text-secondary flex items-center justify-center mb-5 shadow-card">
+                    <FileText className="w-10 h-10" strokeWidth={1.8} />
+                  </div>
+                  <h2 className="font-heading font-bold text-xl text-text">
+                    You haven't created any quizzes yet
+                  </h2>
+                  <p className="mt-2 text-sm text-text-soft max-w-sm leading-relaxed">
+                    Your quizzes will appear here once you create them. Start
+                    with your first quiz and it'll be live for students in
+                    minutes.
+                  </p>
+                  <Link to="/creator/quizzes/new" className="mt-6">
+                    <Button variant="primary" size="lg">
+                      <Plus className="w-4 h-4" />
+                      Create your first quiz
+                    </Button>
+                  </Link>
+                </div>
+              </Card>
+            </div>
           ) : filtered.length === 0 ? (
             <Card padded className="py-10">
               <div className="flex flex-col items-center text-center">
