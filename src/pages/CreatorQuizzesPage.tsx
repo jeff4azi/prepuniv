@@ -576,14 +576,16 @@ export function CreatorQuizzesPage() {
             </>
           )}
 
-          <div className="sm:hidden">
-            <Link to="/creator/quizzes/new">
-              <Button variant="primary" size="lg" fullWidth>
-                <Plus className="w-4 h-4" />
-                Create new quiz
-              </Button>
-            </Link>
-          </div>
+          {quizList.length > 0 && (
+            <div className="sm:hidden">
+              <Link to="/creator/quizzes/new">
+                <Button variant="primary" size="lg" fullWidth>
+                  <Plus className="w-4 h-4" />
+                  Create new quiz
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
       </PageContainer>
 
