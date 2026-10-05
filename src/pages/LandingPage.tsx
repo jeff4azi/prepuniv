@@ -775,6 +775,12 @@ function CtaBanner() {
 }
 
 // ---------- FOOTER ----------
+const XBrandIcon = ({ className = "" }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
+
 function Footer() {
   return (
     <footer className="w-full border-t border-border/50 bg-surface/40">
@@ -788,7 +794,7 @@ function Footer() {
               PrepUniv
             </span>
           </div>
-          <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-text-soft">
+          <nav className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-text-soft">
             <Link to="/browse" className="hover:text-text transition-colors">
               Browse
             </Link>
@@ -804,7 +810,19 @@ function Footer() {
             <Link to="/privacy" className="hover:text-text transition-colors">
               Privacy
             </Link>
+            <a
+              href="https://x.com/PrepUnivijnv"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="PrepUniv on X"
+              className="inline-flex items-center gap-1.5 hover:text-text transition-colors active:scale-[0.98]"
+            >
+              <XBrandIcon className="w-4 h-4" />
+              <span className="font-medium">@PrepUnivijnv</span>
+            </a>
           </nav>
+        </div>
+        <div className="mt-6 sm:mt-8 pt-5 border-t border-border/40">
           <p className="text-xs text-muted">
             © {new Date().getFullYear()} PrepUniv. All rights reserved.
           </p>

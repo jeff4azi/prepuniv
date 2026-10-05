@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { usePageTitle } from "../hooks/usePageTitle";
 import {
   Plus,
@@ -20,6 +20,7 @@ import {
   ExternalLink,
   MoreHorizontal,
   PlayCircle,
+  Palette,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -789,6 +790,7 @@ function QuizRowMenu({
 
   const canShare =
     typeof navigator !== "undefined" && typeof navigator.share === "function";
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!open || !btnRef.current) return;
@@ -906,6 +908,26 @@ function QuizRowMenu({
                 strokeWidth={2}
               />
               Preview public page
+            </button>
+
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                navigate(`/creator/quizzes/${quiz.id}/analytics`);
+              }}
+              className="w-full h-9.5 px-3 rounded-xl text-[13px] font-heading font-semibold flex items-center gap-2.5 text-text hover:bg-surface/70 active:scale-[0.99] transition-all"
+            >
+              <Palette
+                className="w-4 h-4 shrink-0"
+                style={{ color: "var(--color-primary)" }}
+                strokeWidth={2}
+              />
+              Promo graphics
+              <span className="ml-auto text-[10px] font-heading font-bold uppercase tracking-wider text-muted">
+                New
+              </span>
             </button>
 
             <div className="h-px my-1 bg-border/40 -mx-1" />

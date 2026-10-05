@@ -34,6 +34,8 @@ import { supabase } from "../lib/supabase";
 import { toAttempt } from "../lib/queries";
 import type { QuizAttempt } from "../types";
 import { formatNaira } from "./CreatorDashboardPage";
+import { QuizShareGraphics } from "../components/QuizShareGraphics";
+import { Toast, useToast } from "../components/Toast";
 
 import { apiFetch } from "../lib/api";
 
@@ -122,6 +124,7 @@ function ChartTooltip({
 export function QuizAnalyticsPage() {
   const { id: quizId } = useParams<{ id: string }>();
   const { currentUser, walletTxns } = useAuth();
+  const [toast, showToast, dismissToast] = useToast();
 
   const [loading, setLoading] = useState(true);
   const [quiz, setQuiz] = useState<DbQuiz | null>(null);
@@ -287,6 +290,32 @@ export function QuizAnalyticsPage() {
     () => new Set(attempts.map((a) => a.user_id)).size,
     [attempts],
   );
+
+  function publicQuizUrl(qid: string) {
+    const path = `/quiz/${qid}`;
+    if (typeof window !== "undefined" && window.location?.origin)
+      return window.location.origin + path;
+    return path;
+  }
+
+  const graphicData = useMemo(() => {
+    if (!quiz) return null;
+    return {
+      quizId: quiz.id,
+      quizTitle: quiz.title,
+      quizDescription: quiz.description,
+      courseCode: course?.code ?? "Quiz",
+      courseTitle: course?.name,
+      questionCount: Number(quiz.question_count ?? 0),
+      priceKobo: Number(quiz.price),
+      attemptCount: totalAttempts,
+      creatorEarningsKobo: creatorEarnings,
+      creatorName: currentUser.full_name || "PrepUniv Creator",
+      creatorAvatarUrl: currentUser.avatar_url,
+      creatorBio: currentUser.bio,
+      publicUrl: publicQuizUrl(quiz.id),
+    } as const;
+  }, [quiz, course, totalAttempts, creatorEarnings, currentUser]);
 
   // ── Score distribution ─────────────────────────────────────────────────────
   const scoreDistribution = useMemo(() => {
@@ -473,7 +502,8 @@ export function QuizAnalyticsPage() {
   const isOwner = quiz.creator_id === currentUser.id;
 
   return (
-    <PageContainer className="!max-w-[1100px]">
+    <>
+      <PageContainer className="!max-w-[1100px]">
       <div className="space-y-6 lg:space-y-7">
         {/* 1. Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -563,7 +593,12 @@ export function QuizAnalyticsPage() {
           />
         </div>
 
-        {/* 3 & 4. Charts row */}
+        {/* 3. Promo graphics */}
+        {isOwner && graphicData && (
+          <QuizShareGraphics data={graphicData} showToast={showToast} />
+        )}
+
+        {/* 4 & 5. Charts row */}
         {totalAttempts === 0 ? (
           <Card padded className="py-10 text-center">
             <div className="h-14 w-14 rounded-3xl bg-surface/80 text-muted flex items-center justify-center mb-3 shadow-card ring-1 ring-border/50 mx-auto">
@@ -793,7 +828,15 @@ export function QuizAnalyticsPage() {
           </Card>
         )}
       </div>
-    </PageContainer>
+      </PageContainer>
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          onDismiss={dismissToast}
+        />
+      )}
+    </>
   );
 }
 
