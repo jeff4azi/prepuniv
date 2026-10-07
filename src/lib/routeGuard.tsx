@@ -100,7 +100,9 @@ export function RequireAuth({ children, role, redirectTo }: RequireAuthProps) {
   return <>{children}</>;
 }
 
-export const AUTH_REDIRECT_KEY = "prepuniv:auth_redirect";
+// v2: uses localStorage instead of sessionStorage so the redirect
+// survives a magic-link email being opened in a new tab (same browser).
+export const AUTH_REDIRECT_KEY = "prepuniv:auth_redirect_v2";
 
 /**
  * Validates that a redirect path is a safe internal application route
@@ -125,7 +127,7 @@ export function sanitizeAuthRedirect(url?: string | null): string | null {
 
 export function getSavedAuthRedirect(): string | null {
   try {
-    const val = sessionStorage.getItem(AUTH_REDIRECT_KEY);
+    const val = localStorage.getItem(AUTH_REDIRECT_KEY);
     return sanitizeAuthRedirect(val);
   } catch {
     return null;
@@ -136,7 +138,7 @@ export function saveAuthRedirect(url: string) {
   try {
     const sanitized = sanitizeAuthRedirect(url);
     if (!sanitized) return;
-    sessionStorage.setItem(AUTH_REDIRECT_KEY, sanitized);
+    localStorage.setItem(AUTH_REDIRECT_KEY, sanitized);
   } catch {
     // no-op
   }
@@ -144,7 +146,9 @@ export function saveAuthRedirect(url: string) {
 
 export function clearSavedAuthRedirect() {
   try {
-    sessionStorage.removeItem(AUTH_REDIRECT_KEY);
+    localStorage.removeItem(AUTH_REDIRECT_KEY);
+    // Also clear any stale v1 sessionStorage entry from the old implementation
+    try { sessionStorage.removeItem("prepuniv:auth_redirect"); } catch { /* no-op */ }
   } catch {
     // no-op
   }

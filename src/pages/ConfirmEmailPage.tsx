@@ -25,7 +25,11 @@ import { AuthShell, AuthCard } from "../components/AuthShell";
 import { Button } from "../components/Button";
 import { TextInput, validateEmail } from "../components/Form";
 import { useAuth } from "../context/AuthContext";
-import { getDefaultDashboard } from "../lib/routeGuard";
+import {
+  getDefaultDashboard,
+  getSavedAuthRedirect,
+  clearSavedAuthRedirect,
+} from "../lib/routeGuard";
 import { useApplyPendingUniversity } from "../hooks/useApplyPendingUniversity";
 
 const RESEND_COOLDOWN = 60;
@@ -155,7 +159,9 @@ export function ConfirmEmailPage() {
   useEffect(() => {
     if (state !== "success") return;
     if (autoRedirectCount <= 0) {
-      navigate(getDefaultDashboard(currentUser), { replace: true });
+      const savedRedirect = getSavedAuthRedirect();
+      clearSavedAuthRedirect();
+      navigate(savedRedirect ?? getDefaultDashboard(currentUser), { replace: true });
       return;
     }
     const t = setTimeout(() => setAutoRedirectCount((c) => c - 1), 1000);
@@ -211,9 +217,11 @@ export function ConfirmEmailPage() {
               fullWidth
               size="lg"
               className="h-12"
-              onClick={() =>
-                navigate(getDefaultDashboard(currentUser), { replace: true })
-              }
+              onClick={() => {
+                const savedRedirect = getSavedAuthRedirect();
+                clearSavedAuthRedirect();
+                navigate(savedRedirect ?? getDefaultDashboard(currentUser), { replace: true });
+              }}
             >
               Continue to PrepUniv
               <ArrowRight className="w-[18px] h-[18px]" />
