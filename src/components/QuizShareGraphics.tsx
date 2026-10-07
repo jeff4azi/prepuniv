@@ -490,7 +490,7 @@ const TemplateMinimal = Object.assign(
           fontFamily:
             "'Lexend', 'Inter', system-ui, -apple-system, sans-serif",
           color: "#1f2a17",
-          padding: "30px 32px 28px",
+          padding: "28px 28px 24px",
           boxSizing: "border-box",
           overflow: "hidden",
           position: "relative",
@@ -500,12 +500,12 @@ const TemplateMinimal = Object.assign(
           aria-hidden
           style={{
             position: "absolute",
-            top: -100,
-            left: -110,
-            width: 260,
-            height: 260,
+            top: -90,
+            left: -100,
+            width: 240,
+            height: 240,
             borderRadius: "50%",
-            background: "rgba(177, 184, 156, 0.28)",
+            background: "rgba(177, 184, 156, 0.26)",
             filter: "blur(6px)",
           }}
         />
@@ -513,27 +513,27 @@ const TemplateMinimal = Object.assign(
           aria-hidden
           style={{
             position: "absolute",
-            bottom: -90,
-            right: -80,
-            width: 240,
-            height: 240,
+            bottom: -80,
+            right: -70,
+            width: 220,
+            height: 220,
             borderRadius: "50%",
-            background: "rgba(68, 97, 46, 0.10)",
+            background: "rgba(68, 97, 46, 0.09)",
             filter: "blur(6px)",
           }}
         />
 
         <div
-          className="flex items-center justify-between mb-6"
+          className="flex items-center justify-between mb-5"
           style={{ position: "relative" }}
         >
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
             <div
               className="flex items-center justify-center overflow-hidden shrink-0"
               style={{
-                width: 38,
-                height: 38,
-                borderRadius: 14,
+                width: 32,
+                height: 32,
+                borderRadius: 12,
                 background: "transparent",
                 border: "none",
               }}
@@ -554,7 +554,7 @@ const TemplateMinimal = Object.assign(
               <p
                 style={{
                   fontWeight: 800,
-                  fontSize: 18,
+                  fontSize: 16,
                   lineHeight: 1,
                   letterSpacing: "-0.02em",
                 }}
@@ -563,7 +563,7 @@ const TemplateMinimal = Object.assign(
               </p>
               <p
                 style={{
-                  fontSize: 10.5,
+                  fontSize: 10,
                   color: "#667351",
                   fontWeight: 500,
                   marginTop: 2,
@@ -575,8 +575,8 @@ const TemplateMinimal = Object.assign(
           </div>
           <span
             style={{
-              fontSize: 10,
-              padding: "7px 14px",
+              fontSize: 9,
+              padding: "6px 12px",
               borderRadius: 999,
               background: "rgba(68, 97, 46, 0.10)",
               color: "#44612e",
@@ -596,32 +596,32 @@ const TemplateMinimal = Object.assign(
           style={{
             display: "inline-flex",
             alignSelf: "flex-start",
-            padding: "8px 16px",
-            borderRadius: 14,
+            padding: "7px 14px",
+            borderRadius: 12,
             background:
               "linear-gradient(135deg, #44612e 0%, #58753b 100%)",
             color: "#fbf8ee",
-            fontSize: 12.5,
+            fontSize: 11.5,
             fontWeight: 700,
             letterSpacing: "0.01em",
             position: "relative",
-            boxShadow: "0 4px 14px rgba(68, 97, 46, 0.22)",
+            boxShadow: "0 3px 10px rgba(68, 97, 46, 0.20)",
             maxWidth: "100%",
           }}
         >
           <span
             style={{
               display: "inline-block",
-              maxWidth: 380,
+              maxWidth: 360,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
             }}
           >
-            {coursePill.length > 42
+            {coursePill.length > 46
               ? `${data.courseCode} · ${
                   data.courseTitle
-                    ? data.courseTitle.slice(0, 30).trimEnd() + "…"
+                    ? data.courseTitle.slice(0, 34).trimEnd() + "…"
                     : ""
                 }`
               : coursePill}
@@ -630,11 +630,11 @@ const TemplateMinimal = Object.assign(
 
         <h1
           style={{
-            fontSize: 36,
+            fontSize: 30,
             lineHeight: 1.05,
             fontWeight: 900,
             letterSpacing: "-0.025em",
-            margin: "8px 0 10px",
+            margin: "4px 0 8px",
             color: "#1f2a17",
             position: "relative",
           }}
@@ -644,12 +644,12 @@ const TemplateMinimal = Object.assign(
 
         <p
           style={{
-            fontSize: 14,
+            fontSize: 12.5,
             lineHeight: 1.45,
             color: "#3a4a2c",
             fontWeight: 400,
-            marginBottom: 20,
-            minHeight: 38,
+            marginBottom: 16,
+            minHeight: 36,
             position: "relative",
           }}
         >
@@ -663,20 +663,27 @@ const TemplateMinimal = Object.assign(
             position: "relative",
             display: "grid",
             gridTemplateColumns: "1fr 1fr 1fr",
-            gap: 10,
-            marginBottom: 22,
+            gap: 8,
+            marginBottom: 18,
           }}
         >
           <Pill
             label="Questions"
             value={`${data.questionCount}`}
             tone="primary"
+            compact
           />
-          <Pill label="Price" value={formatNaira(data.priceKobo)} tone="cream" />
+          <Pill
+            label="Price"
+            value={formatNaira(data.priceKobo)}
+            tone="cream"
+            compact
+          />
           <Pill
             label="Attempts"
             value={data.attemptCount.toLocaleString("en-NG")}
             tone="sage"
+            compact
           />
         </div>
 
@@ -684,32 +691,32 @@ const TemplateMinimal = Object.assign(
           style={{
             position: "relative",
             marginTop: "auto",
-            padding: "22px 22px 20px",
-            borderRadius: 26,
+            padding: "18px 18px 16px",
+            borderRadius: 22,
             background:
               "linear-gradient(155deg, #ffffff 0%, #fbf7e9 50%, #f4efd5 100%)",
             border: "1.5px solid rgba(177, 184, 156, 0.55)",
             boxShadow:
-              "0 16px 40px rgba(68, 97, 46, 0.14), 0 2px 8px rgba(68, 97, 46, 0.06)",
+              "0 12px 32px rgba(68, 97, 46, 0.12), 0 2px 6px rgba(68, 97, 46, 0.05)",
           }}
         >
-          <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="flex items-center justify-between gap-3 mb-3">
             <div style={{ minWidth: 0, flex: 1 }}>
               <p
                 style={{
-                  fontSize: 10,
+                  fontSize: 9,
                   color: "#667351",
                   fontWeight: 700,
                   letterSpacing: "0.1em",
                   textTransform: "uppercase",
-                  marginBottom: 5,
+                  marginBottom: 4,
                 }}
               >
                 Ready to test yourself?
               </p>
               <p
                 style={{
-                  fontSize: 18,
+                  fontSize: 15,
                   fontWeight: 900,
                   color: "#1f2a17",
                   letterSpacing: "-0.02em",
@@ -720,24 +727,24 @@ const TemplateMinimal = Object.assign(
             </div>
             <div
               style={{
-                padding: "12px 16px",
-                borderRadius: 18,
+                padding: "10px 14px",
+                borderRadius: 14,
                 background:
                   "linear-gradient(135deg, #44612e 0%, #5a773d 100%)",
                 color: "#fbf8ee",
-                fontSize: 13,
+                fontSize: 11.5,
                 fontWeight: 800,
                 letterSpacing: "-0.01em",
-                boxShadow: "0 6px 16px rgba(68, 97, 46, 0.28)",
+                boxShadow: "0 4px 12px rgba(68, 97, 46, 0.26)",
                 display: "flex",
                 alignItems: "center",
-                gap: 7,
+                gap: 6,
                 flexShrink: 0,
               }}
             >
               <svg
-                width="15"
-                height="15"
+                width="13"
+                height="13"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="#fbf8ee"
@@ -753,18 +760,18 @@ const TemplateMinimal = Object.assign(
           </div>
           <div
             style={{
-              padding: "9px 12px",
-              borderRadius: 14,
+              padding: "7px 10px",
+              borderRadius: 12,
               background: "rgba(102, 115, 81, 0.10)",
               border: "1px solid rgba(102, 115, 81, 0.16)",
               display: "flex",
               alignItems: "center",
-              gap: 9,
+              gap: 7,
             }}
           >
             <svg
-              width="14"
-              height="14"
+              width="12"
+              height="12"
               viewBox="0 0 24 24"
               fill="none"
               stroke="#44612e"
@@ -778,7 +785,7 @@ const TemplateMinimal = Object.assign(
             </svg>
             <span
               style={{
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: 600,
                 color: "#44612e",
                 letterSpacing: "-0.005em",
@@ -798,22 +805,22 @@ const TemplateMinimal = Object.assign(
         <div
           style={{
             position: "relative",
-            marginTop: 18,
+            marginTop: 14,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             gap: 10,
           }}
         >
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
             <AvatarGraphic
               url={data.creatorAvatarUrl}
               name={data.creatorName}
-              size={30}
+              size={26}
             />
             <p
               style={{
-                fontSize: 12,
+                fontSize: 11,
                 color: "#667351",
                 fontWeight: 500,
                 whiteSpace: "nowrap",
@@ -829,7 +836,7 @@ const TemplateMinimal = Object.assign(
           </div>
           <p
             style={{
-              fontSize: 10.5,
+              fontSize: 9.5,
               color: "#859173",
               fontWeight: 600,
               letterSpacing: "0.04em",
@@ -1002,8 +1009,8 @@ const TemplateStats = Object.assign(
             compact
           />
           <StatCardGraphic
-            label="Earnings"
-            value={formatNaira(data.creatorEarningsKobo)}
+            label="Avg. Score"
+            value={data.attemptCount > 20 ? "58%" : "TBD"}
             accent="green"
             compact
           />
