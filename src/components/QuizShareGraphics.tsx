@@ -475,6 +475,9 @@ const TemplateMinimal = Object.assign(
     },
   ) => {
     const { data, ref } = props;
+    const coursePill = `${data.courseCode}${
+      data.courseTitle ? ` · ${data.courseTitle}` : ""
+    }`;
     return (
       <div
         ref={ref}
@@ -483,23 +486,54 @@ const TemplateMinimal = Object.assign(
           width: CAPTURE_W,
           height: CAPTURE_H,
           background:
-            "linear-gradient(160deg, #fbf8ee 0%, #f4efdb 45%, #ece4c6 100%)",
+            "linear-gradient(160deg, #fbf8ee 0%, #f6f0da 50%, #ece3bd 100%)",
           fontFamily:
             "'Lexend', 'Inter', system-ui, -apple-system, sans-serif",
           color: "#1f2a17",
-          padding: "32px 32px 28px",
+          padding: "30px 32px 28px",
           boxSizing: "border-box",
           overflow: "hidden",
+          position: "relative",
         }}
       >
-        <div className="flex items-center justify-between mb-7">
-          <div className="flex items-center gap-2.5">
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: -100,
+            left: -110,
+            width: 260,
+            height: 260,
+            borderRadius: "50%",
+            background: "rgba(177, 184, 156, 0.28)",
+            filter: "blur(6px)",
+          }}
+        />
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            bottom: -90,
+            right: -80,
+            width: 240,
+            height: 240,
+            borderRadius: "50%",
+            background: "rgba(68, 97, 46, 0.10)",
+            filter: "blur(6px)",
+          }}
+        />
+
+        <div
+          className="flex items-center justify-between mb-6"
+          style={{ position: "relative" }}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
             <div
               className="flex items-center justify-center overflow-hidden shrink-0"
               style={{
-                width: 34,
-                height: 34,
-                borderRadius: 12,
+                width: 38,
+                height: 38,
+                borderRadius: 14,
                 background: "transparent",
                 border: "none",
               }}
@@ -516,25 +550,41 @@ const TemplateMinimal = Object.assign(
                 }}
               />
             </div>
-            <div>
-              <p style={{ fontWeight: 700, fontSize: 15, lineHeight: 1, letterSpacing: "-0.01em" }}>
+            <div className="min-w-0">
+              <p
+                style={{
+                  fontWeight: 800,
+                  fontSize: 18,
+                  lineHeight: 1,
+                  letterSpacing: "-0.02em",
+                }}
+              >
                 PrepUniv
               </p>
-              <p style={{ fontSize: 10, color: "#667351", fontWeight: 500, marginTop: 2 }}>
+              <p
+                style={{
+                  fontSize: 10.5,
+                  color: "#667351",
+                  fontWeight: 500,
+                  marginTop: 2,
+                }}
+              >
                 Study smarter, together
               </p>
             </div>
           </div>
           <span
             style={{
-              fontSize: 9.5,
-              padding: "5px 11px",
+              fontSize: 10,
+              padding: "7px 14px",
               borderRadius: 999,
-              background: "rgba(102, 115, 81, 0.12)",
+              background: "rgba(68, 97, 46, 0.10)",
               color: "#44612e",
-              fontWeight: 700,
-              letterSpacing: "0.06em",
+              fontWeight: 800,
+              letterSpacing: "0.08em",
               textTransform: "uppercase",
+              border: "1.5px solid rgba(68, 97, 46, 0.14)",
+              flexShrink: 0,
             }}
           >
             New Quiz
@@ -542,44 +592,65 @@ const TemplateMinimal = Object.assign(
         </div>
 
         <div
-          className="mb-3"
+          className="mb-4"
           style={{
             display: "inline-flex",
             alignSelf: "flex-start",
-            padding: "7px 15px",
-            borderRadius: 12,
-            background: "#44612e",
+            padding: "8px 16px",
+            borderRadius: 14,
+            background:
+              "linear-gradient(135deg, #44612e 0%, #58753b 100%)",
             color: "#fbf8ee",
-            fontSize: 13,
+            fontSize: 12.5,
             fontWeight: 700,
-            letterSpacing: "0.02em",
+            letterSpacing: "0.01em",
+            position: "relative",
+            boxShadow: "0 4px 14px rgba(68, 97, 46, 0.22)",
+            maxWidth: "100%",
           }}
         >
-          {data.courseCode}
-          {data.courseTitle && ` · ${data.courseTitle}`.slice(0, 24)}
+          <span
+            style={{
+              display: "inline-block",
+              maxWidth: 380,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {coursePill.length > 42
+              ? `${data.courseCode} · ${
+                  data.courseTitle
+                    ? data.courseTitle.slice(0, 30).trimEnd() + "…"
+                    : ""
+                }`
+              : coursePill}
+          </span>
         </div>
 
         <h1
           style={{
-            fontSize: 32,
-            lineHeight: 1.08,
-            fontWeight: 800,
-            letterSpacing: "-0.02em",
-            margin: "10px 0 12px",
+            fontSize: 36,
+            lineHeight: 1.05,
+            fontWeight: 900,
+            letterSpacing: "-0.025em",
+            margin: "8px 0 10px",
             color: "#1f2a17",
+            position: "relative",
           }}
         >
-          {truncate(data.quizTitle, 6)}
+          {truncate(data.quizTitle, 5)}
         </h1>
 
         <p
           style={{
-            fontSize: 13,
-            lineHeight: 1.5,
+            fontSize: 14,
+            lineHeight: 1.45,
             color: "#3a4a2c",
             fontWeight: 400,
-            marginBottom: 18,
+            marginBottom: 20,
             minHeight: 38,
+            position: "relative",
           }}
         >
           {data.quizDescription
@@ -589,64 +660,145 @@ const TemplateMinimal = Object.assign(
 
         <div
           style={{
-            display: "flex",
+            position: "relative",
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr 1fr",
             gap: 10,
-            marginBottom: 18,
-            flexWrap: "wrap",
+            marginBottom: 22,
           }}
         >
-          <Pill label="Questions" value={`${data.questionCount}`} tone="primary" compact />
-          <Pill label="Price" value={formatNaira(data.priceKobo)} tone="cream" compact />
+          <Pill
+            label="Questions"
+            value={`${data.questionCount}`}
+            tone="primary"
+          />
+          <Pill label="Price" value={formatNaira(data.priceKobo)} tone="cream" />
           <Pill
             label="Attempts"
             value={data.attemptCount.toLocaleString("en-NG")}
             tone="sage"
-            compact
           />
         </div>
 
         <div
           style={{
+            position: "relative",
             marginTop: "auto",
-            padding: "16px 18px",
-            borderRadius: 20,
+            padding: "22px 22px 20px",
+            borderRadius: 26,
             background:
-              "linear-gradient(135deg, rgba(68, 97, 46, 0.08) 0%, rgba(102, 115, 81, 0.06) 100%)",
-            border: "1.5px solid rgba(68, 97, 46, 0.18)",
+              "linear-gradient(155deg, #ffffff 0%, #fbf7e9 50%, #f4efd5 100%)",
+            border: "1.5px solid rgba(177, 184, 156, 0.55)",
+            boxShadow:
+              "0 16px 40px rgba(68, 97, 46, 0.14), 0 2px 8px rgba(68, 97, 46, 0.06)",
           }}
         >
-          <div className="flex items-center justify-between gap-3">
-            <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: 10, color: "#667351", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 3 }}>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <p
+                style={{
+                  fontSize: 10,
+                  color: "#667351",
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  marginBottom: 5,
+                }}
+              >
                 Ready to test yourself?
               </p>
-              <p style={{ fontSize: 15, fontWeight: 700, color: "#1f2a17", letterSpacing: "-0.01em" }}>
+              <p
+                style={{
+                  fontSize: 18,
+                  fontWeight: 900,
+                  color: "#1f2a17",
+                  letterSpacing: "-0.02em",
+                }}
+              >
                 Start now on PrepUniv →
               </p>
             </div>
             <div
               style={{
-                width: 48,
-                height: 48,
-                borderRadius: 16,
-                background: "#fff",
+                padding: "12px 16px",
+                borderRadius: 18,
+                background:
+                  "linear-gradient(135deg, #44612e 0%, #5a773d 100%)",
+                color: "#fbf8ee",
+                fontSize: 13,
+                fontWeight: 800,
+                letterSpacing: "-0.01em",
+                boxShadow: "0 6px 16px rgba(68, 97, 46, 0.28)",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-                boxShadow:
-                  "0 2px 8px rgba(68, 97, 46, 0.08), 0 1px 3px rgba(68, 97, 46, 0.04)",
-                border: "1px solid rgba(177, 184, 156, 0.5)",
+                gap: 7,
                 flexShrink: 0,
               }}
             >
-              <FakeQR size={3.2} />
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#fbf8ee"
+                strokeWidth="2.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+              Open Quiz
             </div>
+          </div>
+          <div
+            style={{
+              padding: "9px 12px",
+              borderRadius: 14,
+              background: "rgba(102, 115, 81, 0.10)",
+              border: "1px solid rgba(102, 115, 81, 0.16)",
+              display: "flex",
+              alignItems: "center",
+              gap: 9,
+            }}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#44612e"
+              strokeWidth="2.3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ flexShrink: 0 }}
+            >
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: "#44612e",
+                letterSpacing: "-0.005em",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                flex: 1,
+              }}
+            >
+              {data.publicShareUrl
+                ? data.publicShareUrl.replace(/^https?:\/\//, "")
+                : "prepuniv.com/quiz/…"}
+            </span>
           </div>
         </div>
 
         <div
           style={{
-            marginTop: 16,
+            position: "relative",
+            marginTop: 18,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -654,12 +806,35 @@ const TemplateMinimal = Object.assign(
           }}
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            <AvatarGraphic url={data.creatorAvatarUrl} name={data.creatorName} size={26} />
-            <p style={{ fontSize: 11, color: "#667351", fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              by <span style={{ color: "#44612e", fontWeight: 700 }}>{data.creatorName}</span>
+            <AvatarGraphic
+              url={data.creatorAvatarUrl}
+              name={data.creatorName}
+              size={30}
+            />
+            <p
+              style={{
+                fontSize: 12,
+                color: "#667351",
+                fontWeight: 500,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              by{" "}
+              <span style={{ color: "#44612e", fontWeight: 700 }}>
+                {data.creatorName}
+              </span>
             </p>
           </div>
-          <p style={{ fontSize: 9.5, color: "#859173", fontWeight: 500, letterSpacing: "0.04em" }}>
+          <p
+            style={{
+              fontSize: 10.5,
+              color: "#859173",
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+            }}
+          >
             prepuniv.com
           </p>
         </div>
