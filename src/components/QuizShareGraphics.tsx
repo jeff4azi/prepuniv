@@ -805,7 +805,7 @@ const TemplateMinimal = Object.assign(
         <div
           style={{
             position: "relative",
-            marginTop: 14,
+            marginTop: "auto",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
