@@ -362,12 +362,6 @@ export function QuizShareGraphics({
                     </div>
                   ))}
                 </div>
-                <div className="absolute top-2.5 right-2.5 z-10 pointer-events-none">
-                  <Badge variant="primary" size="sm" dot>
-                    <ImageIcon className="w-3 h-3" />
-                    Preview
-                  </Badge>
-                </div>
               </div>
               <p className="mt-3 text-center text-[12px] text-muted font-heading font-medium">
                 Design {activeIdx + 1} of {TEMPLATE_COUNT} ·{" "}
