@@ -11,6 +11,10 @@ import {
   FileQuestion,
   GraduationCap,
   MapPin,
+  Star,
+  Send,
+  Pencil,
+  CheckCircle2,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -22,6 +26,8 @@ import { ShareIconButton } from "../components/ShareActions";
 import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
+import { apiFetch } from "../lib/api";
+import { fetchSingleCreatorRating } from "../lib/queries";
 import type {
   DbQuiz,
   DbCourse,
@@ -81,6 +87,8 @@ export function CreatorProfilePage() {
   const [courses, setCourses] = useState<Map<string, DbCourse>>(new Map());
   const [myAttempts, setMyAttempts] = useState<DbQuizAttempt[]>([]);
   const [university, setUniversity] = useState<DbUniversity | null>(null);
+  const [creatorRating, setCreatorRating] = useState<{ avg_rating: number; total_reviews: number } | null>(null);
+  const [reviewEligible, setReviewEligible] = useState<boolean | null>(null); // null = unknown
 
   // Dynamic tab title: loading → null, found → name, not found → fallback
   usePageTitle(
@@ -171,6 +179,19 @@ export function CreatorProfilePage() {
       }
 
       if (!cancelled) setLoading(false);
+
+      // Fetch creator rating (anon-safe RPC)
+      const ratingResult = await fetchSingleCreatorRating(id);
+      if (!cancelled && ratingResult) setCreatorRating(ratingResult);
+
+      // Check review eligibility for logged-in users
+      if (isLoggedIn && !cancelled) {
+        const { data: eligData } = await apiFetch<{ eligible: boolean }>(
+          "/api/reviews/eligible",
+          { query: { type: "creator", creator_id: id } },
+        );
+        if (!cancelled) setReviewEligible(eligData?.eligible ?? false);
+      }
     })();
 
     return () => {
@@ -198,6 +219,126 @@ export function CreatorProfilePage() {
     const sum = myAttempts.reduce((s, a) => s + (a.score ?? 0), 0);
     return Math.round(sum / myAttempts.length);
   }, [myAttempts]);
+
+  // ── Creator review form ─────────────────────────────────────────────────────
+  function CreatorReviewCard() {
+    const [rating, setRating] = useState(0);
+    const [hover, setHover] = useState(0);
+    const [text, setText] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
+    const [existingId, setExistingId] = useState<string | null>(null);
+    const [editing, setEditing] = useState(false);
+
+    async function handleSubmit() {
+      if (!id || rating === 0) return;
+      setSubmitting(true);
+      const method = existingId ? "PATCH" : "POST";
+      const path = existingId ? `/api/reviews/${existingId}` : "/api/reviews";
+      const body = existingId
+        ? { rating, review_text: text || null }
+        : { target_type: "creator", target_creator_id: id, rating, review_text: text || null };
+      const { error, status } = await apiFetch(path, { method, body });
+      setSubmitting(false);
+      if (!error || status === 201 || status === 200) {
+        setSubmitted(true);
+        setEditing(false);
+        showToast({ message: "Thanks! Your rating has been saved." });
+        // Refresh rating display
+        const refreshed = await fetchSingleCreatorRating(id);
+        if (refreshed) setCreatorRating(refreshed);
+      } else if (status === 409) {
+        showToast({ message: "You've already rated this creator. Edit your review in Settings > My Reviews." });
+        setSubmitted(true);
+      } else {
+        showToast({ message: error ?? "Failed to submit review.", variant: "danger" });
+      }
+    }
+
+    if (!reviewEligible) return null;
+
+    if (submitted && !editing) {
+      return (
+        <Card padded={false} className="px-5 py-4 flex items-center gap-3 bg-success-bg border-success/20">
+          <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
+          <p className="text-sm font-heading font-medium text-success leading-snug">
+            Creator rating saved!
+          </p>
+          <button
+            type="button"
+            onClick={() => { setSubmitted(false); setEditing(true); }}
+            className="ml-auto shrink-0 inline-flex items-center gap-1 text-xs text-success/70 hover:text-success font-heading font-semibold transition-colors"
+          >
+            <Pencil className="w-3.5 h-3.5" /> Edit
+          </button>
+        </Card>
+      );
+    }
+
+    return (
+      <Card padded={false} className="px-5 py-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Star className="w-4 h-4 text-warning fill-warning shrink-0" />
+          <p className="font-heading font-semibold text-sm text-text">
+            Rate this creator
+          </p>
+          <span className="text-xs text-muted">(you've purchased from them)</span>
+        </div>
+        <div className="flex items-center gap-1">
+          {[1, 2, 3, 4, 5].map((s) => (
+            <button
+              key={s}
+              type="button"
+              id={`creator-star-${s}`}
+              onClick={() => setRating(s)}
+              onMouseEnter={() => setHover(s)}
+              onMouseLeave={() => setHover(0)}
+              className="p-1 rounded-lg transition-transform hover:scale-110 active:scale-95"
+              aria-label={`Rate ${s} star${s > 1 ? "s" : ""}`}
+            >
+              <Star
+                className={`w-7 h-7 transition-colors ${
+                  s <= (hover || rating)
+                    ? "text-warning fill-warning"
+                    : "text-border fill-transparent"
+                }`}
+              />
+            </button>
+          ))}
+          {rating > 0 && (
+            <span className="ml-1 text-xs text-muted font-heading">
+              {["Poor", "Fair", "Good", "Great", "Excellent!"][rating - 1]}
+            </span>
+          )}
+        </div>
+        {rating > 0 && (
+          <textarea
+            id="creator-review-text"
+            value={text}
+            onChange={(e) => setText(e.target.value.slice(0, 280))}
+            placeholder="What was great about this creator's quizzes? (optional)"
+            rows={2}
+            className="w-full resize-none rounded-2xl border border-border/60 bg-surface/40 px-4 py-3 text-sm text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+          />
+        )}
+        {rating > 0 && (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-muted">{text.length}/280</span>
+            <Button
+              size="sm"
+              variant="primary"
+              isLoading={submitting}
+              onClick={handleSubmit}
+              id="creator-review-submit"
+            >
+              {!submitting && <Send className="w-3.5 h-3.5" />}
+              Submit rating
+            </Button>
+          </div>
+        )}
+      </Card>
+    );
+  }
 
   // ── Loading skeleton ────────────────────────────────────────────────────────
   if (loading || profile === undefined) {
@@ -422,7 +563,7 @@ export function CreatorProfilePage() {
           </div>
 
           {/* ── Stats strip ── */}
-          <div className="border-t border-border/40 grid grid-cols-2 sm:grid-cols-3 divide-x divide-border/40">
+          <div className="border-t border-border/40 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 divide-x divide-border/40">
             <StatChip
               icon={BookOpen}
               label="Quizzes published"
@@ -448,6 +589,19 @@ export function CreatorProfilePage() {
                   .toLocaleString()}
               />
             )}
+            {creatorRating && creatorRating.avg_rating > 0 ? (
+              <div className="flex flex-col items-center gap-1.5 px-5 py-4 flex-1 min-w-0">
+                <div className="h-9 w-9 rounded-2xl bg-warning/10 text-warning flex items-center justify-center">
+                  <Star className="w-4.5 h-4.5 fill-warning" strokeWidth={0} />
+                </div>
+                <p className="font-heading font-bold text-xl text-text leading-none">
+                  {creatorRating.avg_rating.toFixed(1)}
+                </p>
+                <p className="text-[11px] font-heading font-medium text-muted text-center leading-tight">
+                  {creatorRating.total_reviews} rating{creatorRating.total_reviews !== 1 ? "s" : ""}
+                </p>
+              </div>
+            ) : null}
           </div>
         </Card>
 
@@ -514,6 +668,9 @@ export function CreatorProfilePage() {
               })}
             </div>
           )}
+
+          {/* ── Creator review form (only for eligible users) ── */}
+          {isLoggedIn && reviewEligible && <CreatorReviewCard />}
         </div>
       </div>
     </PageContainer>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { usePageTitle } from "../hooks/usePageTitle";
 import {
   Search,
@@ -19,6 +19,8 @@ import {
   ListChecks,
   BookMarked,
   Share2,
+  Star,
+  MessageSquareQuote,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { LandingTopNav } from "../components/LandingTopNav";
@@ -32,10 +34,39 @@ import {
   fetchPublishedQuizzes,
   fetchCourses,
   fetchAllProfiles,
+  fetchPlatformStats,
+  fetchPlatformRating,
+  fetchCreatorRatingSummary,
+  fetchFeaturedTestimonials,
+  type PlatformStats,
+  type PlatformRating,
+  type Testimonial,
 } from "../lib/queries";
+import {
+  formatCompactNumber,
+  formatCompactNaira,
+} from "../lib/format";
 
 // ---------- HERO ----------
-function Hero() {
+interface HeroProps {
+  stats: PlatformStats | null;
+  platformRating: PlatformRating | null;
+  creators: Profile[];
+  statsLoading: boolean;
+}
+
+function Hero({ stats, platformRating, creators, statsLoading }: HeroProps) {
+  const userCount = stats ? formatCompactNumber(stats.total_registered_users) : null;
+  const avgRating = platformRating && platformRating.avg_rating > 0
+    ? platformRating.avg_rating.toFixed(1)
+    : null;
+  const reviewCount = platformRating && platformRating.total_reviews > 0
+    ? formatCompactNumber(platformRating.total_reviews)
+    : null;
+
+  // Top 4 approved creators for avatar chips
+  const topCreators = creators.filter((c) => c.is_approved_creator).slice(0, 4);
+
   return (
     <section className="relative w-full overflow-hidden">
       <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14 pb-16 sm:pb-20 lg:pb-28">
@@ -75,17 +106,47 @@ function Hero() {
               </div>
               <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4">
                 <div className="flex items-center gap-3">
+                  {/* Avatar chips: real approved creators if loaded, fallback to placeholders */}
                   <div className="flex -space-x-2">
-                    <Avatar name="Tolu A." size="sm" />
-                    <Avatar name="Amesoma O." size="sm" />
-                    <Avatar name="Emeka N." size="sm" />
-                    <Avatar name="Zainab A." size="sm" />
+                    {statsLoading || topCreators.length === 0 ? (
+                      <>
+                        <Avatar name="T" size="sm" />
+                        <Avatar name="A" size="sm" />
+                        <Avatar name="E" size="sm" />
+                        <Avatar name="Z" size="sm" />
+                      </>
+                    ) : (
+                      topCreators.map((c) => (
+                        <Avatar
+                          key={c.id}
+                          name={c.full_name}
+                          src={c.avatar_url ?? undefined}
+                          size="sm"
+                        />
+                      ))
+                    )}
                   </div>
                   <div>
                     <div className="flex items-center gap-1 text-warning text-[13px]">
-                      {"★★★★★"}
+                      {avgRating ? (
+                        <>
+                          <Star className="w-3 h-3 fill-warning" />
+                          <span className="font-semibold">{avgRating}</span>
+                          {reviewCount && (
+                            <span className="text-muted text-[11px] ml-0.5">· {reviewCount} reviews</span>
+                          )}
+                        </>
+                      ) : (
+                        "★★★★★"
+                      )}
                     </div>
-                    <p className="text-xs text-muted">Loved by 12k+ learners</p>
+                    {statsLoading ? (
+                      <div className="h-3 w-28 rounded bg-border/50 animate-pulse mt-1" />
+                    ) : (
+                      <p className="text-xs text-muted">
+                        Loved by {userCount ?? "thousands of"}+ learners
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="h-10 w-px bg-border/70 hidden sm:block" />
@@ -559,7 +620,13 @@ function FeaturedQuizCard({
 }
 
 // ---------- FOR CREATORS ----------
-function ForCreators() {
+interface ForCreatorsProps {
+  stats: PlatformStats | null;
+  creatorRating: PlatformRating | null;
+  statsLoading: boolean;
+}
+
+function ForCreators({ stats, creatorRating, statsLoading }: ForCreatorsProps) {
   return (
     <section className="w-full bg-surface/50 border-y border-border/50">
       <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24">
@@ -612,36 +679,63 @@ function ForCreators() {
           </Reveal>
           <Reveal className="lg:col-span-7" delay={150}>
             <div className="grid sm:grid-cols-2 gap-5">
-              {[
+              {([
                 {
                   icon: ListChecks,
-                  k: "2,400+",
+                  k: statsLoading
+                    ? null
+                    : (stats
+                        ? formatCompactNumber(stats.total_published_quizzes) + "+"
+                        : "2,400+"),
                   t: "Quizzes published",
                   s: "Across all subject areas and course levels",
                   v: "primary" as const,
                 },
                 {
                   icon: Users,
-                  k: "750+",
+                  k: statsLoading
+                    ? null
+                    : (stats
+                        ? formatCompactNumber(stats.total_verified_creators) + "+"
+                        : "750+"),
                   t: "Verified creators",
                   s: "Teachers, lecturers, top students",
                   v: "secondary" as const,
                 },
                 {
                   icon: BadgePoundSterling,
-                  k: "₦48M+",
+                  k: statsLoading
+                    ? null
+                    : (stats
+                        ? formatCompactNaira(stats.total_paid_to_creators) + "+"
+                        : "₦48M+"),
                   t: "Paid to creators",
                   s: "Monthly payouts since launch",
                   v: "success" as const,
+                  sub: null as string | null,
                 },
                 {
                   icon: Award,
-                  k: "4.9/5",
+                  k: statsLoading
+                    ? null
+                    : (creatorRating && creatorRating.avg_rating > 0
+                        ? creatorRating.avg_rating.toFixed(1) + "/5"
+                        : "4.9/5"),
                   t: "Creator satisfaction",
-                  s: "Based on 400+ reviews",
+                  s: statsLoading
+                    ? "Based on creator reviews"
+                    : (creatorRating && creatorRating.total_reviews > 0
+                        ? `Based on ${formatCompactNumber(creatorRating.total_reviews)}+ reviews`
+                        : "Based on creator reviews"),
                   v: "warning" as const,
                 },
-              ].map(function mapMetric(m, i) {
+              ] as Array<{
+                icon: React.ElementType;
+                k: string | null;
+                t: string;
+                s: string;
+                v: "primary" | "secondary" | "success" | "warning";
+              }>).map(function mapMetric(m, i) {
                 const Icon = m.icon;
                 const variant =
                   m.v === "primary"
@@ -662,9 +756,13 @@ function ForCreators() {
                     <div className={iconWrapClass}>
                       <Icon className="w-5.5 h-5.5" strokeWidth={2.1} />
                     </div>
-                    <p className="font-heading font-bold tracking-tight text-3xl text-text">
-                      {m.k}
-                    </p>
+                    {m.k === null ? (
+                      <div className="h-9 w-24 rounded-lg bg-border/40 animate-pulse mb-1" />
+                    ) : (
+                      <p className="font-heading font-bold tracking-tight text-3xl text-text">
+                        {m.k}
+                      </p>
+                    )}
                     <p className="mt-1 font-heading font-semibold text-text text-base">
                       {m.t}
                     </p>
@@ -729,8 +827,71 @@ function TrustBar() {
   );
 }
 
+// ---------- TESTIMONIALS ----------
+function Testimonials({ testimonials }: { testimonials: Testimonial[] }) {
+  if (testimonials.length === 0) return null;
+  return (
+    <section className="w-full">
+      <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24">
+        <Reveal className="text-center mb-12">
+          <Badge variant="primary" className="mb-4">
+            <MessageSquareQuote className="w-3 h-3" />
+            Real learners, real results
+          </Badge>
+          <h2 className="font-heading font-bold tracking-tight text-text text-3xl sm:text-4xl lg:text-5xl">
+            What students are saying
+          </h2>
+        </Reveal>
+        {/* Mobile: horizontal scroll; Desktop: 3-col grid */}
+        <div className="lg:hidden -mx-4 px-4 overflow-x-auto no-scrollbar">
+          <div className="grid grid-flow-col auto-cols-[82%] sm:auto-cols-[60%] gap-4 sm:gap-5 pb-2">
+            {testimonials.map((t) => (
+              <TestimonialCard key={t.id} t={t} />
+            ))}
+          </div>
+        </div>
+        <div className="hidden lg:grid lg:grid-cols-3 gap-5 xl:gap-6">
+          {testimonials.map((t) => (
+            <TestimonialCard key={t.id} t={t} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TestimonialCard({ t }: { t: Testimonial }) {
+  return (
+    <Reveal>
+      <Card padded={false} className="p-5 h-full flex flex-col">
+        <div className="flex items-start justify-between mb-3">
+          <Avatar
+            name={t.reviewer_name}
+            src={t.reviewer_avatar_url ?? undefined}
+            size="sm"
+          />
+          <div className="flex items-center gap-0.5 text-warning">
+            {Array.from({ length: t.rating }).map((_, i) => (
+              <Star key={i} className="w-3.5 h-3.5 fill-warning" />
+            ))}
+          </div>
+        </div>
+        {t.review_text && (
+          <p className="text-sm text-text-soft leading-relaxed flex-1 mb-3">
+            &ldquo;{t.review_text}&rdquo;
+          </p>
+        )}
+        <p className="text-xs font-semibold text-text font-heading">
+          {t.reviewer_name}
+        </p>
+      </Card>
+    </Reveal>
+  );
+}
+
 // ---------- CTA BANNER ----------
-function CtaBanner() {
+function CtaBanner({ stats }: { stats: PlatformStats | null }) {
+  const userCount = stats ? formatCompactNumber(stats.total_registered_users) : "12,000";
   return (
     <section className="w-full">
       <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24">
@@ -747,7 +908,7 @@ function CtaBanner() {
                 Ready to ace your exams?
               </h2>
               <p className="mt-4 text-base sm:text-lg text-text-soft max-w-xl mx-auto">
-                Join 12,000+ Nigerian students already using PrepUniv to
+                Join {userCount}+ Nigerian students already using PrepUniv to
                 practice smarter and score higher.
               </p>
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
@@ -837,15 +998,53 @@ export function LandingPage() {
   usePageTitle("PrepUniv — CBT & Exam Prep for Nigerian Students", {
     full: true,
   });
+
+  const [stats, setStats] = useState<PlatformStats | null>(null);
+  const [platformRating, setPlatformRating] = useState<PlatformRating | null>(null);
+  const [creatorRating, setCreatorRating] = useState<PlatformRating | null>(null);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [creators, setCreators] = useState<Profile[]>([]);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      fetchPlatformStats(),
+      fetchPlatformRating(),
+      fetchCreatorRatingSummary(),
+      fetchFeaturedTestimonials(6),
+      fetchAllProfiles(),
+    ]).then(([s, pr, cr, tl, ps]) => {
+      if (cancelled) return;
+      setStats(s);
+      setPlatformRating(pr);
+      setCreatorRating(cr);
+      setTestimonials(tl);
+      setCreators(ps);
+      setStatsLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <div className="min-h-dvh w-full bg-background text-text">
       <LandingTopNav />
-      <Hero />
+      <Hero
+        stats={stats}
+        platformRating={platformRating}
+        creators={creators}
+        statsLoading={statsLoading}
+      />
       <HowItWorks />
       <FeaturedQuizzes />
-      <ForCreators />
+      <ForCreators
+        stats={stats}
+        creatorRating={creatorRating}
+        statsLoading={statsLoading}
+      />
       <TrustBar />
-      <CtaBanner />
+      <Testimonials testimonials={testimonials} />
+      <CtaBanner stats={stats} />
       <Footer />
     </div>
   );

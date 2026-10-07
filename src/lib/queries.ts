@@ -711,3 +711,130 @@ export async function fetchDbProfilesByIds(
   }
   return map;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Platform stats (landing page fake-data replacement)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface PlatformStats {
+  total_registered_users: number;
+  total_published_quizzes: number;
+  total_verified_creators: number;
+  total_completed_attempts: number;
+  total_paid_to_creators: number; // NAIRA (matches DB wallet_transactions column)
+  total_quiz_purchases: number;
+}
+
+export async function fetchPlatformStats(): Promise<PlatformStats | null> {
+  const { data, error } = await supabase.rpc("get_platform_stats");
+  if (error || !data || !Array.isArray(data) || data.length === 0) {
+    console.warn("fetchPlatformStats failed:", error?.message);
+    return null;
+  }
+  const row = data[0];
+  return {
+    total_registered_users: Number(row.total_registered_users ?? 0),
+    total_published_quizzes: Number(row.total_published_quizzes ?? 0),
+    total_verified_creators: Number(row.total_verified_creators ?? 0),
+    total_completed_attempts: Number(row.total_completed_attempts ?? 0),
+    total_paid_to_creators: Number(row.total_paid_to_creators ?? 0),
+    total_quiz_purchases: Number(row.total_quiz_purchases ?? 0),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Review / rating query helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface PlatformRating {
+  avg_rating: number;
+  total_reviews: number;
+}
+
+export interface QuizRating {
+  avg_rating: number;
+  total_reviews: number;
+  r1: number;
+  r2: number;
+  r3: number;
+  r4: number;
+  r5: number;
+}
+
+export interface Testimonial {
+  id: string;
+  rating: number;
+  review_text: string | null;
+  reviewer_name: string;
+  reviewer_avatar_url?: string | null;
+  created_at: string;
+}
+
+/** Platform-wide rating — for Hero section (platform reviews only). */
+export async function fetchPlatformRating(): Promise<PlatformRating> {
+  const { data } = await supabase.rpc("get_platform_rating");
+  const row = Array.isArray(data) && data[0];
+  return {
+    avg_rating: Number(row?.avg_rating ?? 0),
+    total_reviews: Number(row?.total_reviews ?? 0),
+  };
+}
+
+/** Creator satisfaction aggregate — for ForCreators stat card #4 (creator reviews only). */
+export async function fetchCreatorRatingSummary(): Promise<PlatformRating> {
+  const { data } = await supabase.rpc("get_creator_rating_summary");
+  const row = Array.isArray(data) && data[0];
+  return {
+    avg_rating: Number(row?.avg_rating ?? 0),
+    total_reviews: Number(row?.total_reviews ?? 0),
+  };
+}
+
+/** Per-quiz rating summary — for QuizDetailPage star badge + distribution bars. */
+export async function fetchQuizRating(quizId: string): Promise<QuizRating> {
+  const { data } = await supabase.rpc("get_quiz_rating_summary", {
+    p_quiz_id: quizId,
+  });
+  const row = Array.isArray(data) && data[0];
+  return {
+    avg_rating: Number(row?.avg_rating ?? 0),
+    total_reviews: Number(row?.total_reviews ?? 0),
+    r1: Number(row?.r1 ?? 0),
+    r2: Number(row?.r2 ?? 0),
+    r3: Number(row?.r3 ?? 0),
+    r4: Number(row?.r4 ?? 0),
+    r5: Number(row?.r5 ?? 0),
+  };
+}
+
+/** Per-creator rating — for CreatorProfilePage stat chip. */
+export async function fetchSingleCreatorRating(
+  creatorId: string,
+): Promise<PlatformRating> {
+  const { data } = await supabase.rpc("get_single_creator_rating", {
+    p_creator_id: creatorId,
+  });
+  const row = Array.isArray(data) && data[0];
+  return {
+    avg_rating: Number(row?.avg_rating ?? 0),
+    total_reviews: Number(row?.total_reviews ?? 0),
+  };
+}
+
+/** Featured platform testimonials — for Landing Testimonials section. */
+export async function fetchFeaturedTestimonials(
+  limit = 6,
+): Promise<Testimonial[]> {
+  const { data, error } = await supabase.rpc("get_featured_testimonials", {
+    p_limit: limit,
+  });
+  if (error || !Array.isArray(data)) return [];
+  return data.map((r) => ({
+    id: r.id,
+    rating: r.rating,
+    review_text: r.review_text,
+    reviewer_name: r.reviewer_name,
+    reviewer_avatar_url: r.reviewer_avatar_url,
+    created_at: r.created_at,
+  }));
+}

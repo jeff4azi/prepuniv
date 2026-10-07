@@ -13,6 +13,9 @@ import {
   Trophy,
   ChevronDown,
   ChevronUp,
+  Star,
+  Send,
+  Pencil,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -29,6 +32,7 @@ import {
   fetchAttemptResult,
   fetchAttemptById,
 } from "../lib/queries";
+import { apiFetch } from "../lib/api";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -290,13 +294,138 @@ function AnswerCard({
   );
 }
 
+// ─── Quiz review widget ───────────────────────────────────────────────────────
+
+function QuizReviewCard({
+  quizId,
+  onSuccess,
+}: {
+  quizId: string;
+  onSuccess: (msg: string) => void;
+}) {
+  const [rating, setRating] = useState(0);
+  const [hover, setHover] = useState(0);
+  const [text, setText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [existingId, setExistingId] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+
+  async function handleSubmit() {
+    if (rating === 0) return;
+    setSubmitting(true);
+    const method = existingId ? "PATCH" : "POST";
+    const path = existingId ? `/api/reviews/${existingId}` : "/api/reviews";
+    const body = existingId
+      ? { rating, review_text: text || null }
+      : { target_type: "quiz", target_quiz_id: quizId, rating, review_text: text || null };
+    const { error, status } = await apiFetch(path, { method, body });
+    setSubmitting(false);
+    if (!error || status === 201 || status === 200) {
+      setSubmitted(true);
+      setEditing(false);
+      onSuccess("Thanks! Your rating helps other learners find great quizzes.");
+    } else if (status === 409) {
+      // Already reviewed — fetch mine to show edit UI
+      onSuccess("You've already rated this quiz. You can edit your review in Settings > My Reviews.");
+      setSubmitted(true);
+    } else if (status === 403) {
+      onSuccess("Complete this quiz at least once to leave a rating.");
+      setSubmitted(true);
+    }
+  }
+
+  if (submitted && !editing) {
+    return (
+      <Card padded={false} className="px-5 py-4 flex items-center gap-3 bg-success-bg border-success/20">
+        <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
+        <p className="text-sm font-heading font-medium text-success leading-snug">
+          Rating submitted! Thanks for the feedback.
+        </p>
+        <button
+          type="button"
+          onClick={() => { setSubmitted(false); setEditing(true); }}
+          className="ml-auto shrink-0 inline-flex items-center gap-1 text-xs text-success/70 hover:text-success font-heading font-semibold transition-colors"
+        >
+          <Pencil className="w-3.5 h-3.5" /> Edit
+        </button>
+      </Card>
+    );
+  }
+
+  return (
+    <Card padded={false} className="px-5 py-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Star className="w-4 h-4 text-warning fill-warning shrink-0" />
+        <p className="font-heading font-semibold text-sm text-text">
+          Rate this quiz
+        </p>
+      </div>
+      {/* Star picker */}
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((s) => (
+          <button
+            key={s}
+            type="button"
+            id={`quiz-star-${s}`}
+            onClick={() => setRating(s)}
+            onMouseEnter={() => setHover(s)}
+            onMouseLeave={() => setHover(0)}
+            className="p-1 rounded-lg transition-transform hover:scale-110 active:scale-95"
+            aria-label={`Rate ${s} star${s > 1 ? "s" : ""}`}
+          >
+            <Star
+              className={`w-7 h-7 transition-colors ${
+                s <= (hover || rating)
+                  ? "text-warning fill-warning"
+                  : "text-border fill-transparent"
+              }`}
+            />
+          </button>
+        ))}
+        {rating > 0 && (
+          <span className="ml-1 text-xs text-muted font-heading">
+            {["Poor", "Fair", "Good", "Great", "Excellent!"][rating - 1]}
+          </span>
+        )}
+      </div>
+      {/* Expand textarea after a star is selected */}
+      {rating > 0 && (
+        <textarea
+          id="quiz-review-text"
+          value={text}
+          onChange={(e) => setText(e.target.value.slice(0, 280))}
+          placeholder="What did you think of this quiz? Was it close to the real exam? (optional)"
+          rows={2}
+          className="w-full resize-none rounded-2xl border border-border/60 bg-surface/40 px-4 py-3 text-sm text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+        />
+      )}
+      {rating > 0 && (
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs text-muted">{text.length}/280</span>
+          <Button
+            size="sm"
+            variant="primary"
+            isLoading={submitting}
+            onClick={handleSubmit}
+            id="quiz-review-submit"
+          >
+            {!submitting && <Send className="w-3.5 h-3.5" />}
+            Submit rating
+          </Button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function AttemptResultPage() {
   const { id: attemptId } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, isLoggedIn } = useAuth();
 
   // ── UI state ───────────────────────────────────────────────────────────────
   const [filter, setFilter] = useState<FilterMode>("all");
@@ -670,6 +799,14 @@ export function AttemptResultPage() {
               </Button>
             </Link>
           </div>
+
+          {/* ── Quiz review widget — only for logged-in users who completed the quiz ── */}
+          {isLoggedIn && result.quiz_id && (
+            <QuizReviewCard
+              quizId={result.quiz_id}
+              onSuccess={(msg) => showToast({ message: msg })}
+            />
+          )}
 
           {/* ── Answer review ── */}
           <Card>

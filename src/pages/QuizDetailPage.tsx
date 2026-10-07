@@ -20,6 +20,7 @@ import {
   LogIn,
   UserPlus,
   Eye,
+  Star,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -36,6 +37,8 @@ import {
   fetchProfile,
   fetchUserAttempts,
   fetchPreviewCount,
+  fetchQuizRating,
+  type QuizRating,
 } from "../lib/queries";
 import type { Quiz, Course, Profile, QuizAttempt } from "../types";
 import { formatNaira } from "../components/QuizCard";
@@ -156,6 +159,7 @@ export function QuizDetailPage() {
   const [creator, setCreator] = useState<Profile | null>(null);
   const [myAttempts, setMyAttempts] = useState<QuizAttempt[]>([]);
   const [previewCount, setPreviewCount] = useState<number>(0);
+  const [quizRating, setQuizRating] = useState<QuizRating | null>(null);
 
   // Dynamic tab title — shows quiz title once loaded, "Loading…" before that
   usePageTitle(quiz === undefined ? null : (quiz?.title ?? null));
@@ -174,13 +178,15 @@ export function QuizDetailPage() {
       const previewP = fetchPreviewCount(id);
 
       // Fetch public data unconditionally
-      const [c, p] = await Promise.all([
+      const [c, p, rating] = await Promise.all([
         q.course_id ? fetchCourse(q.course_id) : Promise.resolve(null),
         q.creator_id ? fetchProfile(q.creator_id) : Promise.resolve(null),
+        fetchQuizRating(id),
       ]);
       if (cancelled) return;
       setCourse(c);
       setCreator(p);
+      setQuizRating(rating);
 
       // Resolve preview count (already started in parallel above)
       const pc = await previewP;
@@ -471,6 +477,15 @@ export function QuizDetailPage() {
                   <Users className="w-4 h-4 text-muted" />
                   {quiz.attempt_count.toLocaleString()} attempts
                 </span>
+                {quizRating && quizRating.avg_rating > 0 && (
+                  <span className="inline-flex items-center gap-1 text-warning font-heading font-semibold text-sm">
+                    <Star className="w-3.5 h-3.5 fill-warning" />
+                    {quizRating.avg_rating.toFixed(1)}
+                    <span className="text-muted font-normal">
+                      · {quizRating.total_reviews.toLocaleString()} review{quizRating.total_reviews !== 1 ? "s" : ""}
+                    </span>
+                  </span>
+                )}
                 <span className="inline-flex items-center gap-1.5">
                   <Timer className="w-4 h-4 text-muted" />
                   {quiz.time_limit_seconds

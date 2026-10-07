@@ -1,7 +1,7 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { usePageTitle } from "../hooks/usePageTitle";
-import { User, Building2, LogOut, Bell, ChevronRight } from "lucide-react";
+import { User, Building2, LogOut, Bell, ChevronRight, Star, Pencil, Trash2, MessageSquare } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
@@ -12,6 +12,7 @@ import { useAuth } from "../context/AuthContext";
 import { getBankName } from "../lib/banks";
 import { usePushSubscription } from "../hooks/usePushSubscription";
 import { useNavBadges, formatBadgeCount } from "../hooks/useNavBadges";
+import { apiFetch } from "../lib/api";
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 
@@ -446,6 +447,227 @@ function DangerSection() {
   );
 }
 
+// ─── My Reviews section ───────────────────────────────────────────────────────
+
+type MyReview = {
+  id: string;
+  review_target_type: "quiz" | "creator" | "platform";
+  target_quiz_id: string | null;
+  target_creator_id: string | null;
+  rating: number;
+  review_text: string | null;
+  is_approved: boolean;
+  created_at: string;
+  quizzes?: { title: string } | null;
+  creator?: { full_name: string } | null;
+};
+
+function StarRow({ rating }: { rating: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <Star
+          key={s}
+          className={`w-3.5 h-3.5 ${
+            s <= rating ? "text-warning fill-warning" : "text-border fill-transparent"
+          }`}
+        />
+      ))}
+    </span>
+  );
+}
+
+function MyReviewsSection({
+  onToast,
+}: {
+  onToast: (msg: string, variant?: "danger" | "success") => void;
+}) {
+  const [reviews, setReviews] = useState<MyReview[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editRating, setEditRating] = useState(0);
+  const [editText, setEditText] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch<MyReview[]>("/api/reviews/mine").then(({ data }) => {
+      if (!cancelled) {
+        setReviews(data ?? []);
+        setLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  function startEdit(r: MyReview) {
+    setEditingId(r.id);
+    setEditRating(r.rating);
+    setEditText(r.review_text ?? "");
+  }
+
+  async function saveEdit(id: string) {
+    setSaving(true);
+    const { error } = await apiFetch(`/api/reviews/${id}`, {
+      method: "PATCH",
+      body: { rating: editRating, review_text: editText || null },
+    });
+    setSaving(false);
+    if (error) {
+      onToast(error, "danger");
+    } else {
+      setReviews((prev) =>
+        prev.map((r) =>
+          r.id === id ? { ...r, rating: editRating, review_text: editText || null } : r
+        )
+      );
+      setEditingId(null);
+      onToast("Review updated.");
+    }
+  }
+
+  async function deleteReview(id: string) {
+    setDeletingId(id);
+    const { error } = await apiFetch(`/api/reviews/${id}`, { method: "DELETE" });
+    setDeletingId(null);
+    if (error) {
+      onToast(error, "danger");
+    } else {
+      setReviews((prev) => prev.filter((r) => r.id !== id));
+      onToast("Review deleted.");
+    }
+  }
+
+  function targetLabel(r: MyReview) {
+    if (r.review_target_type === "quiz") return r.quizzes?.title ?? "Quiz";
+    if (r.review_target_type === "creator") return r.creator?.full_name ?? "Creator";
+    return "PrepUniv Platform";
+  }
+
+  return (
+    <SettingsSection
+      icon={MessageSquare}
+      title="My Reviews"
+      description="Ratings you've left for quizzes, creators, or the platform."
+    >
+      {loading ? (
+        <div className="space-y-3 animate-pulse">
+          {[0, 1].map((i) => (
+            <div key={i} className="h-14 rounded-2xl bg-surface" />
+          ))}
+        </div>
+      ) : reviews.length === 0 ? (
+        <p className="text-sm text-text-soft text-center py-6">
+          You haven't left any reviews yet. After completing a quiz, you'll see a rating prompt on the results page.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {reviews.map((r) => (
+            <div
+              key={r.id}
+              className="rounded-2xl border border-border/50 bg-surface/30 px-4 py-3 space-y-2"
+            >
+              {/* Header row */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs text-muted font-heading uppercase tracking-wide mb-0.5">
+                    {r.review_target_type}
+                  </p>
+                  <p className="text-sm font-heading font-semibold text-text leading-snug truncate">
+                    {targetLabel(r)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    id={`edit-review-${r.id}`}
+                    onClick={() =>
+                      editingId === r.id ? setEditingId(null) : startEdit(r)
+                    }
+                    className="inline-flex items-center gap-1 text-xs text-muted hover:text-primary font-heading font-semibold transition-colors p-1"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    id={`delete-review-${r.id}`}
+                    disabled={deletingId === r.id}
+                    onClick={() => deleteReview(r.id)}
+                    className="inline-flex items-center gap-1 text-xs text-muted hover:text-danger font-heading font-semibold transition-colors p-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Edit mode */}
+              {editingId === r.id ? (
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setEditRating(s)}
+                        className="p-0.5 rounded transition-transform hover:scale-110"
+                      >
+                        <Star
+                          className={`w-5 h-5 transition-colors ${
+                            s <= editRating
+                              ? "text-warning fill-warning"
+                              : "text-border fill-transparent"
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value.slice(0, 280))}
+                    rows={2}
+                    placeholder="Update your review... (optional)"
+                    className="w-full resize-none rounded-xl border border-border/60 bg-cream px-3 py-2.5 text-sm text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      isLoading={saving}
+                      onClick={() => saveEdit(r.id)}
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditingId(null)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <StarRow rating={r.rating} />
+                  {r.review_text && (
+                    <p className="text-xs text-text-soft truncate">{r.review_text}</p>
+                  )}
+                  {!r.is_approved && (
+                    <span className="text-[10px] text-muted font-heading bg-surface px-1.5 py-0.5 rounded-md ml-auto shrink-0">
+                      Pending
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </SettingsSection>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function SettingsPage() {
@@ -481,6 +703,11 @@ export function SettingsPage() {
           />
           {isCreator && <BankDetailsSection />}
           <NotificationsSection />
+          <MyReviewsSection
+            onToast={(msg, variant) =>
+              showToast({ message: msg, variant: variant ?? "success" })
+            }
+          />
           <DangerSection />
         </div>
       </PageContainer>
