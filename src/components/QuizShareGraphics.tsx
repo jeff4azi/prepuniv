@@ -14,6 +14,7 @@ import {
 
 const PREPUNIV_LOGO_SRC = new URL("../assets/prepUniv.png", import.meta.url)
   .href;
+
 import { Card } from "./Card";
 import { Badge } from "./Badge";
 import { formatNaira } from "./QuizCard";
@@ -492,39 +493,48 @@ const TemplateMinimal = Object.assign(
           fontFamily:
             "'Lexend', 'Inter', system-ui, -apple-system, sans-serif",
           color: "#1f2a17",
-          padding: "44px 40px 40px",
+          padding: "32px 32px 28px",
           boxSizing: "border-box",
+          overflow: "hidden",
         }}
       >
-        <div className="flex items-center justify-between mb-10">
+        <div className="flex items-center justify-between mb-7">
           <div className="flex items-center gap-2.5">
             <div
-              className="h-10 w-10 rounded-2xl flex items-center justify-center shadow-soft overflow-hidden shrink-0"
+              className="flex items-center justify-center overflow-hidden shrink-0"
               style={{
-                background:
-                  "linear-gradient(135deg, #44612e 0%, #667351 100%)",
+                width: 34,
+                height: 34,
+                borderRadius: 12,
+                background: "transparent",
+                border: "none",
               }}
             >
               <img
                 src={PREPUNIV_LOGO_SRC}
                 alt="PrepUniv"
                 crossOrigin="anonymous"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  display: "block",
+                }}
               />
             </div>
             <div>
-              <p style={{ fontWeight: 700, fontSize: 16, lineHeight: 1, letterSpacing: "-0.01em" }}>
+              <p style={{ fontWeight: 700, fontSize: 15, lineHeight: 1, letterSpacing: "-0.01em" }}>
                 PrepUniv
               </p>
-              <p style={{ fontSize: 10.5, color: "#667351", fontWeight: 500, marginTop: 2 }}>
+              <p style={{ fontSize: 10, color: "#667351", fontWeight: 500, marginTop: 2 }}>
                 Study smarter, together
               </p>
             </div>
           </div>
           <span
             style={{
-              fontSize: 10,
-              padding: "6px 12px",
+              fontSize: 9.5,
+              padding: "5px 11px",
               borderRadius: 999,
               background: "rgba(102, 115, 81, 0.12)",
               color: "#44612e",
@@ -538,44 +548,44 @@ const TemplateMinimal = Object.assign(
         </div>
 
         <div
-          className="mb-4"
+          className="mb-3"
           style={{
             display: "inline-flex",
             alignSelf: "flex-start",
-            padding: "9px 18px",
-            borderRadius: 14,
+            padding: "7px 15px",
+            borderRadius: 12,
             background: "#44612e",
             color: "#fbf8ee",
-            fontSize: 15,
+            fontSize: 13,
             fontWeight: 700,
             letterSpacing: "0.02em",
           }}
         >
           {data.courseCode}
-          {data.courseTitle && ` · ${data.courseTitle}`.slice(0, 26)}
+          {data.courseTitle && ` · ${data.courseTitle}`.slice(0, 24)}
         </div>
 
         <h1
           style={{
-            fontSize: 40,
+            fontSize: 32,
             lineHeight: 1.08,
             fontWeight: 800,
             letterSpacing: "-0.02em",
-            margin: "14px 0 16px",
+            margin: "10px 0 12px",
             color: "#1f2a17",
           }}
         >
-          {truncate(data.quizTitle, 7)}
+          {truncate(data.quizTitle, 6)}
         </h1>
 
         <p
           style={{
-            fontSize: 14.5,
-            lineHeight: 1.55,
+            fontSize: 13,
+            lineHeight: 1.5,
             color: "#3a4a2c",
             fontWeight: 400,
-            marginBottom: 28,
-            minHeight: 44,
+            marginBottom: 18,
+            minHeight: 38,
           }}
         >
           {data.quizDescription
@@ -586,44 +596,45 @@ const TemplateMinimal = Object.assign(
         <div
           style={{
             display: "flex",
-            gap: 12,
-            marginBottom: "auto",
+            gap: 10,
+            marginBottom: 18,
             flexWrap: "wrap",
           }}
         >
-          <Pill label="Questions" value={`${data.questionCount}`} tone="primary" />
-          <Pill label="Price" value={formatNaira(data.priceKobo)} tone="cream" />
+          <Pill label="Questions" value={`${data.questionCount}`} tone="primary" compact />
+          <Pill label="Price" value={formatNaira(data.priceKobo)} tone="cream" compact />
           <Pill
             label="Attempts"
             value={data.attemptCount.toLocaleString("en-NG")}
             tone="sage"
+            compact
           />
         </div>
 
         <div
           style={{
-            marginTop: 36,
-            padding: "22px 24px",
-            borderRadius: 24,
+            marginTop: "auto",
+            padding: "16px 18px",
+            borderRadius: 20,
             background:
               "linear-gradient(135deg, rgba(68, 97, 46, 0.08) 0%, rgba(102, 115, 81, 0.06) 100%)",
             border: "1.5px solid rgba(68, 97, 46, 0.18)",
           }}
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <p style={{ fontSize: 11, color: "#667351", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 4 }}>
+          <div className="flex items-center justify-between gap-3">
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: 10, color: "#667351", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 3 }}>
                 Ready to test yourself?
               </p>
-              <p style={{ fontSize: 17, fontWeight: 700, color: "#1f2a17", letterSpacing: "-0.01em" }}>
+              <p style={{ fontSize: 15, fontWeight: 700, color: "#1f2a17", letterSpacing: "-0.01em" }}>
                 Start now on PrepUniv →
               </p>
             </div>
             <div
               style={{
-                width: 58,
-                height: 58,
-                borderRadius: 18,
+                width: 48,
+                height: 48,
+                borderRadius: 16,
                 background: "#fff",
                 display: "flex",
                 alignItems: "center",
@@ -631,16 +642,17 @@ const TemplateMinimal = Object.assign(
                 boxShadow:
                   "0 2px 8px rgba(68, 97, 46, 0.08), 0 1px 3px rgba(68, 97, 46, 0.04)",
                 border: "1px solid rgba(177, 184, 156, 0.5)",
+                flexShrink: 0,
               }}
             >
-              <FakeQR />
+              <FakeQR size={3.2} />
             </div>
           </div>
         </div>
 
         <div
           style={{
-            marginTop: 22,
+            marginTop: 16,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -648,12 +660,12 @@ const TemplateMinimal = Object.assign(
           }}
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            <AvatarGraphic url={data.creatorAvatarUrl} name={data.creatorName} size={30} />
-            <p style={{ fontSize: 12, color: "#667351", fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            <AvatarGraphic url={data.creatorAvatarUrl} name={data.creatorName} size={26} />
+            <p style={{ fontSize: 11, color: "#667351", fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               by <span style={{ color: "#44612e", fontWeight: 700 }}>{data.creatorName}</span>
             </p>
           </div>
-          <p style={{ fontSize: 10, color: "#859173", fontWeight: 500, letterSpacing: "0.04em" }}>
+          <p style={{ fontSize: 9.5, color: "#859173", fontWeight: 500, letterSpacing: "0.04em" }}>
             prepuniv.app
           </p>
         </div>
@@ -686,7 +698,7 @@ const TemplateStats = Object.assign(
             "linear-gradient(155deg, #44612e 0%, #3a5327 40%, #2f4421 100%)",
           fontFamily:
             "'Lexend', 'Inter', system-ui, -apple-system, sans-serif",
-          padding: "40px 36px 36px",
+          padding: "28px 28px 24px",
           position: "relative",
           overflow: "hidden",
           boxSizing: "border-box",
@@ -720,13 +732,16 @@ const TemplateStats = Object.assign(
         />
 
         <div
-          className="flex items-center justify-between mb-8"
+          className="flex items-center justify-between mb-6"
           style={{ position: "relative" }}
         >
           <div className="flex items-center gap-2.5">
             <div
-              className="h-10 w-10 rounded-2xl flex items-center justify-center overflow-hidden shrink-0"
+              className="flex items-center justify-center overflow-hidden shrink-0"
               style={{
+                width: 34,
+                height: 34,
+                borderRadius: 12,
                 background: "rgba(251, 248, 238, 0.15)",
                 backdropFilter: "blur(8px)",
                 border: "1px solid rgba(251, 248, 238, 0.2)",
@@ -736,22 +751,27 @@ const TemplateStats = Object.assign(
                 src={PREPUNIV_LOGO_SRC}
                 alt="PrepUniv"
                 crossOrigin="anonymous"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  display: "block",
+                }}
               />
             </div>
             <div>
-              <p style={{ color: "#fbf8ee", fontWeight: 700, fontSize: 16, lineHeight: 1, letterSpacing: "-0.01em" }}>
+              <p style={{ color: "#fbf8ee", fontWeight: 700, fontSize: 15, lineHeight: 1, letterSpacing: "-0.01em" }}>
                 PrepUniv
               </p>
-              <p style={{ fontSize: 10.5, color: "rgba(235, 230, 210, 0.7)", fontWeight: 500, marginTop: 2 }}>
+              <p style={{ fontSize: 10, color: "rgba(235, 230, 210, 0.7)", fontWeight: 500, marginTop: 2 }}>
                 Creator performance
               </p>
             </div>
           </div>
           <span
             style={{
-              fontSize: 10,
-              padding: "6px 12px",
+              fontSize: 9.5,
+              padding: "5px 11px",
               borderRadius: 999,
               background: "rgba(214, 230, 208, 0.18)",
               color: "#d6e6d0",
@@ -765,16 +785,16 @@ const TemplateStats = Object.assign(
           </span>
         </div>
 
-        <div style={{ marginBottom: 8, position: "relative" }}>
+        <div style={{ marginBottom: 6, position: "relative" }}>
           <span
             style={{
               display: "inline-block",
-              padding: "6px 14px",
-              borderRadius: 12,
+              padding: "5px 12px",
+              borderRadius: 10,
               background: "rgba(251, 248, 238, 0.12)",
               border: "1px solid rgba(251, 248, 238, 0.2)",
               color: "#ece4c6",
-              fontSize: 12.5,
+              fontSize: 11.5,
               fontWeight: 700,
               letterSpacing: "0.02em",
             }}
@@ -786,12 +806,12 @@ const TemplateStats = Object.assign(
         <h1
           style={{
             position: "relative",
-            fontSize: 30,
+            fontSize: 24,
             lineHeight: 1.15,
             fontWeight: 800,
             letterSpacing: "-0.02em",
             color: "#fbf8ee",
-            margin: "12px 0 24px",
+            margin: "8px 0 16px",
           }}
         >
           {truncate(data.quizTitle, 5)}
@@ -802,48 +822,52 @@ const TemplateStats = Object.assign(
             position: "relative",
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
-            gap: 12,
-            marginBottom: 22,
+            gap: 10,
+            marginBottom: 16,
           }}
         >
           <StatCardGraphic
             label="Attempts"
             value={data.attemptCount.toLocaleString("en-NG")}
             accent={data.attemptCount >= 100 ? "gold" : "cream"}
+            compact
           />
           <StatCardGraphic
             label="Earnings"
             value={formatNaira(data.creatorEarningsKobo)}
             accent="green"
+            compact
           />
           <StatCardGraphic
             label="Questions"
             value={`${data.questionCount}`}
             accent="cream"
+            compact
           />
           <StatCardGraphic
             label="Price"
             value={formatNaira(data.priceKobo)}
             accent="cream"
+            compact
           />
         </div>
 
         <div
           style={{
             position: "relative",
-            padding: "18px 20px",
-            borderRadius: 22,
+            padding: "14px 16px",
+            borderRadius: 18,
             background:
               "linear-gradient(135deg, rgba(251, 248, 238, 0.14) 0%, rgba(251, 248, 238, 0.08) 100%)",
             border: "1.5px solid rgba(251, 248, 238, 0.22)",
-            marginBottom: "auto",
+            marginBottom: 18,
           }}
         >
           <div className="flex items-start gap-2.5">
             <div
               style={{
-                width: 22,
-                height: 22,
+                width: 20,
+                height: 20,
                 borderRadius: 999,
                 background: "#d6e6d0",
                 color: "#3e6b33",
@@ -851,21 +875,21 @@ const TemplateStats = Object.assign(
                 alignItems: "center",
                 justifyContent: "center",
                 fontWeight: 900,
-                fontSize: 14,
+                fontSize: 12,
                 flexShrink: 0,
                 marginTop: 1,
               }}
             >
               !
             </div>
-            <div>
-              <p style={{ color: "#fbf8ee", fontSize: 14, fontWeight: 700, lineHeight: 1.35, letterSpacing: "-0.01em" }}>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ color: "#fbf8ee", fontSize: 12.5, fontWeight: 700, lineHeight: 1.3, letterSpacing: "-0.01em" }}>
                 {data.attemptCount >= 20
-                  ? `${data.attemptCount.toLocaleString("en-NG")} students already attempted this. Don't be left behind!`
+                  ? `${data.attemptCount.toLocaleString("en-NG")} students already attempted. Don't be left behind!`
                   : "Fresh quiz on the block. Be among the first to test your knowledge."}
               </p>
-              <p style={{ color: "rgba(235, 230, 210, 0.7)", fontSize: 11.5, marginTop: 4, fontWeight: 500, lineHeight: 1.4 }}>
-                {data.courseCode} · {data.questionCount} questions · Instant scoring with explanations
+              <p style={{ color: "rgba(235, 230, 210, 0.7)", fontSize: 10.5, marginTop: 3, fontWeight: 500, lineHeight: 1.35 }}>
+                {data.courseCode} · {data.questionCount} questions · Instant scoring
               </p>
             </div>
           </div>
@@ -874,38 +898,40 @@ const TemplateStats = Object.assign(
         <div
           style={{
             position: "relative",
-            marginTop: 24,
-            padding: "18px 22px",
-            borderRadius: 22,
+            marginTop: "auto",
+            padding: "14px 18px",
+            borderRadius: 18,
             background: "#fbf8ee",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            gap: 10,
             boxShadow:
               "0 8px 24px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(0, 0, 0, 0.12)",
           }}
         >
-          <div>
-            <p style={{ fontSize: 10, color: "#667351", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ fontSize: 9.5, color: "#667351", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 3 }}>
               Take the challenge
             </p>
-            <p style={{ color: "#1f2a17", fontSize: 17, fontWeight: 800, letterSpacing: "-0.01em" }}>
+            <p style={{ color: "#1f2a17", fontSize: 15, fontWeight: 800, letterSpacing: "-0.01em" }}>
               Attempt now →
             </p>
           </div>
           <div
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: 16,
+              width: 38,
+              height: 38,
+              borderRadius: 14,
               background: "linear-gradient(135deg, #44612e 0%, #667351 100%)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               boxShadow: "0 2px 10px rgba(68, 97, 46, 0.35)",
+              flexShrink: 0,
             }}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fbf8ee" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbf8ee" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="7" y1="17" x2="17" y2="7" />
               <polyline points="7 7 17 7 17 17" />
             </svg>
@@ -916,8 +942,8 @@ const TemplateStats = Object.assign(
           style={{
             position: "relative",
             textAlign: "center",
-            marginTop: 18,
-            fontSize: 10.5,
+            marginTop: 14,
+            fontSize: 10,
             color: "rgba(235, 230, 210, 0.6)",
             letterSpacing: "0.05em",
             fontWeight: 500,
@@ -960,7 +986,7 @@ const TemplateCreator = Object.assign(
             "linear-gradient(180deg, #fbf8ee 0%, #f6f0d9 100%)",
           fontFamily:
             "'Lexend', 'Inter', system-ui, -apple-system, sans-serif",
-          padding: "36px 36px 34px",
+          padding: "26px 26px 22px",
           color: "#1f2a17",
           position: "relative",
           overflow: "hidden",
@@ -992,14 +1018,15 @@ const TemplateCreator = Object.assign(
           }}
         />
 
-        <div className="flex items-center justify-between mb-8" style={{ position: "relative" }}>
+        <div className="flex items-center justify-between mb-6" style={{ position: "relative" }}>
           <div className="flex items-center gap-2">
             <div
               style={{
-                width: 28,
-                height: 28,
+                width: 30,
+                height: 30,
                 borderRadius: 10,
-                background: "linear-gradient(135deg, #44612e 0%, #667351 100%)",
+                background: "transparent",
+                border: "none",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1011,7 +1038,12 @@ const TemplateCreator = Object.assign(
                 src={PREPUNIV_LOGO_SRC}
                 alt="PrepUniv"
                 crossOrigin="anonymous"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  display: "block",
+                }}
               />
             </div>
             <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: "-0.01em", color: "#44612e" }}>
@@ -1020,8 +1052,8 @@ const TemplateCreator = Object.assign(
           </div>
           <span
             style={{
-              fontSize: 9.5,
-              padding: "5px 11px",
+              fontSize: 9,
+              padding: "4px 10px",
               borderRadius: 999,
               background: "rgba(68, 97, 46, 0.1)",
               color: "#44612e",
@@ -1035,13 +1067,13 @@ const TemplateCreator = Object.assign(
         </div>
 
         <div
-          className="flex items-center gap-4 mb-6"
+          className="flex items-center gap-3 mb-5"
           style={{ position: "relative" }}
         >
           <div
             style={{
-              width: 68,
-              height: 68,
+              width: 58,
+              height: 58,
               borderRadius: "50%",
               padding: 3,
               background:
@@ -1064,21 +1096,21 @@ const TemplateCreator = Object.assign(
                 justifyContent: "center",
                 color: "#44612e",
                 fontWeight: 800,
-                fontSize: 22,
+                fontSize: 20,
                 border: "2px solid #fbf8ee",
               }}
             >
               {!data.creatorAvatarUrl && initials}
             </div>
           </div>
-          <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: 11, color: "#667351", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 3 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ fontSize: 10.5, color: "#667351", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 2 }}>
               Hey, I'm
             </p>
-            <h2 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em", color: "#1f2a17", lineHeight: 1, marginBottom: 5 }}>
-              {data.creatorName}
+            <h2 style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-0.02em", color: "#1f2a17", lineHeight: 1.1, marginBottom: 4 }}>
+              {truncate(data.creatorName, 3)}
             </h2>
-            <p style={{ fontSize: 12, color: "#3a4a2c", lineHeight: 1.4, fontWeight: 400, maxWidth: 200 }}>
+            <p style={{ fontSize: 11.5, color: "#3a4a2c", lineHeight: 1.35, fontWeight: 400 }}>
               {data.creatorBio
                 ? truncate(data.creatorBio, 1)
                 : `${data.courseCode} quiz creator · helping you pass exams ✨`}
@@ -1089,25 +1121,25 @@ const TemplateCreator = Object.assign(
         <div
           style={{
             position: "relative",
-            padding: "20px 20px 22px",
-            borderRadius: 26,
+            padding: "16px 16px 18px",
+            borderRadius: 22,
             background:
               "linear-gradient(155deg, #fff 0%, #fbf8ee 55%, #f4efdb 100%)",
             border: "1.5px solid rgba(177, 184, 156, 0.6)",
             boxShadow:
               "0 10px 28px rgba(68, 97, 46, 0.10), 0 3px 10px rgba(68, 97, 46, 0.06)",
-            marginBottom: "auto",
+            marginBottom: 18,
           }}
         >
           <div className="flex items-start justify-between gap-2 mb-3">
             <div
               style={{
                 display: "inline-flex",
-                padding: "7px 14px",
-                borderRadius: 12,
+                padding: "6px 12px",
+                borderRadius: 10,
                 background: "rgba(68, 97, 46, 0.10)",
                 color: "#44612e",
-                fontSize: 12,
+                fontSize: 11.5,
                 fontWeight: 800,
                 letterSpacing: "0.02em",
               }}
@@ -1118,12 +1150,11 @@ const TemplateCreator = Object.assign(
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                gap: 5,
-                padding: "7px 14px",
-                borderRadius: 12,
+                padding: "6px 12px",
+                borderRadius: 10,
                 background: "#44612e",
                 color: "#fbf8ee",
-                fontSize: 12.5,
+                fontSize: 11.5,
                 fontWeight: 800,
               }}
             >
@@ -1131,37 +1162,35 @@ const TemplateCreator = Object.assign(
             </div>
           </div>
 
-          <h3 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em", color: "#1f2a17", lineHeight: 1.15, marginBottom: 10 }}>
-            {truncate(data.quizTitle, 6)}
+          <h3 style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", color: "#1f2a17", lineHeight: 1.15, marginBottom: 8 }}>
+            {truncate(data.quizTitle, 5)}
           </h3>
 
-          <p style={{ fontSize: 13, color: "#3a4a2c", lineHeight: 1.55, fontWeight: 400, marginBottom: 18 }}>
+          <p style={{ fontSize: 12, color: "#3a4a2c", lineHeight: 1.5, fontWeight: 400, marginBottom: 14 }}>
             I put this together for <span style={{ color: "#44612e", fontWeight: 700 }}>YOU</span> —{" "}
-            {data.questionCount} hand-picked questions to make sure you walk into that exam hall with confidence. 💪
+            {data.questionCount} hand-picked questions to walk into that exam hall with confidence. 💪
           </p>
 
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 8,
-              padding: "12px",
-              borderRadius: 18,
+              gap: 6,
+              padding: "10px",
+              borderRadius: 16,
               background: "rgba(102, 115, 81, 0.08)",
             }}
           >
-            <MicroStat label="Q's" value={`${data.questionCount}`} />
+            <MicroStat label="Q's" value={`${data.questionCount}`} compact />
             <MicroStat
               label="Attempts"
               value={data.attemptCount.toLocaleString("en-NG")}
+              compact
             />
             <MicroStat
               label="Avg. score"
-              value={
-                data.attemptCount > 20
-                  ? "58%"
-                  : "TBD"
-              }
+              value={data.attemptCount > 20 ? "58%" : "TBD"}
+              compact
             />
           </div>
         </div>
@@ -1169,9 +1198,9 @@ const TemplateCreator = Object.assign(
         <div
           style={{
             position: "relative",
-            marginTop: 22,
-            padding: "16px 20px",
-            borderRadius: 20,
+            marginTop: "auto",
+            padding: "13px 16px",
+            borderRadius: 18,
             background:
               "linear-gradient(120deg, #44612e 0%, #536d39 100%)",
             display: "flex",
@@ -1182,18 +1211,18 @@ const TemplateCreator = Object.assign(
           }}
         >
           <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: 10, color: "rgba(235, 230, 210, 0.8)", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 3 }}>
+            <p style={{ fontSize: 9.5, color: "rgba(235, 230, 210, 0.8)", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>
               Get it on
             </p>
-            <p style={{ color: "#fbf8ee", fontSize: 18, fontWeight: 800, letterSpacing: "-0.01em" }}>
+            <p style={{ color: "#fbf8ee", fontSize: 16, fontWeight: 800, letterSpacing: "-0.01em" }}>
               PrepUniv →
             </p>
           </div>
           <div
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 16,
+              width: 40,
+              height: 40,
+              borderRadius: 14,
               background: "#fbf8ee",
               display: "flex",
               alignItems: "center",
@@ -1201,7 +1230,7 @@ const TemplateCreator = Object.assign(
               flexShrink: 0,
             }}
           >
-            <UserCircleGraphic size={28} />
+            <UserCircleGraphic size={22} />
           </div>
         </div>
 
@@ -1209,8 +1238,8 @@ const TemplateCreator = Object.assign(
           style={{
             position: "relative",
             textAlign: "center",
-            marginTop: 14,
-            fontSize: 10.5,
+            marginTop: 12,
+            fontSize: 10,
             color: "#859173",
             fontWeight: 500,
             letterSpacing: "0.03em",
@@ -1230,10 +1259,12 @@ function Pill({
   label,
   value,
   tone,
+  compact = false,
 }: {
   label: string;
   value: string;
   tone: "primary" | "cream" | "sage";
+  compact?: boolean;
 }) {
   const tones = {
     primary: {
@@ -1257,8 +1288,8 @@ function Pill({
   return (
     <div
       style={{
-        padding: "10px 15px",
-        borderRadius: 16,
+        padding: compact ? "7px 11px" : "10px 15px",
+        borderRadius: compact ? 12 : 16,
         background: t.bg,
         color: t.text,
         border: (t as any).border ?? "none",
@@ -1266,13 +1297,29 @@ function Pill({
           tone === "cream"
             ? "0 1px 3px rgba(68, 97, 46, 0.06)"
             : "0 2px 8px rgba(68, 97, 46, 0.18)",
-        minWidth: 92,
+        minWidth: compact ? 72 : 92,
       }}
     >
-      <p style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: t.label, marginBottom: 3 }}>
+      <p
+        style={{
+          fontSize: compact ? 8.5 : 9.5,
+          fontWeight: 700,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: t.label,
+          marginBottom: compact ? 2 : 3,
+        }}
+      >
         {label}
       </p>
-      <p style={{ fontSize: 16.5, fontWeight: 800, letterSpacing: "-0.01em", lineHeight: 1 }}>
+      <p
+        style={{
+          fontSize: compact ? 14 : 16.5,
+          fontWeight: 800,
+          letterSpacing: "-0.01em",
+          lineHeight: 1,
+        }}
+      >
         {value}
       </p>
     </div>
@@ -1283,10 +1330,12 @@ function StatCardGraphic({
   label,
   value,
   accent,
+  compact = false,
 }: {
   label: string;
   value: string;
   accent: "cream" | "green" | "gold";
+  compact?: boolean;
 }) {
   const accents: Record<string, { badgeBg: string; badgeText: string; ring: string }> = {
     cream: {
@@ -1310,21 +1359,37 @@ function StatCardGraphic({
   return (
     <div
       style={{
-        padding: "14px 14px 15px",
-        borderRadius: 20,
+        padding: compact ? "10px 11px 11px" : "14px 14px 15px",
+        borderRadius: compact ? 16 : 20,
         background: a.badgeBg,
         boxShadow:
           "0 6px 16px rgba(0, 0, 0, 0.10), inset 0 1px 0 rgba(255,255,255,0.6)",
         border: `1.5px solid ${a.ring}`,
       }}
     >
-      <p style={{ fontSize: 9.5, color: accent === "cream" ? "#667351" : a.badgeText, opacity: 0.85, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
+      <p
+        style={{
+          fontSize: compact ? 8.5 : 9.5,
+          color: accent === "cream" ? "#667351" : a.badgeText,
+          opacity: 0.85,
+          fontWeight: 700,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          marginBottom: compact ? 4 : 6,
+        }}
+      >
         {label}
       </p>
       <p
         style={{
           color: a.badgeText,
-          fontSize: value.length > 7 ? 20 : 25,
+          fontSize: compact
+            ? value.length > 7
+              ? 17
+              : 20
+            : value.length > 7
+            ? 20
+            : 25,
           fontWeight: 900,
           letterSpacing: "-0.02em",
           lineHeight: 1,
@@ -1336,13 +1401,38 @@ function StatCardGraphic({
   );
 }
 
-function MicroStat({ label, value }: { label: string; value: string }) {
+function MicroStat({
+  label,
+  value,
+  compact = false,
+}: {
+  label: string;
+  value: string;
+  compact?: boolean;
+}) {
   return (
-    <div style={{ textAlign: "center", padding: "6px 4px" }}>
-      <p style={{ fontSize: 9, color: "#667351", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 3 }}>
+    <div style={{ textAlign: "center", padding: compact ? "4px 3px" : "6px 4px" }}>
+      <p
+        style={{
+          fontSize: compact ? 8 : 9,
+          color: "#667351",
+          fontWeight: 700,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          marginBottom: compact ? 2 : 3,
+        }}
+      >
         {label}
       </p>
-      <p style={{ fontSize: 16, fontWeight: 800, color: "#44612e", letterSpacing: "-0.01em", lineHeight: 1 }}>
+      <p
+        style={{
+          fontSize: compact ? 13 : 16,
+          fontWeight: 800,
+          color: "#44612e",
+          letterSpacing: "-0.01em",
+          lineHeight: 1,
+        }}
+      >
         {value}
       </p>
     </div>
@@ -1389,7 +1479,7 @@ function AvatarGraphic({
   );
 }
 
-function FakeQR() {
+function FakeQR({ size = 5 }: { size?: number }) {
   const modules = [
     [1, 1, 1, 1, 1, 0, 1, 0],
     [1, 0, 0, 0, 1, 0, 0, 1],
@@ -1400,7 +1490,7 @@ function FakeQR() {
     [1, 0, 1, 1, 0, 1, 0, 1],
     [0, 1, 0, 1, 1, 0, 1, 1],
   ];
-  const cell = 5;
+  const cell = size;
   return (
     <svg width={cell * 8} height={cell * 8} viewBox={`0 0 ${cell * 8} ${cell * 8}`}>
       {modules.map((row, y) =>
