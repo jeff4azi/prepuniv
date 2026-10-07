@@ -654,7 +654,7 @@ const TemplateMinimal = Object.assign(
           }}
         >
           {data.quizDescription
-            ? truncate(data.quizDescription, 4)
+            ? truncate(data.quizDescription, 7)
             : `${data.questionCount} carefully crafted questions to test your understanding and help you ace your next exam.`}
         </p>
 
@@ -664,6 +664,7 @@ const TemplateMinimal = Object.assign(
             display: "grid",
             gridTemplateColumns: "1fr 1fr 1fr",
             gap: 8,
+            marginTop: 10,
             marginBottom: 18,
           }}
         >
