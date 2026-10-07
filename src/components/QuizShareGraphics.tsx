@@ -666,7 +666,7 @@ const TemplateMinimal = Object.assign(
             </p>
           </div>
           <p style={{ fontSize: 9.5, color: "#859173", fontWeight: 500, letterSpacing: "0.04em" }}>
-            prepuniv.app
+            prepuniv.com
           </p>
         </div>
       </div>
@@ -949,7 +949,7 @@ const TemplateStats = Object.assign(
             fontWeight: 500,
           }}
         >
-          Created by {data.creatorName} · prepuniv.app
+          Created by {data.creatorName} · prepuniv.com
         </p>
       </div>
     );
@@ -1245,7 +1245,7 @@ const TemplateCreator = Object.assign(
             letterSpacing: "0.03em",
           }}
         >
-          prepuniv.app · share the prep, share the pass 🎓
+          prepuniv.com · share the prep, share the pass 🎓
         </p>
       </div>
     );
