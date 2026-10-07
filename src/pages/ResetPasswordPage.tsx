@@ -18,11 +18,35 @@ import {
   validatePasswordMatch,
 } from "../components/Form";
 import { useAuth } from "../context/AuthContext";
+import { getDefaultDashboard } from "../lib/routeGuard";
+
+function hasUrlAuthError(): boolean {
+  if (typeof window === "undefined") return false;
+  const hash = window.location.hash || "";
+  const search = window.location.search || "";
+  return (
+    hash.includes("error=") ||
+    hash.includes("error_code=") ||
+    search.includes("error=") ||
+    search.includes("error_code=")
+  );
+}
+
+function hasRecoveryTokenInUrl(): boolean {
+  if (typeof window === "undefined") return false;
+  const hash = window.location.hash || "";
+  const search = window.location.search || "";
+  return (
+    hash.includes("type=recovery") ||
+    hash.includes("access_token=") ||
+    search.includes("code=")
+  );
+}
 
 type PageState = "verifying" | "ready" | "invalid" | "success";
 
 export function ResetPasswordPage() {
-  const { updatePassword, isPasswordRecovery } = useAuth();
+  const { updatePassword, isPasswordRecovery, currentUser } = useAuth();
   const [password, setPassword] = useState("");
 
   usePageTitle("Reset Password");
@@ -41,13 +65,15 @@ export function ResetPasswordPage() {
     confirm: false,
   });
 
-  // isPasswordRecovery only flips true once Supabase has processed the
-  // recovery token from the URL (an async PASSWORD_RECOVERY auth event) —
-  // give it a moment before treating "not recovering yet" as "invalid
-  // link". Mirrors ConfirmEmailPage's verifying → ready/invalid pattern.
-  const [state, setState] = useState<PageState>(
-    isPasswordRecovery ? "ready" : "verifying",
-  );
+  // If a user clicks an expired link (Supabase adds error params) or directly visits /reset-password
+  // without any token in URL, immediately mark invalid without waiting 1.8 seconds.
+  // Otherwise, give Supabase a moment to process the recovery token into an active recovery session.
+  const [state, setState] = useState<PageState>(() => {
+    if (isPasswordRecovery) return "ready";
+    if (hasUrlAuthError()) return "invalid";
+    if (!hasRecoveryTokenInUrl()) return "invalid";
+    return "verifying";
+  });
 
   useEffect(() => {
     if (state !== "verifying") return;
@@ -185,7 +211,7 @@ export function ResetPasswordPage() {
         title={state === "success" ? "Password updated" : "Set a new password"}
         subtitle={
           state === "success"
-            ? "Your PrepUniv password has been changed. Log in with your new credentials below to get back to practicing."
+            ? "Your PrepUniv password has been changed. You're logged in and all set to continue."
             : "Use at least 8 characters. For extra credit, mix in uppercase, numbers, or symbols."
         }
       >
@@ -278,10 +304,10 @@ export function ResetPasswordPage() {
               </p>
             </div>
             <div className="space-y-3 pt-1">
-              <Link to="/login">
+              <Link to={getDefaultDashboard(currentUser)}>
                 <Button fullWidth size="lg" className="h-12">
-                  <KeyRound className="w-[18px] h-[18px]" />
-                  Continue to login
+                  Continue to dashboard
+                  <ArrowRight className="w-[18px] h-[18px]" />
                 </Button>
               </Link>
             </div>

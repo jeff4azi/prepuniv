@@ -473,7 +473,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               ? { university_id: args.university_id }
               : {}),
           },
-          emailRedirectTo: `${origin}/confirm-email`,
+          emailRedirectTo: `${window.location.origin}/confirm-email`,
         },
       });
 
@@ -579,7 +579,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPasswordRequest = useCallback(async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${origin}/reset-password`,
+      redirectTo: `${window.location.origin}/reset-password`,
     });
     return { error };
   }, []);
