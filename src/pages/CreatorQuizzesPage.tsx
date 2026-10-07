@@ -1099,11 +1099,12 @@ function QuizMobileCard({
               </>
             )}
           </button>
-          <ShareActionsMenu
-            url={shareUrl}
-            title={shareTitle}
+          <QuizRowMenu
+            quiz={quiz}
+            shareUrl={shareUrl}
+            shareTitle={shareTitle}
+            onTogglePublish={onTogglePublish}
             showToast={showToast}
-            label={`Share ${quiz.title}`}
           />
         </div>
       </div>

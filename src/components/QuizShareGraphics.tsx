@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import {
   Download,
@@ -11,6 +11,9 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+
+const PREPUNIV_LOGO_SRC = new URL("../assets/prepUniv.png", import.meta.url)
+  .href;
 import { Card } from "./Card";
 import { Badge } from "./Badge";
 import { formatNaira } from "./QuizCard";
@@ -58,6 +61,30 @@ export function QuizShareGraphics({
   ];
   const [downloading, setDownloading] = useState<number | null>(null);
   const [justDownloaded, setJustDownloaded] = useState<number | null>(null);
+  const thumbGridRef = useRef<HTMLDivElement>(null);
+  const [thumbScale, setThumbScale] = useState(0.3);
+
+  useEffect(() => {
+    const updateThumbScale = () => {
+      const grid = thumbGridRef.current;
+      if (!grid) return;
+      const firstBtn = grid.firstElementChild as HTMLElement | null;
+      if (!firstBtn) return;
+      const w = firstBtn.clientWidth;
+      if (w > 0) setThumbScale(w / CAPTURE_W);
+    };
+    updateThumbScale();
+    window.addEventListener("resize", updateThumbScale);
+    const ro =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(updateThumbScale)
+        : null;
+    if (ro && thumbGridRef.current) ro.observe(thumbGridRef.current);
+    return () => {
+      window.removeEventListener("resize", updateThumbScale);
+      if (ro) ro.disconnect();
+    };
+  }, []);
 
   async function handleDownload(idx: number) {
     const ref = capRefs[idx].current;
@@ -318,7 +345,15 @@ export function QuizShareGraphics({
                         pointerEvents: activeIdx === i ? "auto" : "none",
                       }}
                     >
-                      <div className="absolute inset-0 [transform:scale(0.6667)] [transform-origin:top_left] [width:150%] [height:150%]">
+                      <div
+                        className="absolute top-0 left-0"
+                        style={{
+                          width: CAPTURE_W,
+                          height: CAPTURE_H,
+                          transform: "scale(0.6667)",
+                          transformOrigin: "top left",
+                        }}
+                      >
                         {i === 0 && <TemplateMinimal data={data} />}
                         {i === 1 && <TemplateStats data={data} />}
                         {i === 2 && <TemplateCreator data={data} />}
@@ -342,7 +377,7 @@ export function QuizShareGraphics({
             </div>
 
             <div className="flex-1 min-w-0 space-y-4">
-              <div className="grid grid-cols-3 gap-2.5">
+              <div ref={thumbGridRef} className="grid grid-cols-3 gap-2.5">
                 {[0, 1, 2].map((i) => (
                   <button
                     key={i}
@@ -353,7 +388,15 @@ export function QuizShareGraphics({
                         : "ring-border/50 hover:ring-muted opacity-90 hover:opacity-100"
                     }`}
                   >
-                    <div className="absolute inset-0 [transform:scale(0.3)] [transform-origin:top_left] [width:333.333%] [height:333.333%]">
+                    <div
+                      className="absolute top-0 left-0 shrink-0"
+                      style={{
+                        width: CAPTURE_W,
+                        height: CAPTURE_H,
+                        transform: `scale(${thumbScale})`,
+                        transformOrigin: "top left",
+                      }}
+                    >
                       {i === 0 && <TemplateMinimal data={data} />}
                       {i === 1 && <TemplateStats data={data} />}
                       {i === 2 && <TemplateCreator data={data} />}
@@ -440,28 +483,34 @@ const TemplateMinimal = Object.assign(
     return (
       <div
         ref={ref}
-        className="absolute inset-0 flex flex-col"
+        className="flex flex-col shrink-0"
         style={{
+          width: CAPTURE_W,
+          height: CAPTURE_H,
           background:
             "linear-gradient(160deg, #fbf8ee 0%, #f4efdb 45%, #ece4c6 100%)",
           fontFamily:
             "'Lexend', 'Inter', system-ui, -apple-system, sans-serif",
           color: "#1f2a17",
           padding: "44px 40px 40px",
+          boxSizing: "border-box",
         }}
       >
         <div className="flex items-center justify-between mb-10">
           <div className="flex items-center gap-2.5">
             <div
-              className="h-10 w-10 rounded-2xl flex items-center justify-center shadow-soft"
+              className="h-10 w-10 rounded-2xl flex items-center justify-center shadow-soft overflow-hidden shrink-0"
               style={{
                 background:
                   "linear-gradient(135deg, #44612e 0%, #667351 100%)",
               }}
             >
-              <span style={{ color: "#fbf8ee", fontSize: 18, fontWeight: 800 }}>
-                P
-              </span>
+              <img
+                src={PREPUNIV_LOGO_SRC}
+                alt="PrepUniv"
+                crossOrigin="anonymous"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
             </div>
             <div>
               <p style={{ fontWeight: 700, fontSize: 16, lineHeight: 1, letterSpacing: "-0.01em" }}>
@@ -629,8 +678,10 @@ const TemplateStats = Object.assign(
     return (
       <div
         ref={ref}
-        className="absolute inset-0 flex flex-col"
+        className="flex flex-col shrink-0"
         style={{
+          width: CAPTURE_W,
+          height: CAPTURE_H,
           background:
             "linear-gradient(155deg, #44612e 0%, #3a5327 40%, #2f4421 100%)",
           fontFamily:
@@ -638,6 +689,7 @@ const TemplateStats = Object.assign(
           padding: "40px 36px 36px",
           position: "relative",
           overflow: "hidden",
+          boxSizing: "border-box",
         }}
       >
         <div
@@ -673,16 +725,19 @@ const TemplateStats = Object.assign(
         >
           <div className="flex items-center gap-2.5">
             <div
-              className="h-10 w-10 rounded-2xl flex items-center justify-center"
+              className="h-10 w-10 rounded-2xl flex items-center justify-center overflow-hidden shrink-0"
               style={{
                 background: "rgba(251, 248, 238, 0.15)",
                 backdropFilter: "blur(8px)",
                 border: "1px solid rgba(251, 248, 238, 0.2)",
               }}
             >
-              <span style={{ color: "#fbf8ee", fontSize: 18, fontWeight: 800 }}>
-                P
-              </span>
+              <img
+                src={PREPUNIV_LOGO_SRC}
+                alt="PrepUniv"
+                crossOrigin="anonymous"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
             </div>
             <div>
               <p style={{ color: "#fbf8ee", fontWeight: 700, fontSize: 16, lineHeight: 1, letterSpacing: "-0.01em" }}>
@@ -897,8 +952,10 @@ const TemplateCreator = Object.assign(
     return (
       <div
         ref={ref}
-        className="absolute inset-0 flex flex-col"
+        className="flex flex-col shrink-0"
         style={{
+          width: CAPTURE_W,
+          height: CAPTURE_H,
           background:
             "linear-gradient(180deg, #fbf8ee 0%, #f6f0d9 100%)",
           fontFamily:
@@ -907,6 +964,7 @@ const TemplateCreator = Object.assign(
           color: "#1f2a17",
           position: "relative",
           overflow: "hidden",
+          boxSizing: "border-box",
         }}
       >
         <div
@@ -945,9 +1003,16 @@ const TemplateCreator = Object.assign(
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                overflow: "hidden",
+                flexShrink: 0,
               }}
             >
-              <span style={{ color: "#fbf8ee", fontSize: 13, fontWeight: 800 }}>P</span>
+              <img
+                src={PREPUNIV_LOGO_SRC}
+                alt="PrepUniv"
+                crossOrigin="anonymous"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
             </div>
             <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: "-0.01em", color: "#44612e" }}>
               PrepUniv
