@@ -654,7 +654,7 @@ const TemplateMinimal = Object.assign(
           }}
         >
           {data.quizDescription
-            ? truncate(data.quizDescription, 2)
+            ? truncate(data.quizDescription, 4)
             : `${data.questionCount} carefully crafted questions to test your understanding and help you ace your next exam.`}
         </p>
 
