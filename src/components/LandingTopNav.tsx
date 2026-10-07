@@ -72,20 +72,34 @@ export function LandingTopNav() {
               </Button>
             </div>
           )
-        ) : /* Non-landing public pages: show auth buttons for guests */
+        ) : /* Non-landing public pages: show auth buttons for guests, preserving current page as redirect */
         !isLoading && !isLoggedIn ? (
           <div className="flex items-center gap-2 sm:gap-3">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => (window.location.href = "/login")}
+              onClick={() => {
+                const current = window.location.pathname + window.location.search;
+                const target =
+                  current && current !== "/"
+                    ? `/login?redirect=${encodeURIComponent(current)}`
+                    : "/login";
+                window.location.href = target;
+              }}
             >
               Log in
             </Button>
             <Button
               variant="primary"
               size="sm"
-              onClick={() => (window.location.href = "/signup")}
+              onClick={() => {
+                const current = window.location.pathname + window.location.search;
+                const target =
+                  current && current !== "/"
+                    ? `/signup?redirect=${encodeURIComponent(current)}`
+                    : "/signup";
+                window.location.href = target;
+              }}
             >
               Sign up
             </Button>

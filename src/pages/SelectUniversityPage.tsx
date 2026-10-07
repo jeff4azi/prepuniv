@@ -30,7 +30,9 @@ export function SelectUniversityPage() {
   // than making the user pick again.
   useEffect(() => {
     if (currentUser.university_id) {
-      navigate(getDefaultDashboard(currentUser), { replace: true });
+      const savedRedirect = getSavedAuthRedirect();
+      clearSavedAuthRedirect();
+      navigate(savedRedirect || getDefaultDashboard(currentUser), { replace: true });
     }
   }, [currentUser, navigate]);
 
@@ -50,7 +52,9 @@ export function SelectUniversityPage() {
       return;
     }
     await refreshProfile();
-    navigate(getDefaultDashboard(currentUser), { replace: true });
+    const savedRedirect = getSavedAuthRedirect();
+    clearSavedAuthRedirect();
+    navigate(savedRedirect || getDefaultDashboard(currentUser), { replace: true });
   }
 
   return (

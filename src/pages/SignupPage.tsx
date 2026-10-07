@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { ArrowRight, CheckCircle2, Mail } from "lucide-react";
 import { AuthShell, AuthCard } from "../components/AuthShell";
@@ -14,6 +14,11 @@ import {
 } from "../components/Form";
 import { useAuth } from "../context/AuthContext";
 import { useApplyPendingUniversity } from "../hooks/useApplyPendingUniversity";
+import {
+  sanitizeAuthRedirect,
+  getSavedAuthRedirect,
+  saveAuthRedirect,
+} from "../lib/routeGuard";
 
 interface SignupErrors {
   full_name?: string | null;
@@ -191,12 +196,23 @@ export function SignupPage() {
     );
   }
 
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const currentRedirect =
+    sanitizeAuthRedirect(searchParams.get("redirect")) ?? getSavedAuthRedirect();
+  if (currentRedirect) {
+    saveAuthRedirect(currentRedirect);
+  }
+  const loginLink = currentRedirect
+    ? `/login?redirect=${encodeURIComponent(currentRedirect)}`
+    : "/login";
+
   // ── Signup form ───────────────────────────────────────────────────────────
   return (
     <AuthShell
       crossLink={{
         label: "Already have an account?",
-        to: "/login",
+        to: loginLink,
         cta: "Log in",
       }}
     >

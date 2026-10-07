@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { ArrowRight, CheckCircle2, Mail } from "lucide-react";
 import { AuthShell, AuthCard } from "../components/AuthShell";
@@ -11,13 +11,18 @@ import {
   validatePassword,
 } from "../components/Form";
 import { useAuth } from "../context/AuthContext";
-import { getDefaultDashboard, useRedirectAfterAuth } from "../lib/routeGuard";
+import {
+  getDefaultDashboard,
+  sanitizeAuthRedirect,
+  getSavedAuthRedirect,
+  clearSavedAuthRedirect,
+} from "../lib/routeGuard";
 
 const RESEND_COOLDOWN = 60;
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const redirectTarget = useRedirectAfterAuth();
+  const location = useLocation();
   const { logIn, resendSignup } = useAuth();
 
   usePageTitle("Log In");
@@ -108,9 +113,15 @@ export function LoginPage() {
       return;
     }
 
-    const searchParams = new URLSearchParams(window.location.search);
-    const redirectParam = searchParams.get("redirect");
-    const target = redirectParam ?? getDefaultDashboard(loggedInProfile);
+    const searchParams = new URLSearchParams(location.search);
+    const validRedirect =
+      sanitizeAuthRedirect(searchParams.get("redirect")) ??
+      getSavedAuthRedirect();
+
+    clearSavedAuthRedirect();
+
+    // If there is a valid redirect, go straight there! Role-based dashboard only applies when no redirect exists.
+    const target = validRedirect ?? getDefaultDashboard(loggedInProfile);
 
     navigate(target, { replace: true });
     setLoading(false);
@@ -203,12 +214,19 @@ export function LoginPage() {
     );
   }
 
+  const searchParams = new URLSearchParams(location.search);
+  const currentRedirect =
+    sanitizeAuthRedirect(searchParams.get("redirect")) ?? getSavedAuthRedirect();
+  const signupLink = currentRedirect
+    ? `/signup?redirect=${encodeURIComponent(currentRedirect)}`
+    : "/signup";
+
   // ── Normal login form ─────────────────────────────────────────────────────
   return (
     <AuthShell
       crossLink={{
         label: "Don't have an account?",
-        to: "/signup",
+        to: signupLink,
         cta: "Sign up",
       }}
     >

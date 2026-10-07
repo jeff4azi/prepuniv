@@ -100,11 +100,60 @@ export function RequireAuth({ children, role, redirectTo }: RequireAuthProps) {
   return <>{children}</>;
 }
 
+export const AUTH_REDIRECT_KEY = "prepuniv:auth_redirect";
+
+/**
+ * Validates that a redirect path is a safe internal application route
+ * and not an auth loop (like /login or /signup).
+ */
+export function sanitizeAuthRedirect(url?: string | null): string | null {
+  if (!url || typeof url !== "string") return null;
+  const trimmed = url.trim();
+  // Must be an internal path starting with / but not protocol-relative //
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return null;
+  // Disallow auth pages that would cause infinite loops
+  if (
+    trimmed === "/login" ||
+    trimmed === "/signup" ||
+    trimmed.startsWith("/login?") ||
+    trimmed.startsWith("/signup?")
+  ) {
+    return null;
+  }
+  return trimmed;
+}
+
+export function getSavedAuthRedirect(): string | null {
+  try {
+    const val = sessionStorage.getItem(AUTH_REDIRECT_KEY);
+    return sanitizeAuthRedirect(val);
+  } catch {
+    return null;
+  }
+}
+
+export function saveAuthRedirect(url: string) {
+  try {
+    const sanitized = sanitizeAuthRedirect(url);
+    if (!sanitized) return;
+    sessionStorage.setItem(AUTH_REDIRECT_KEY, sanitized);
+  } catch {
+    // no-op
+  }
+}
+
+export function clearSavedAuthRedirect() {
+  try {
+    sessionStorage.removeItem(AUTH_REDIRECT_KEY);
+  } catch {
+    // no-op
+  }
+}
+
 /**
  * Redirect logged-in users AWAY from auth-only pages (e.g. /login, /signup).
- * Optional `fallback` overrides the default role-based redirect target.
- * Respects the `?redirect=` query param so users returning from a public page
- * (e.g. /quiz/123) land on their intended destination after sign-up.
+ * If a valid redirect target exists (e.g. /quiz/123 or /profile/creator/456),
+ * it ALWAYS takes precedence over role-based default dashboards.
  */
 export function IfLoggedOut({
   children,
@@ -116,6 +165,15 @@ export function IfLoggedOut({
   const { isLoggedIn, isLoading, currentUser } = useAuth();
   const { search } = useLocation();
 
+  // Keep any explicit ?redirect= query param cached in sessionStorage
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const redirectParam = params.get("redirect");
+    if (redirectParam) {
+      saveAuthRedirect(redirectParam);
+    }
+  }, [search]);
+
   if (isLoading) {
     return (
       <div className="min-h-dvh flex items-center justify-center text-text-muted">
@@ -125,11 +183,16 @@ export function IfLoggedOut({
   }
 
   if (isLoggedIn) {
-    // Honour the ?redirect= param if present (set by our guest CTAs)
     const params = new URLSearchParams(search);
-    const redirectParam = params.get("redirect");
-    const target =
-      fallback ?? redirectParam ?? getDefaultDashboard(currentUser);
+    const validRedirect =
+      sanitizeAuthRedirect(fallback) ??
+      sanitizeAuthRedirect(params.get("redirect")) ??
+      getSavedAuthRedirect();
+
+    clearSavedAuthRedirect();
+
+    // If a valid redirect path exists, go there! Only fallback to role dashboard if no redirect exists.
+    const target = validRedirect ?? getDefaultDashboard(currentUser);
     return <Navigate to={target} replace />;
   }
   return <>{children}</>;
@@ -139,7 +202,13 @@ export function useRedirectAfterAuth() {
   const { search } = useLocation();
   const { currentUser } = useAuth();
   const params = new URLSearchParams(search);
-  return params.get("redirect") ?? getDefaultDashboard(currentUser);
+  const validRedirect =
+    sanitizeAuthRedirect(params.get("redirect")) ?? getSavedAuthRedirect();
+
+  if (validRedirect) {
+    return validRedirect;
+  }
+  return getDefaultDashboard(currentUser);
 }
 
 /**
