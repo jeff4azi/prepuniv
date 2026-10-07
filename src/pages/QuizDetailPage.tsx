@@ -38,7 +38,9 @@ import {
   fetchUserAttempts,
   fetchPreviewCount,
   fetchQuizRating,
+  fetchQuizReviews,
   type QuizRating,
+  type QuizReviewItem,
 } from "../lib/queries";
 import type { Quiz, Course, Profile, QuizAttempt } from "../types";
 import { formatNaira } from "../components/QuizCard";
@@ -160,6 +162,7 @@ export function QuizDetailPage() {
   const [myAttempts, setMyAttempts] = useState<QuizAttempt[]>([]);
   const [previewCount, setPreviewCount] = useState<number>(0);
   const [quizRating, setQuizRating] = useState<QuizRating | null>(null);
+  const [quizReviews, setQuizReviews] = useState<QuizReviewItem[]>([]);
 
   // Dynamic tab title — shows quiz title once loaded, "Loading…" before that
   usePageTitle(quiz === undefined ? null : (quiz?.title ?? null));
@@ -178,15 +181,17 @@ export function QuizDetailPage() {
       const previewP = fetchPreviewCount(id);
 
       // Fetch public data unconditionally
-      const [c, p, rating] = await Promise.all([
+      const [c, p, rating, reviews] = await Promise.all([
         q.course_id ? fetchCourse(q.course_id) : Promise.resolve(null),
         q.creator_id ? fetchProfile(q.creator_id) : Promise.resolve(null),
         fetchQuizRating(id),
+        fetchQuizReviews(id),
       ]);
       if (cancelled) return;
       setCourse(c);
       setCreator(p);
       setQuizRating(rating);
+      setQuizReviews(reviews);
 
       // Resolve preview count (already started in parallel above)
       const pc = await previewP;
@@ -478,13 +483,16 @@ export function QuizDetailPage() {
                   {quiz.attempt_count.toLocaleString()} attempts
                 </span>
                 {quizRating && quizRating.avg_rating > 0 && (
-                  <span className="inline-flex items-center gap-1 text-warning font-heading font-semibold text-sm">
+                  <a
+                    href="#reviews"
+                    className="inline-flex items-center gap-1 text-warning font-heading font-semibold text-sm hover:underline cursor-pointer"
+                  >
                     <Star className="w-3.5 h-3.5 fill-warning" />
                     {quizRating.avg_rating.toFixed(1)}
                     <span className="text-muted font-normal">
                       · {quizRating.total_reviews.toLocaleString()} review{quizRating.total_reviews !== 1 ? "s" : ""}
                     </span>
-                  </span>
+                  </a>
                 )}
                 <span className="inline-flex items-center gap-1.5">
                   <Timer className="w-4 h-4 text-muted" />
@@ -788,6 +796,149 @@ export function QuizDetailPage() {
                   {course ? `${course.code} — ${course.title}` : "this course"}
                 </span>
               </div>
+            </div>
+          </Card>
+
+          {/* ── Ratings & Reviews ── */}
+          <Card id="reviews">
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-heading font-bold text-text text-base">
+                    Ratings &amp; Reviews
+                  </h2>
+                  <p className="text-xs text-muted mt-0.5">
+                    Feedback from students who completed this quiz
+                  </p>
+                </div>
+                {quizRating && quizRating.total_reviews > 0 && (
+                  <Badge variant="warning" size="md">
+                    <Star className="w-3.5 h-3.5 fill-warning" />
+                    {quizRating.avg_rating.toFixed(1)} / 5.0
+                  </Badge>
+                )}
+              </div>
+
+              {quizRating && quizRating.total_reviews > 0 ? (
+                <div className="grid sm:grid-cols-12 gap-6 items-center p-4 rounded-2xl bg-surface/30 border border-border/40">
+                  <div className="sm:col-span-4 flex flex-col items-center justify-center text-center sm:border-r border-border/40 sm:pr-4">
+                    <span className="font-heading font-bold text-4xl sm:text-5xl text-text leading-none">
+                      {quizRating.avg_rating.toFixed(1)}
+                    </span>
+                    <div className="flex items-center gap-1 text-warning my-2">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star
+                          key={s}
+                          className={`w-4 h-4 ${
+                            s <= Math.round(quizRating.avg_rating)
+                              ? "fill-warning text-warning"
+                              : "text-border fill-transparent"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs text-muted font-heading">
+                      {quizRating.total_reviews.toLocaleString()} review
+                      {quizRating.total_reviews !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+
+                  <div className="sm:col-span-8 space-y-1.5">
+                    {[
+                      { star: 5, count: quizRating.r5 },
+                      { star: 4, count: quizRating.r4 },
+                      { star: 3, count: quizRating.r3 },
+                      { star: 2, count: quizRating.r2 },
+                      { star: 1, count: quizRating.r1 },
+                    ].map(({ star, count }) => {
+                      const pct =
+                        quizRating.total_reviews > 0
+                          ? Math.round((count / quizRating.total_reviews) * 100)
+                          : 0;
+                      return (
+                        <div
+                          key={star}
+                          className="flex items-center gap-2.5 text-xs text-text-soft"
+                        >
+                          <span className="w-3 font-heading font-medium text-right shrink-0">
+                            {star}
+                          </span>
+                          <Star className="w-3 h-3 text-warning fill-warning shrink-0" />
+                          <div className="flex-1 h-2 rounded-full bg-surface overflow-hidden border border-border/30">
+                            <div
+                              className="h-full bg-warning rounded-full transition-all duration-300"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span className="w-7 text-right font-mono text-muted text-[11px] shrink-0">
+                            {count}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Reviews list */}
+              {quizReviews.length > 0 ? (
+                <div className="space-y-3 pt-1">
+                  {quizReviews.map((r) => (
+                    <div
+                      key={r.id}
+                      className="p-3.5 rounded-2xl border border-border/40 bg-surface/20 space-y-2"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar
+                            name={r.reviewer_name}
+                            src={r.reviewer_avatar_url ?? undefined}
+                            size="xs"
+                          />
+                          <div>
+                            <p className="text-xs font-heading font-semibold text-text leading-tight">
+                              {r.reviewer_name}
+                            </p>
+                            <p className="text-[10px] text-muted">
+                              {new Date(r.created_at).toLocaleDateString(
+                                "en-NG",
+                                { month: "short", day: "numeric", year: "numeric" },
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-0.5 text-warning shrink-0">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <Star
+                              key={s}
+                              className={`w-3 h-3 ${
+                                s <= r.rating
+                                  ? "fill-warning text-warning"
+                                  : "text-border fill-transparent"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      {r.review_text && (
+                        <p className="text-xs text-text-soft leading-relaxed pl-9">
+                          {r.review_text}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 px-4 rounded-2xl bg-surface/20 border border-border/30">
+                  <Star className="w-6 h-6 text-muted/60 mx-auto mb-2" />
+                  <p className="text-sm font-heading font-semibold text-text">
+                    No reviews yet
+                  </p>
+                  <p className="text-xs text-muted mt-1 max-w-sm mx-auto">
+                    Complete this quiz to be among the first students to share feedback and help others prepare!
+                  </p>
+                </div>
+              )}
             </div>
           </Card>
 

@@ -34,6 +34,7 @@ import {
   AdminQuizzesPage,
   AdminUniversitiesPage,
   AdminNotificationsPage,
+  AdminReviewsPage,
 } from "./pages";
 import { AdminQuizContentPage } from "./pages/AdminQuizContentPage";
 import { AccountSuspendedPage } from "./pages/AccountSuspendedPage";
@@ -53,6 +54,7 @@ import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { CreatorApplyPage } from "./pages/CreatorApplyPage";
 import { CreatorProfilePage } from "./pages/CreatorProfilePage";
 import { SelectUniversityPage } from "./pages/SelectUniversityPage";
+import { PlatformReviewModal } from "./components/PlatformReviewModal";
 import { useEffect } from "react";
 
 function PageTransition({ children }: { children: React.ReactNode }) {
@@ -367,6 +369,14 @@ function AppShell() {
                 }
               />
               <Route
+                path="/admin/reviews"
+                element={
+                  <RequireAuth role="admin">
+                    <AdminReviewsPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
                 path="/admin/users"
                 element={
                   <RequireAuth role="admin">
@@ -568,6 +578,7 @@ function RoutingSwitch() {
       {/* Non-public app paths: always AppShell (RequireAuth handles redirect) */}
       {showAppShellAlways && <AppShell />}
       {!isStaticPublic && !isAttempt && !isAppPath && <NotFoundPage />}
+      <PlatformReviewModal />
     </>
   );
 }

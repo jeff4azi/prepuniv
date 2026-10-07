@@ -838,3 +838,43 @@ export async function fetchFeaturedTestimonials(
     created_at: r.created_at,
   }));
 }
+
+export interface QuizReviewItem {
+  id: string;
+  rating: number;
+  review_text: string | null;
+  created_at: string;
+  reviewer_name: string;
+  reviewer_avatar_url?: string | null;
+}
+
+/** Recent approved reviews for a specific quiz (for QuizDetailPage reviews section). */
+export async function fetchQuizReviews(
+  quizId: string,
+  limit = 8,
+): Promise<QuizReviewItem[]> {
+  const { data, error } = await supabase
+    .from("reviews")
+    .select(`
+      id, rating, review_text, created_at,
+      reviewer:reviewer_id ( full_name, avatar_url )
+    `)
+    .eq("review_target_type", "quiz")
+    .eq("target_quiz_id", quizId)
+    .eq("is_approved", true)
+    .eq("is_hidden", false)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error || !Array.isArray(data)) return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return data.map((r: any) => ({
+    id: r.id,
+    rating: r.rating,
+    review_text: r.review_text,
+    created_at: r.created_at,
+    reviewer_name: r.reviewer?.full_name ?? "Learner",
+    reviewer_avatar_url: r.reviewer?.avatar_url,
+  }));
+}
+
