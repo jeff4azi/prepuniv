@@ -690,14 +690,14 @@ const TemplateMinimal = Object.assign(
         <div
           style={{
             position: "relative",
-            marginTop: "auto",
-            padding: "18px 18px 16px",
-            borderRadius: 22,
+            marginTop: 0,
+            padding: "16px 16px 14px",
+            borderRadius: 20,
             background:
               "linear-gradient(155deg, #ffffff 0%, #fbf7e9 50%, #f4efd5 100%)",
             border: "1.5px solid rgba(177, 184, 156, 0.55)",
             boxShadow:
-              "0 12px 32px rgba(68, 97, 46, 0.12), 0 2px 6px rgba(68, 97, 46, 0.05)",
+              "0 10px 28px rgba(68, 97, 46, 0.11), 0 2px 6px rgba(68, 97, 46, 0.05)",
           }}
         >
           <div className="flex items-center justify-between gap-3 mb-3">
