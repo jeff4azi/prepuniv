@@ -821,6 +821,40 @@ export async function fetchSingleCreatorRating(
   };
 }
 
+export interface CreatorReviewItem {
+  id: string;
+  rating: number;
+  review_text: string | null;
+  review_target_type: "quiz" | "creator";
+  target_quiz_title?: string | null;
+  reviewer_name: string;
+  reviewer_avatar_url?: string | null;
+  created_at: string;
+}
+
+/** Recent student reviews for a creator (blended from their quizzes and direct creator reviews). */
+export async function fetchCreatorReviews(
+  creatorId: string,
+  limit = 6,
+): Promise<CreatorReviewItem[]> {
+  const { data, error } = await supabase.rpc("get_creator_reviews", {
+    p_creator_id: creatorId,
+    p_limit: limit,
+  });
+  if (error || !Array.isArray(data)) return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return data.map((r: any) => ({
+    id: r.id,
+    rating: r.rating,
+    review_text: r.review_text,
+    review_target_type: r.review_target_type,
+    target_quiz_title: r.target_quiz_title,
+    reviewer_name: r.reviewer_name,
+    reviewer_avatar_url: r.reviewer_avatar_url,
+    created_at: r.created_at,
+  }));
+}
+
 /** Featured platform testimonials — for Landing Testimonials section. */
 export async function fetchFeaturedTestimonials(
   limit = 6,

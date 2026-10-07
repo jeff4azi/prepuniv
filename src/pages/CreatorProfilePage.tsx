@@ -27,7 +27,11 @@ import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import { apiFetch } from "../lib/api";
-import { fetchSingleCreatorRating } from "../lib/queries";
+import {
+  fetchSingleCreatorRating,
+  fetchCreatorReviews,
+  type CreatorReviewItem,
+} from "../lib/queries";
 import type {
   DbQuiz,
   DbCourse,
@@ -88,6 +92,7 @@ export function CreatorProfilePage() {
   const [myAttempts, setMyAttempts] = useState<DbQuizAttempt[]>([]);
   const [university, setUniversity] = useState<DbUniversity | null>(null);
   const [creatorRating, setCreatorRating] = useState<{ avg_rating: number; total_reviews: number } | null>(null);
+  const [creatorReviews, setCreatorReviews] = useState<CreatorReviewItem[]>([]);
   const [reviewEligible, setReviewEligible] = useState<boolean | null>(null); // null = unknown
 
   // Dynamic tab title: loading → null, found → name, not found → fallback
@@ -180,9 +185,13 @@ export function CreatorProfilePage() {
 
       if (!cancelled) setLoading(false);
 
-      // Fetch creator rating (anon-safe RPC)
-      const ratingResult = await fetchSingleCreatorRating(id);
+      // Fetch creator rating & reviews (anon-safe RPC)
+      const [ratingResult, reviewsResult] = await Promise.all([
+        fetchSingleCreatorRating(id),
+        fetchCreatorReviews(id, 6),
+      ]);
       if (!cancelled && ratingResult) setCreatorRating(ratingResult);
+      if (!cancelled && reviewsResult) setCreatorReviews(reviewsResult);
 
       // Check review eligibility for logged-in users
       if (isLoggedIn && !cancelled) {
@@ -589,19 +598,21 @@ export function CreatorProfilePage() {
                   .toLocaleString()}
               />
             )}
-            {creatorRating && creatorRating.avg_rating > 0 ? (
-              <div className="flex flex-col items-center gap-1.5 px-5 py-4 flex-1 min-w-0">
-                <div className="h-9 w-9 rounded-2xl bg-warning/10 text-warning flex items-center justify-center">
-                  <Star className="w-4.5 h-4.5 fill-warning" strokeWidth={0} />
-                </div>
-                <p className="font-heading font-bold text-xl text-text leading-none">
-                  {creatorRating.avg_rating.toFixed(1)}
-                </p>
-                <p className="text-[11px] font-heading font-medium text-muted text-center leading-tight">
-                  {creatorRating.total_reviews} rating{creatorRating.total_reviews !== 1 ? "s" : ""}
-                </p>
+            <div className="flex flex-col items-center gap-1.5 px-5 py-4 flex-1 min-w-0">
+              <div className="h-9 w-9 rounded-2xl bg-warning/10 text-warning flex items-center justify-center">
+                <Star className="w-4.5 h-4.5 fill-warning" strokeWidth={0} />
               </div>
-            ) : null}
+              <p className="font-heading font-bold text-xl text-text leading-none">
+                {creatorRating && creatorRating.total_reviews > 0
+                  ? creatorRating.avg_rating.toFixed(1)
+                  : "New"}
+              </p>
+              <p className="text-[11px] font-heading font-medium text-muted text-center leading-tight">
+                {creatorRating && creatorRating.total_reviews > 0
+                  ? `${creatorRating.total_reviews} rating${creatorRating.total_reviews !== 1 ? "s" : ""}`
+                  : "No ratings yet"}
+              </p>
+            </div>
           </div>
         </Card>
 
@@ -666,6 +677,88 @@ export function CreatorProfilePage() {
                   />
                 );
               })}
+            </div>
+          )}
+
+          {/* ── Student Reviews & Feedback ── */}
+          {creatorReviews.length > 0 && (
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-heading font-bold text-xl text-text tracking-tight">
+                    Student Reviews
+                  </h2>
+                  <p className="text-sm text-text-soft mt-0.5">
+                    Feedback from students across {profile.full_name.split(" ")[0]}&apos;s quizzes
+                  </p>
+                </div>
+                {creatorRating && creatorRating.total_reviews > 0 && (
+                  <Badge variant="warning" size="md">
+                    <Star className="w-3.5 h-3.5 fill-warning" />
+                    {creatorRating.avg_rating.toFixed(1)} / 5.0
+                  </Badge>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {creatorReviews.map((r) => (
+                  <Card
+                    key={r.id}
+                    padded={false}
+                    className="p-4 sm:p-5 flex flex-col justify-between bg-surface/20 border-border/50 space-y-3"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar
+                            name={r.reviewer_name}
+                            src={r.reviewer_avatar_url ?? undefined}
+                            size="xs"
+                          />
+                          <div>
+                            <p className="text-xs font-heading font-semibold text-text leading-tight">
+                              {r.reviewer_name}
+                            </p>
+                            <p className="text-[10px] text-muted">
+                              {new Date(r.created_at).toLocaleDateString("en-NG", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-0.5 text-warning shrink-0">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <Star
+                              key={s}
+                              className={`w-3 h-3 ${
+                                s <= r.rating
+                                  ? "fill-warning text-warning"
+                                  : "text-border fill-transparent"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      {r.review_text && (
+                        <p className="text-xs text-text-soft leading-relaxed pl-9">
+                          &ldquo;{r.review_text}&rdquo;
+                        </p>
+                      )}
+                    </div>
+
+                    {r.target_quiz_title && (
+                      <div className="pt-2.5 border-t border-border/30 flex items-center justify-between text-[11px] text-muted">
+                        <span className="truncate">
+                          Quiz: <span className="text-text font-medium">{r.target_quiz_title}</span>
+                        </span>
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
             </div>
           )}
 
