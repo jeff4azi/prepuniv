@@ -250,8 +250,148 @@ export function QuizDetailPage() {
     return (
       <PageContainer>
         <div className="space-y-4 animate-pulse">
-          <div className="h-6 w-32 rounded-lg bg-surface" />
-          <div className="h-48 rounded-3xl bg-surface" />
+          {/* Back button */}
+          <div className="h-4 w-16 rounded-md bg-surface" />
+
+          {/* Hero Quiz Card */}
+          <Card>
+            <div className="space-y-4">
+              {/* Badges + Share button row */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="h-6 w-24 rounded-full bg-surface" />
+                  <div className="h-6 w-28 rounded-full bg-surface" />
+                </div>
+                <div className="h-8 w-8 rounded-xl bg-surface shrink-0" />
+              </div>
+
+              {/* Quiz Title */}
+              <div className="space-y-2">
+                <div className="h-7 sm:h-8 w-4/5 rounded-lg bg-surface" />
+                <div className="h-7 sm:h-8 w-2/5 rounded-lg bg-surface" />
+              </div>
+
+              {/* Meta row chips */}
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <div className="h-5 w-24 rounded-lg bg-surface" />
+                <div className="h-5 w-24 rounded-lg bg-surface" />
+                <div className="h-5 w-28 rounded-lg bg-surface" />
+                <div className="h-5 w-20 rounded-lg bg-surface" />
+                <div className="h-5 w-36 rounded-lg bg-surface" />
+              </div>
+
+              {/* Creator row */}
+              <div className="flex items-center gap-2.5 pt-1">
+                <div className="h-7 w-7 rounded-full bg-surface shrink-0" />
+                <div className="h-4 w-36 rounded-lg bg-surface" />
+              </div>
+
+              {/* Action block */}
+              <div className="border-t border-border/40 pt-4 space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-baseline gap-2">
+                    <div className="h-8 w-24 rounded-lg bg-surface" />
+                    <div className="h-4 w-14 rounded-md bg-surface/70" />
+                  </div>
+                  <div className="h-4 w-72 rounded-md bg-surface/70" />
+                </div>
+                <div className="h-11 w-full rounded-2xl bg-surface" />
+              </div>
+            </div>
+          </Card>
+
+          {/* Choose attempt mode card */}
+          <Card>
+            <div className="space-y-3">
+              <div className="h-5 w-40 rounded-lg bg-surface" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="h-20 rounded-2xl border-2 border-border/40 bg-surface/20 p-4 flex flex-col justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-8 w-8 rounded-xl bg-surface" />
+                    <div className="h-4 w-20 rounded-lg bg-surface" />
+                    <div className="ml-auto h-5 w-16 rounded-lg bg-surface" />
+                  </div>
+                  <div className="h-3 w-40 rounded bg-surface/60 pl-10" />
+                </div>
+                <div className="h-20 rounded-2xl border-2 border-border/40 bg-surface/20 p-4 flex flex-col justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-8 w-8 rounded-xl bg-surface" />
+                    <div className="h-4 w-20 rounded-lg bg-surface" />
+                  </div>
+                  <div className="h-3 w-40 rounded bg-surface/60 pl-10" />
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* About this quiz card */}
+          <Card>
+            <div className="space-y-3">
+              <div className="h-5 w-32 rounded-lg bg-surface" />
+              <div className="space-y-2">
+                <div className="h-3.5 w-full rounded bg-surface/70" />
+                <div className="h-3.5 w-5/6 rounded bg-surface/70" />
+                <div className="h-3.5 w-3/4 rounded bg-surface/70" />
+              </div>
+            </div>
+          </Card>
+
+          {/* Ratings & Reviews card */}
+          <Card>
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1.5">
+                  <div className="h-5 w-40 rounded-lg bg-surface" />
+                  <div className="h-3.5 w-56 rounded bg-surface/60" />
+                </div>
+                <div className="h-7 w-20 rounded-xl bg-surface" />
+              </div>
+
+              {/* Breakdown */}
+              <div className="grid sm:grid-cols-12 gap-6 items-center p-4 rounded-2xl bg-surface/30 border border-border/40">
+                <div className="sm:col-span-4 flex flex-col items-center justify-center text-center sm:border-r border-border/40 sm:pr-4 space-y-2">
+                  <div className="h-12 w-16 rounded-xl bg-surface" />
+                  <div className="h-4 w-24 rounded bg-surface" />
+                  <div className="h-3 w-20 rounded bg-surface/60" />
+                </div>
+                <div className="sm:col-span-8 space-y-2">
+                  {[5, 4, 3, 2, 1].map((s) => (
+                    <div key={s} className="flex items-center gap-2.5">
+                      <div className="h-3 w-3 rounded bg-surface" />
+                      <div className="h-3 w-3 rounded bg-surface" />
+                      <div className="flex-1 h-2 rounded-full bg-surface" />
+                      <div className="h-3 w-6 rounded bg-surface" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sample reviews */}
+              <div className="space-y-3 pt-2">
+                {[0, 1].map((i) => (
+                  <div
+                    key={i}
+                    className="p-4 rounded-2xl bg-surface/20 border border-border/40 space-y-2.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-7 w-7 rounded-full bg-surface" />
+                        <div className="space-y-1">
+                          <div className="h-3.5 w-24 rounded bg-surface" />
+                          <div className="h-2.5 w-16 rounded bg-surface/60" />
+                        </div>
+                      </div>
+                      <div className="h-3.5 w-20 rounded bg-surface" />
+                    </div>
+                    <div className="space-y-1.5 pl-9">
+                      <div className="h-3 w-full rounded bg-surface/70" />
+                      <div className="h-3 w-3/4 rounded bg-surface/70" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
         </div>
       </PageContainer>
     );

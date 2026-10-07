@@ -554,7 +554,25 @@ function MyReviewsSection({
       {loading ? (
         <div className="space-y-3 animate-pulse">
           {[0, 1].map((i) => (
-            <div key={i} className="h-14 rounded-2xl bg-surface" />
+            <div
+              key={i}
+              className="rounded-2xl border border-border/50 bg-surface/30 px-4 py-3 space-y-2.5"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="h-2.5 w-12 rounded bg-surface/70" />
+                  <div className="h-4 w-40 rounded bg-surface" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-5 w-5 rounded bg-surface" />
+                  <div className="h-5 w-5 rounded bg-surface" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-16 rounded bg-surface" />
+                <div className="h-3 w-48 rounded bg-surface/60" />
+              </div>
+            </div>
           ))}
         </div>
       ) : reviews.length === 0 ? (

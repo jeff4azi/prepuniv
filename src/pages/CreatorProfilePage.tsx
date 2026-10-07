@@ -391,8 +391,8 @@ export function CreatorProfilePage() {
             </div>
 
             {/* Stats strip */}
-            <div className="border-t border-border/40 grid grid-cols-2 sm:grid-cols-3 divide-x divide-border/40">
-              {[0, 1, 2].map((i) => (
+            <div className="border-t border-border/40 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 divide-x divide-border/40">
+              {[0, 1, 2, 3].map((i) => (
                 <div
                   key={i}
                   className="flex flex-col items-center gap-2 px-5 py-4"
@@ -413,7 +413,7 @@ export function CreatorProfilePage() {
 
           {/* Quiz card skeletons */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
-            {[0, 1, 2].map((i) => (
+            {[0, 1, 2, 3].map((i) => (
               <Card key={i} padded={false} className="overflow-hidden">
                 <div className="px-5 pt-5 pb-4 space-y-4">
                   <div className="flex justify-between gap-3">
@@ -442,6 +442,47 @@ export function CreatorProfilePage() {
                 </div>
               </Card>
             ))}
+          </div>
+
+          {/* Reviews section skeleton */}
+          <div className="pt-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1.5">
+                <div className="h-6 w-40 rounded-lg bg-surface" />
+                <div className="h-4 w-32 rounded-lg bg-surface" />
+              </div>
+              <div className="h-6 w-20 rounded-xl bg-surface" />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[0, 1].map((i) => (
+                <Card
+                  key={i}
+                  padded={false}
+                  className="p-4 sm:p-5 flex flex-col justify-between bg-surface/20 border-border/50 space-y-3"
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-7 w-7 rounded-full bg-surface shrink-0" />
+                        <div className="space-y-1">
+                          <div className="h-3.5 w-24 rounded bg-surface" />
+                          <div className="h-2.5 w-16 rounded bg-surface/60" />
+                        </div>
+                      </div>
+                      <div className="h-3.5 w-16 rounded bg-surface shrink-0" />
+                    </div>
+                    <div className="space-y-1.5 pl-9">
+                      <div className="h-3 w-full rounded bg-surface/70" />
+                      <div className="h-3 w-4/5 rounded bg-surface/70" />
+                    </div>
+                  </div>
+                  <div className="pt-2.5 border-t border-border/30">
+                    <div className="h-3 w-32 rounded bg-surface/50" />
+                  </div>
+                </Card>
+              ))}
+            </div>
           </div>
         </div>
       </PageContainer>

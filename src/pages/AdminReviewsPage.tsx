@@ -280,7 +280,48 @@ export function AdminReviewsPage() {
         {loading ? (
           <div className="space-y-3 animate-pulse">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-28 rounded-2xl bg-surface" />
+              <Card
+                key={i}
+                padded={false}
+                className="p-4 sm:p-5 space-y-3 border border-border/60 bg-surface/20"
+              >
+                {/* Top row: reviewer & target */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-surface shrink-0" />
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <div className="h-4 w-28 rounded bg-surface" />
+                        <div className="h-5 w-14 rounded-lg bg-surface" />
+                      </div>
+                      <div className="h-3 w-44 rounded bg-surface/60" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-5 w-16 rounded-lg bg-surface" />
+                    <div className="h-5 w-16 rounded-lg bg-surface" />
+                  </div>
+                </div>
+
+                {/* Rating & text */}
+                <div className="space-y-2 pl-0 sm:pl-11">
+                  <div className="flex items-center gap-2">
+                    <div className="h-3.5 w-20 rounded bg-surface" />
+                    <div className="h-3 w-28 rounded bg-surface/60" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="h-3.5 w-full rounded bg-surface/70" />
+                    <div className="h-3.5 w-3/4 rounded bg-surface/70" />
+                  </div>
+                </div>
+
+                {/* Actions row */}
+                <div className="pl-0 sm:pl-11 pt-2 border-t border-border/30 flex items-center justify-end gap-2">
+                  <div className="h-8 w-20 rounded-xl bg-surface" />
+                  <div className="h-8 w-20 rounded-xl bg-surface" />
+                  <div className="h-8 w-8 rounded-xl bg-surface" />
+                </div>
+              </Card>
             ))}
           </div>
         ) : filteredReviews.length === 0 ? (

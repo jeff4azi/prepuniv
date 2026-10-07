@@ -561,7 +561,33 @@ export function AttemptResultPage() {
             ))}
           </div>
         </Card>
+
+        {/* Action row skeleton */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-4 animate-pulse">
+          <div className="h-11 flex-1 rounded-2xl bg-surface" />
+          <div className="h-11 flex-1 rounded-2xl bg-surface" />
+          <div className="h-11 flex-1 rounded-2xl bg-surface" />
+        </div>
+
+        {/* Quiz review prompt skeleton */}
+        <Card padded={false} className="px-5 py-4 mb-4 space-y-3 animate-pulse">
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-4 rounded bg-surface" />
+            <div className="h-4 w-28 rounded bg-surface" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            {[0, 1, 2, 3, 4].map((s) => (
+              <div key={s} className="h-7 w-7 rounded-lg bg-surface" />
+            ))}
+          </div>
+        </Card>
+
+        {/* Answer review skeleton */}
         <Card className="space-y-3 animate-pulse">
+          <div className="flex justify-between items-center pb-1">
+            <div className="h-5 w-32 rounded bg-surface" />
+            <div className="h-8 w-48 rounded-2xl bg-surface" />
+          </div>
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="h-14 rounded-2xl bg-surface" />
           ))}
