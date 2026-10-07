@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { usePageTitle } from "../hooks/usePageTitle";
 import {
   Search,
@@ -64,8 +64,23 @@ function Hero({ stats, platformRating, creators, statsLoading }: HeroProps) {
     ? formatCompactNumber(platformRating.total_reviews)
     : null;
 
-  // Top 4 approved creators for avatar chips
-  const topCreators = creators.filter((c) => c.is_approved_creator).slice(0, 4);
+  // Top 4 approved creators for avatar chips (Approach A: prioritize creators with real photos, rotating on refresh)
+  const topCreators = useMemo(() => {
+    const approved = creators.filter((c) => c.is_approved_creator);
+    const withPhotos = approved.filter(
+      (c) => Boolean(c.avatar_url && c.avatar_url.trim().length > 0)
+    );
+    const withoutPhotos = approved.filter(
+      (c) => !c.avatar_url || c.avatar_url.trim().length === 0
+    );
+
+    // Shuffle so different verified creators with real photos get featured across visits
+    const shuffledWithPhotos = [...withPhotos].sort(() => Math.random() - 0.5);
+    const shuffledWithoutPhotos = [...withoutPhotos].sort(() => Math.random() - 0.5);
+
+    // Prioritize creators with photos first, then backfill with any remaining approved creators
+    return [...shuffledWithPhotos, ...shuffledWithoutPhotos].slice(0, 4);
+  }, [creators]);
 
   return (
     <section className="relative w-full overflow-hidden">
@@ -117,12 +132,18 @@ function Hero({ stats, platformRating, creators, statsLoading }: HeroProps) {
                       </>
                     ) : (
                       topCreators.map((c) => (
-                        <Avatar
+                        <Link
                           key={c.id}
-                          name={c.full_name}
-                          src={c.avatar_url ?? undefined}
-                          size="sm"
-                        />
+                          to={`/profile/creator/${c.id}`}
+                          title={`View ${c.full_name}'s creator profile`}
+                          className="inline-block transition-transform hover:scale-115 hover:z-10 focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-full"
+                        >
+                          <Avatar
+                            name={c.full_name}
+                            src={c.avatar_url ?? undefined}
+                            size="sm"
+                          />
+                        </Link>
                       ))
                     )}
                   </div>
