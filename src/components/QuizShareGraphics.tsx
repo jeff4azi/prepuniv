@@ -690,7 +690,7 @@ const TemplateMinimal = Object.assign(
         <div
           style={{
             position: "relative",
-            marginTop: 0,
+            marginTop: 15,
             padding: "16px 16px 14px",
             borderRadius: 20,
             background:
