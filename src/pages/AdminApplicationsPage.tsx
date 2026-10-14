@@ -36,7 +36,7 @@ import { supabase } from "../lib/supabase";
 import type { DbCreatorApplication, DbProfile } from "../lib/supabase";
 import {
   useCreatorApplications,
-  useProfiles,
+  useScopedProfiles,
   adminApproveApplication,
   adminRejectApplication,
   AdminLoadingState,
@@ -560,10 +560,18 @@ export function AdminApplicationsPage() {
     loading: appsLoading,
     refetch: refetchApps,
   } = useCreatorApplications();
-  const { data: allProfiles, loading: profilesLoading } = useProfiles();
+
+  const applications = allApplications || [];
+
+  // Only fetch profiles for the user IDs present in the loaded applications.
+  const applicantIds = useMemo(
+    () => Array.from(new Set(applications.map((a) => a.user_id))),
+    [applications],
+  );
+  const { data: allProfiles, loading: profilesLoading } =
+    useScopedProfiles(applicantIds);
 
   const loading = appsLoading || profilesLoading;
-  const applications = allApplications || [];
   const profiles = allProfiles || [];
 
   const profilesById = useMemo(

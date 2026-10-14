@@ -2,12 +2,17 @@
  * AdminDashboardPage — /admin
  *
  * Platform-wide overview for admin users:
- *   1. Pending Items queue (most important — shown first)
+ *   1. Pending Items queue
  *   2. Platform-wide stat cards
- *   3. Recent platform activity feed
- *   4. Platform revenue trend chart (last 30 days)
+ *   3. Recent activity feed + Revenue trend chart
+ *   4. Top-Up Financial Ledger & Fee Audit (last 50 top-ups)
+ *   5. Quick links to all admin sections
+ *
+ * Stats/counts/financials/activity come from GET /api/admin/dashboard
+ * (aggregated server-side — no row dumps, permanently scale-proof).
+ * The top-up ledger table fetches only the last 50 topup rows it needs.
  */
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { usePageTitle } from "../hooks/usePageTitle";
 import {
@@ -28,6 +33,7 @@ import {
   Sparkles,
   AlertCircle,
   RefreshCw,
+  UserPlus,
 } from "lucide-react";
 import {
   AreaChart,
@@ -43,27 +49,16 @@ import { Card } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
-import type {
-  DbProfile,
-  DbQuiz,
-  DbWalletTxn,
-  DbPayoutRequest,
-  DbReport,
-  DbCreatorApplication,
-} from "../lib/supabase";
+import type { DbWalletTxn } from "../lib/supabase";
 import { AdminLoadingState } from "../hooks/useAdminData";
 import { apiFetch } from "../lib/api";
 
-// Wallet and payout ledger amounts are stored in naira. Quiz prices use kobo,
-// so the shared quiz-price formatter must not be used for these values.
 function formatLedgerNaira(amount: number) {
   const base =
     "₦" +
     Math.abs(amount).toLocaleString("en-NG", { maximumFractionDigits: 2 });
   return amount < 0 ? "-" + base : base;
 }
-
-// ─── helpers ─────────────────────────────────────────────────────────────────
 
 function relativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -79,6 +74,65 @@ function relativeTime(iso: string): string {
     month: "short",
     day: "numeric",
   });
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface DashboardCounts {
+  totalUsers: number;
+  totalCreators: number;
+  totalQuizzes: number;
+  publishedQuizzes: number;
+  totalAttempts: number;
+  pendingApplications: number;
+  pendingPayouts: number;
+  openReports: number;
+}
+
+interface DashboardFinancials {
+  grossTopUpVolume: number;
+  platformPaymentFees: number;
+  netTopUpCash: number;
+  platformRevenue: number;
+}
+
+interface ActivityItem {
+  id: string;
+  type: string;
+  label: string;
+  meta: string;
+  ts: string;
+}
+
+interface DashboardData {
+  counts: DashboardCounts;
+  financials: DashboardFinancials;
+  revenueTrend: { label: string; revenue: number }[];
+  activityFeed: ActivityItem[];
+}
+
+// ─── Activity icon map ────────────────────────────────────────────────────────
+
+function activityIconProps(type: string): {
+  icon: React.ElementType;
+  tone: string;
+} {
+  switch (type) {
+    case "signup":
+      return { icon: UserPlus, tone: "bg-primary/10 text-primary" };
+    case "creator_approved":
+      return { icon: UserCheck, tone: "bg-success-bg text-success" };
+    case "quiz_published":
+      return { icon: BookOpen, tone: "bg-secondary/10 text-secondary" };
+    case "payout_paid":
+      return { icon: CreditCard, tone: "bg-success-bg text-success" };
+    case "report_filed":
+      return { icon: Flag, tone: "bg-danger-bg text-danger" };
+    case "payout_pending":
+      return { icon: Wallet, tone: "bg-warning-bg text-warning" };
+    default:
+      return { icon: Sparkles, tone: "bg-surface text-muted" };
+  }
 }
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
@@ -190,15 +244,12 @@ function PendingCard({
         hover
         className={`relative overflow-hidden flex items-center gap-4 p-5 border ${t.bg} transition-colors ${t.btn}`}
       >
-        {/* colored left bar */}
         <div className={`absolute left-0 top-0 bottom-0 w-1 ${t.bar}`} />
-
         <div
           className={`ml-2 h-10 w-10 rounded-xl border flex items-center justify-center shrink-0 ${t.badge}`}
         >
           <Icon className="w-5 h-5" strokeWidth={2} />
         </div>
-
         <div className="min-w-0 flex-1">
           <p
             className={`font-heading font-bold text-2xl leading-none ${t.text}`}
@@ -209,7 +260,6 @@ function PendingCard({
             {label}
           </p>
         </div>
-
         <ChevronRight
           className={`w-5 h-5 shrink-0 ${t.text} group-hover:translate-x-0.5 transition-transform`}
         />
@@ -218,23 +268,14 @@ function PendingCard({
   );
 }
 
-// ─── Activity feed ────────────────────────────────────────────────────────────
-
-interface ActivityItem {
-  id: string;
-  icon: React.ElementType;
-  iconTone: string;
-  label: string;
-  meta: string;
-  ts: string;
-}
+// ─── Activity row ─────────────────────────────────────────────────────────────
 
 function ActivityRow({ item }: { item: ActivityItem }) {
-  const Icon = item.icon;
+  const { icon: Icon, tone } = activityIconProps(item.type);
   return (
     <div className="flex items-start gap-3 py-3 border-b border-border/30 last:border-0">
       <div
-        className={`mt-0.5 h-8 w-8 rounded-xl flex items-center justify-center shrink-0 ${item.iconTone}`}
+        className={`mt-0.5 h-8 w-8 rounded-xl flex items-center justify-center shrink-0 ${tone}`}
       >
         <Icon className="w-4 h-4" strokeWidth={2} />
       </div>
@@ -251,7 +292,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
   );
 }
 
-// ─── Revenue tooltip ─────────────────────────────────────────────────────────
+// ─── Revenue tooltip ──────────────────────────────────────────────────────────
 
 function RevenueTooltip({
   active,
@@ -275,19 +316,6 @@ function RevenueTooltip({
   );
 }
 
-// ─── Dashboard data shape ─────────────────────────────────────────────────────
-
-interface DashboardData {
-  profiles: DbProfile[];
-  unconfirmedIds: Set<string>;
-  quizzes: DbQuiz[];
-  attemptCount: number;
-  txns: DbWalletTxn[];
-  payouts: DbPayoutRequest[];
-  applications: DbCreatorApplication[];
-  reports: DbReport[];
-}
-
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function AdminDashboardPage() {
@@ -295,349 +323,65 @@ export function AdminDashboardPage() {
 
   usePageTitle("Admin · Dashboard");
 
-  // ── Fetch all dashboard data ───────────────────────────────────────────────
-
+  // ── Aggregated stats from backend ─────────────────────────────────────────
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [
-        profilesRes,
-        quizzesRes,
-        attemptCountRes,
-        txnsRes,
-        payoutsRes,
-        appsRes,
-        reportsRes,
-        usersRes,
-      ] = await Promise.all([
-        // Profiles: used for user/creator counts + activity feed lookup.
-        // Limit to 3000 — beyond that the dashboard stat cards still show
-        // the accurate total via attemptCountRes (count: exact).
-        supabase
-          .from("profiles")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(3000),
-        // Quizzes: only need id, title, is_published, creator_id, created_at
-        // for counts + activity feed. Selecting specific columns + limit 2000
-        // keeps this fast and well under Supabase's 1000-row default cap.
-        supabase
-          .from("quizzes")
-          .select(
-            "id, title, is_published, creator_id, created_at, university_id",
-          )
-          .order("created_at", { ascending: false })
-          .limit(2000),
-        // Attempt count — always accurate, uses count: exact (no row fetch).
-        supabase
-          .from("quiz_attempts")
-          .select("*", { count: "exact", head: true }),
-        // Wallet txns: dashboard only needs topup + platform_revenue rows.
-        // Filtering here cuts volume by ~60% vs fetching everything.
-        supabase
-          .from("wallet_transactions")
-          .select("*")
-          .in("type", ["topup", "platform_revenue"])
-          .order("created_at", { ascending: false })
-          .limit(5000),
-        supabase
-          .from("payout_requests")
-          .select("*")
-          .order("requested_at", { ascending: false })
-          .limit(2000),
-        supabase
-          .from("creator_applications")
-          .select("*")
-          .order("submitted_at", { ascending: false })
-          .limit(2000),
-        supabase
-          .from("reports")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(2000),
-        apiFetch<{
-          users: Array<{ id: string; email_confirmed_at: string | null }>;
-        }>("/api/admin/users?page=1&pageSize=200").catch(() => ({
-          data: null,
-          error: null,
-        })),
-      ]);
-
-      const unconfirmedIds = new Set<string>(
-        (usersRes.data?.users ?? [])
-          .filter((u) => !u.email_confirmed_at)
-          .map((u) => u.id),
-      );
-
-      setData({
-        profiles: profilesRes.data || [],
-        unconfirmedIds,
-        quizzes: quizzesRes.data || [],
-        attemptCount: attemptCountRes.count || 0,
-        txns: txnsRes.data || [],
-        payouts: payoutsRes.data || [],
-        applications: appsRes.data || [],
-        reports: reportsRes.data || [],
-      });
-    } catch (err) {
-      console.error("Dashboard fetch error:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // ── Top-up ledger rows — fetched directly, last 50; shown 10 at a time ───
+  const [topupTxns, setTopupTxns] = useState<DbWalletTxn[]>([]);
+  const [ledgerVisible, setLedgerVisible] = useState(10);
 
   const [reconciling, setReconciling] = useState(false);
 
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    const [dashRes, txnsRes] = await Promise.all([
+      apiFetch<DashboardData>("/api/admin/dashboard"),
+      supabase
+        .from("wallet_transactions")
+        .select("*")
+        .eq("type", "topup")
+        .order("created_at", { ascending: false })
+        .limit(50),
+    ]);
+    if (dashRes.data) setData(dashRes.data);
+    if (txnsRes.data) setTopupTxns(txnsRes.data as DbWalletTxn[]);
+    setLedgerVisible(10);
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
-    // This server is serverless, so there's no persistent background job
-    // clearing out stale pending top-ups anymore. Every dashboard load
-    // triggers an on-demand sweep instead (throttled server-side to
-    // roughly once a minute, so repeat loads stay cheap), then fetches
-    // the fresh data. If the sweep call fails for any reason, we still
-    // fetch — the dashboard just shows whatever's currently in the DB.
     void apiFetch("/api/admin/topups/reconcile-status", { method: "GET" })
       .catch(() => {})
-      .finally(() => {
-        void fetchData();
-      });
+      .finally(() => void fetchData());
   }, [fetchData]);
 
   const handleReconcileTopups = async () => {
     setReconciling(true);
-    try {
-      await apiFetch("/api/admin/topups/reconcile", { method: "POST" });
-      await fetchData();
-    } catch (err) {
-      console.error("Failed to reconcile top-ups:", err);
-    } finally {
-      setReconciling(false);
-    }
+    await apiFetch("/api/admin/topups/reconcile", { method: "POST" }).catch(
+      () => {},
+    );
+    await fetchData();
+    setReconciling(false);
   };
 
-  const allTxns = data?.txns ?? [];
+  if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
 
-  // ── Financial Accounting Calculations (Must run unconditionally before early returns) ──
-  const completedTopUps = useMemo(
-    () => allTxns.filter((t) => t.type === "topup" && t.status === "completed"),
-    [allTxns],
-  );
+  const counts = data?.counts;
+  const financials = data?.financials;
+  const revenueTrend = data?.revenueTrend ?? [];
+  const activityFeed = data?.activityFeed ?? [];
 
-  const grossTopUpVolume = useMemo(
-    () =>
-      completedTopUps.reduce(
-        (sum, t) => sum + Number(t.gross_amount ?? t.amount ?? 0),
-        0,
-      ),
-    [completedTopUps],
-  );
-
-  const platformPaymentFees = useMemo(
-    () =>
-      completedTopUps.reduce((sum, t) => sum + Number(t.platform_fee ?? 0), 0),
-    [completedTopUps],
-  );
-
-  const netTopUpCash = useMemo(
-    () => grossTopUpVolume - platformPaymentFees,
-    [grossTopUpVolume, platformPaymentFees],
-  );
-
-  const platformRevenue = useMemo(
-    () =>
-      allTxns
-        .filter(
-          (t) => t.type === "platform_revenue" && t.status === "completed",
-        )
-        .reduce((sum, t) => sum + Number(t.amount), 0),
-    [allTxns],
-  );
-
-  const topupTxns = useMemo(
-    () => allTxns.filter((t) => t.type === "topup"),
-    [allTxns],
-  );
-
-  // Gate: only admin role (checked in JSX to avoid hooks ordering violations)
-
-  const allProfiles = data?.profiles ?? [];
-  const unconfirmedIds = data?.unconfirmedIds ?? new Set<string>();
-  const allQuizzes = data?.quizzes ?? [];
-  const totalAttempts = data?.attemptCount ?? 0;
-  const allPayouts = data?.payouts ?? [];
-  const allApplications = data?.applications ?? [];
-  const allReports = data?.reports ?? [];
-
-  const totalUsers = allProfiles.filter((p) => p.role === "user").length;
-  const totalCreators = allProfiles.filter(
-    (p) => p.is_approved_creator && p.role !== "admin",
-  ).length;
-  const publishedQuizzes = allQuizzes.filter((q) => q.is_published).length;
-
-  // ── Pending items ──────────────────────────────────────────────────────────
-
-  const pendingApplications = allApplications.filter(
-    (a) => a.status === "pending",
-  ).length;
-  const pendingPayouts = allPayouts.filter(
-    (p) => p.status === "pending",
-  ).length;
-  const openReports = allReports.filter((r) => r.status === "open").length;
-
-  // ── Revenue trend (last 30 days, grouped by 4-day buckets) ─────────────────
-
-  const now = new Date();
-  const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-  const byDay: Record<string, number> = {};
-  allTxns
-    .filter(
-      (t) =>
-        t.type === "platform_revenue" &&
-        t.status === "completed" &&
-        new Date(t.created_at) >= cutoff,
-    )
-    .forEach((t) => {
-      const day = t.created_at.slice(0, 10);
-      byDay[day] = (byDay[day] ?? 0) + Number(t.amount);
-    });
-
-  const revenueTrendData: { label: string; revenue: number }[] = [];
-  for (let i = 0; i < 30; i += 4) {
-    const start = new Date(cutoff.getTime() + i * 24 * 60 * 60 * 1000);
-    const end = new Date(
-      cutoff.getTime() + Math.min(i + 4, 30) * 24 * 60 * 60 * 1000,
-    );
-    const label = start.toLocaleDateString("en-NG", {
-      month: "short",
-      day: "numeric",
-    });
-    let total = 0;
-    for (const [dayStr, amt] of Object.entries(byDay)) {
-      const d = new Date(dayStr);
-      if (d >= start && d < end) total += amt;
-    }
-    revenueTrendData.push({ label, revenue: total });
-  }
-
-  // ── Activity feed ──────────────────────────────────────────────────────────
-
-  const activityItems: ActivityItem[] = [];
-
-  // New user signups
-  allProfiles
-    .filter((p) => p.role === "user" && p.created_at)
-    .forEach((p) => {
-      const isUnconfirmed = unconfirmedIds.has(p.id);
-      activityItems.push({
-        id: `signup-${p.id}`,
-        icon: Users,
-        iconTone: isUnconfirmed
-          ? "bg-warning-bg text-warning"
-          : "bg-primary/10 text-primary",
-        label: `${p.full_name} joined`,
-        meta: isUnconfirmed
-          ? "New user sign-up · email not confirmed"
-          : "New user sign-up",
-        ts: p.created_at,
-      });
-    });
-
-  // Creator approvals
-  allApplications
-    .filter((a) => a.status === "approved")
-    .forEach((a) => {
-      const profile = allProfiles.find((p) => p.id === a.user_id);
-      activityItems.push({
-        id: `approved-${a.id}`,
-        icon: UserCheck,
-        iconTone: "bg-success-bg text-success",
-        label: `${profile?.full_name ?? "A creator"} approved as creator`,
-        meta: "Creator application approved",
-        ts: a.submitted_at,
-      });
-    });
-
-  // Published quizzes
-  allQuizzes
-    .filter((q) => q.is_published)
-    .slice(0, 6)
-    .forEach((q) => {
-      const creator = allProfiles.find((p) => p.id === q.creator_id);
-      activityItems.push({
-        id: `quiz-${q.id}`,
-        icon: BookOpen,
-        iconTone: "bg-secondary/10 text-secondary",
-        label: `"${q.title.length > 40 ? q.title.slice(0, 40) + "…" : q.title}" published`,
-        meta: `by ${creator?.full_name ?? "Unknown"}`,
-        ts: q.created_at,
-      });
-    });
-
-  // Paid payouts
-  allPayouts
-    .filter((p) => p.status === "paid" && p.processed_at)
-    .forEach((p) => {
-      const creator = allProfiles.find((pr) => pr.id === p.creator_id);
-      activityItems.push({
-        id: `payout-${p.id}`,
-        icon: CreditCard,
-        iconTone: "bg-success-bg text-success",
-        label: `Payout of ${formatLedgerNaira(Number(p.amount))} processed`,
-        meta: `to ${creator?.full_name ?? "creator"}`,
-        ts: p.processed_at!,
-      });
-    });
-
-  // Open reports
-  allReports
-    .filter((r) => r.status === "open")
-    .forEach((r) => {
-      const quizTitle =
-        (r as unknown as { quiz_title?: string }).quiz_title || "a quiz";
-      activityItems.push({
-        id: `report-${r.id}`,
-        icon: Flag,
-        iconTone: "bg-danger-bg text-danger",
-        label: `Report filed on "${quizTitle.length > 36 ? quizTitle.slice(0, 36) + "…" : quizTitle}"`,
-        meta: `Reason: ${r.reason.replace(/_/g, " ")}`,
-        ts: r.created_at,
-      });
-    });
-
-  // Pending payout requests
-  allPayouts
-    .filter((p) => p.status === "pending")
-    .forEach((p) => {
-      const creator = allProfiles.find((pr) => pr.id === p.creator_id);
-      activityItems.push({
-        id: `payout-req-${p.id}`,
-        icon: Wallet,
-        iconTone: "bg-warning-bg text-warning",
-        label: `Payout request: ${formatLedgerNaira(Number(p.amount))}`,
-        meta: `from ${creator?.full_name ?? "creator"} — awaiting review`,
-        ts: p.requested_at,
-      });
-    });
-
-  // Sort by most recent first, take top 9
-  const activityFeed = activityItems
-    .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
-    .slice(0, 9);
-
+  const pendingApplications = counts?.pendingApplications ?? 0;
+  const pendingPayouts = counts?.pendingPayouts ?? 0;
+  const openReports = counts?.openReports ?? 0;
   const hasPendingItems =
     pendingApplications > 0 || pendingPayouts > 0 || openReports > 0;
-
-  if (currentUser.role !== "admin") {
-    return <Navigate to="/home" replace />;
-  }
 
   return (
     <PageContainer className="max-w-290!">
       <div className="space-y-7 lg:space-y-8">
-        {/* ── Page header ──────────────────────────────────────────────────── */}
+        {/* ── Header ───────────────────────────────────────────────────────── */}
         <div className="flex items-start justify-between gap-4">
           <div>
             <Badge variant="warning" size="sm" dot className="mb-2">
@@ -665,13 +409,13 @@ export function AdminDashboardPage() {
           )}
         </div>
 
-        {/* ── 1. Pending Items (priority section) ──────────────────────────── */}
+        {/* ── 1. Action Queue ───────────────────────────────────────────────── */}
         <section>
           <h2 className="font-heading font-bold text-base text-text mb-3 flex items-center gap-2">
             <span className="h-5 w-1 rounded-full bg-warning inline-block" />
             Action Queue
           </h2>
-          {loading || !data ? (
+          {loading || !counts ? (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:gap-4">
               {Array.from({ length: 3 }).map((_, i) => (
                 <Card
@@ -714,13 +458,13 @@ export function AdminDashboardPage() {
           )}
         </section>
 
-        {/* ── 2. Platform & Financial Overview ───────────────────────────── */}
+        {/* ── 2. Platform & Financial Overview ─────────────────────────────── */}
         <section>
           <h2 className="font-heading font-bold text-base text-text mb-3 flex items-center gap-2">
             <span className="h-5 w-1 rounded-full bg-primary inline-block" />
             Platform & Financial Overview
           </h2>
-          {loading || !data ? (
+          {loading || !counts || !financials ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
               {Array.from({ length: 8 }).map((_, i) => (
                 <Card
@@ -740,54 +484,54 @@ export function AdminDashboardPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
               <StatCard
                 label="Gross Top-Up Volume"
-                value={formatLedgerNaira(grossTopUpVolume)}
+                value={formatLedgerNaira(financials.grossTopUpVolume)}
                 sub="Total customer top-ups"
                 icon={Wallet}
                 tone="warning"
               />
               <StatCard
                 label="Platform Payment Fees"
-                value={formatLedgerNaira(platformPaymentFees)}
+                value={formatLedgerNaira(financials.platformPaymentFees)}
                 sub="Flutterwave processing fees"
                 icon={CreditCard}
                 tone="muted"
               />
               <StatCard
                 label="Net Top-Up Cash"
-                value={formatLedgerNaira(netTopUpCash)}
+                value={formatLedgerNaira(financials.netTopUpCash)}
                 sub="Gross top-ups minus fees"
                 icon={TrendingUp}
                 tone="success"
               />
               <StatCard
                 label="Quiz Share Revenue (35%)"
-                value={formatLedgerNaira(platformRevenue)}
+                value={formatLedgerNaira(financials.platformRevenue)}
                 sub="PrepUniv 35% quiz fee cut"
                 icon={TrendingUp}
                 tone="primary"
               />
               <StatCard
                 label="Total Users"
-                value={totalUsers}
+                value={counts.totalUsers}
                 icon={Users}
                 tone="primary"
               />
               <StatCard
                 label="Approved Creators"
-                value={totalCreators}
+                value={counts.totalCreators}
                 icon={UserCheck}
                 tone="secondary"
               />
               <StatCard
                 label="Published Quizzes"
-                value={publishedQuizzes}
-                sub={`of ${allQuizzes.length} total`}
+                value={counts.publishedQuizzes}
+                sub={`of ${counts.totalQuizzes} total`}
                 icon={BookOpen}
                 tone="muted"
               />
               <StatCard
                 label="Total Attempts"
-                value={totalAttempts}
+                value={counts.totalAttempts}
                 icon={Repeat2}
                 tone="muted"
               />
@@ -795,9 +539,9 @@ export function AdminDashboardPage() {
           )}
         </section>
 
-        {/* ── 3. Revenue trend + Activity feed (2-col on lg) ───────────────── */}
+        {/* ── 3. Revenue trend + Activity feed ─────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 lg:gap-6">
-          {/* Revenue chart (spans 3 cols) */}
+          {/* Revenue chart */}
           <div className="lg:col-span-3">
             <h2 className="font-heading font-bold text-base text-text mb-3 flex items-center gap-2">
               <span className="h-5 w-1 rounded-full bg-success inline-block" />
@@ -809,7 +553,7 @@ export function AdminDashboardPage() {
               </Card>
             ) : (
               <Card padded={false} className="p-5">
-                {revenueTrendData.every((d) => d.revenue === 0) ? (
+                {revenueTrend.every((d) => d.revenue === 0) ? (
                   <div className="flex flex-col items-center justify-center h-48 text-center gap-2">
                     <BarChart2
                       className="w-8 h-8 text-muted"
@@ -820,7 +564,7 @@ export function AdminDashboardPage() {
                 ) : (
                   <ResponsiveContainer width="100%" height={220}>
                     <AreaChart
-                      data={revenueTrendData}
+                      data={revenueTrend}
                       margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
                     >
                       <defs>
@@ -904,7 +648,7 @@ export function AdminDashboardPage() {
             )}
           </div>
 
-          {/* Activity feed (spans 2 cols) */}
+          {/* Activity feed */}
           <div className="lg:col-span-2">
             <h2 className="font-heading font-bold text-base text-text mb-3 flex items-center gap-2">
               <span className="h-5 w-1 rounded-full bg-secondary inline-block" />
@@ -947,7 +691,7 @@ export function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* ── 4. Top-Up Fee Accounting Ledger ─────────────────────────────── */}
+        {/* ── 4. Top-Up Financial Ledger & Fee Audit ───────────────────────── */}
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-heading font-bold text-base text-text flex items-center gap-2">
@@ -966,7 +710,11 @@ export function AdminDashboardPage() {
             </button>
           </div>
           <Card padded={false} className="overflow-hidden border-border/50">
-            {topupTxns.length === 0 ? (
+            {loading ? (
+              <div className="py-8 text-center">
+                <AdminLoadingState label="Loading transactions…" />
+              </div>
+            ) : topupTxns.length === 0 ? (
               <div className="py-8 text-center text-muted font-heading text-sm">
                 No top-up transactions recorded yet.
               </div>
@@ -985,7 +733,7 @@ export function AdminDashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/30">
-                    {topupTxns.slice(0, 10).map((t) => {
+                    {topupTxns.slice(0, ledgerVisible).map((t) => {
                       const gross = Number(t.gross_amount ?? t.amount ?? 0);
                       const fee = Number(t.platform_fee ?? 0);
                       const net = Number(t.net_amount ?? gross - fee);
@@ -1009,13 +757,23 @@ export function AdminDashboardPage() {
                           </td>
                           <td className="py-3 px-4 text-right font-heading font-semibold text-text">
                             {formatLedgerNaira(gross)}
-                            {isPartial && t.amount_received != null && (
-                              <span className="block text-[10px] font-normal text-warning mt-0.5">
-                                only{" "}
-                                {formatLedgerNaira(Number(t.amount_received))}{" "}
-                                received
-                              </span>
-                            )}
+                            {isPartial &&
+                              (t as unknown as { amount_received?: number })
+                                .amount_received != null && (
+                                <span className="block text-[10px] font-normal text-warning mt-0.5">
+                                  only{" "}
+                                  {formatLedgerNaira(
+                                    Number(
+                                      (
+                                        t as unknown as {
+                                          amount_received?: number;
+                                        }
+                                      ).amount_received,
+                                    ),
+                                  )}{" "}
+                                  received
+                                </span>
+                              )}
                           </td>
                           <td className="py-3 px-4 text-right font-heading text-danger">
                             {isCompleted ? formatLedgerNaira(fee) : "—"}
@@ -1028,7 +786,8 @@ export function AdminDashboardPage() {
                               <Badge variant="muted" size="sm">
                                 N/A
                               </Badge>
-                            ) : t.fee_is_estimated ? (
+                            ) : (t as unknown as { fee_is_estimated?: boolean })
+                                .fee_is_estimated ? (
                               <Badge variant="warning" size="sm">
                                 Estimated (Backfill)
                               </Badge>
@@ -1057,6 +816,18 @@ export function AdminDashboardPage() {
                     })}
                   </tbody>
                 </table>
+                {topupTxns.length > ledgerVisible && (
+                  <div className="flex items-center justify-center px-5 py-3 border-t border-border/30">
+                    <button
+                      type="button"
+                      onClick={() => setLedgerVisible((v) => v + 10)}
+                      className="h-8 px-4 rounded-xl text-xs font-heading font-semibold border border-border/60 text-text-soft hover:text-text hover:border-border transition-all"
+                    >
+                      Show 10 more ({topupTxns.length - ledgerVisible}{" "}
+                      remaining)
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </Card>

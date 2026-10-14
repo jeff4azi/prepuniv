@@ -31,11 +31,11 @@ import { Avatar } from "../components/Avatar";
 import { Toast, useToast } from "../components/Toast";
 import { DrawerShell } from "../components/DrawerShell";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 import type { DbReport, DbProfile, DbQuiz } from "../lib/supabase";
 import {
   useReports,
-  useProfiles,
-  useQuizzes,
+  useScopedProfiles,
   adminResolveReport,
   adminDismissReport,
   adminUnpublishQuiz,
@@ -649,7 +649,6 @@ export function AdminReportsPage() {
 
   const [toast, showToast, dismissToast] = useToast();
   const [activeTab, setActiveTab] = useState<FilterTab>("open");
-  const [reviewingId, setReviewingId] = useState<string | null>(null);
 
   if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
 
@@ -658,22 +657,62 @@ export function AdminReportsPage() {
     loading: reportsLoading,
     refetch: refetchReports,
   } = useReports();
-  const { data: allProfiles, loading: profilesLoading } = useProfiles();
-  const { data: allQuizzes, loading: quizzesLoading } = useQuizzes();
 
-  const loading = reportsLoading || profilesLoading || quizzesLoading;
   const reports = allReports || [];
-  const profiles = allProfiles || [];
-  const quizzes = allQuizzes || [];
+
+  // Collect only the reporter IDs present in the loaded reports — scoped fetch
+  // instead of loading all profiles on the platform.
+  const reporterIds = useMemo(
+    () => Array.from(new Set(reports.map((r) => r.reporter_id))),
+    [reports],
+  );
+  const { data: reporterProfiles, loading: profilesLoading } =
+    useScopedProfiles(reporterIds);
+
+  // For the drawer: fetch quiz data only when a specific report is open.
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const reviewingReport = reviewingId
+    ? reports.find((r) => r.id === reviewingId)
+    : null;
+
+  const [drawerQuiz, setDrawerQuiz] = useState<DbQuiz | null | undefined>(
+    undefined,
+  );
+  const [drawerQuizCreator, setDrawerQuizCreator] = useState<
+    DbProfile | null | undefined
+  >(undefined);
+
+  // When reviewingReport changes, fetch the quiz + creator for that report only
+  useMemo(() => {
+    if (!reviewingReport) {
+      setDrawerQuiz(undefined);
+      setDrawerQuizCreator(undefined);
+      return;
+    }
+    void (async () => {
+      const { data: quizData } = await supabase
+        .from("quizzes")
+        .select("*")
+        .eq("id", reviewingReport.quiz_id)
+        .maybeSingle();
+      setDrawerQuiz(quizData as DbQuiz | null);
+      if (quizData) {
+        const { data: creatorData } = await supabase
+          .from("profiles")
+          .select("id, full_name, avatar_url")
+          .eq("id", (quizData as DbQuiz).creator_id)
+          .maybeSingle();
+        setDrawerQuizCreator(creatorData as DbProfile | null);
+      }
+    })();
+  }, [reviewingReport?.id]);
+
+  const loading = reportsLoading || profilesLoading;
+  const profiles = reporterProfiles || [];
 
   const profilesById = useMemo(
     () => new Map(profiles.map((p) => [p.id, p])),
     [profiles],
-  );
-
-  const quizzesById = useMemo(
-    () => new Map(quizzes.map((q) => [q.id, q])),
-    [quizzes],
   );
 
   const repeatMap = useRepeatReporterMap(reports);
@@ -696,16 +735,6 @@ export function AdminReportsPage() {
     }),
     [reports],
   );
-
-  const reviewingReport = reviewingId
-    ? reports.find((r) => r.id === reviewingId)
-    : null;
-  const reviewingQuiz = reviewingReport
-    ? quizzesById.get(reviewingReport.quiz_id)
-    : undefined;
-  const reviewingQuizCreator = reviewingQuiz
-    ? profilesById.get(reviewingQuiz.creator_id)
-    : undefined;
 
   function handleResolved(_id: string) {
     setReviewingId(null);
@@ -807,8 +836,8 @@ export function AdminReportsPage() {
         <ReportReviewSheet
           report={reviewingReport}
           reporter={profilesById.get(reviewingReport.reporter_id)}
-          quiz={reviewingQuiz}
-          quizCreator={reviewingQuizCreator}
+          quiz={drawerQuiz ?? undefined}
+          quizCreator={drawerQuizCreator ?? undefined}
           reporterMonthlyCount={repeatMap[reviewingReport.reporter_id] ?? 0}
           onClose={() => setReviewingId(null)}
           onResolved={handleResolved}

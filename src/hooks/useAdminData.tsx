@@ -110,6 +110,24 @@ export function useProfiles() {
   });
 }
 
+// ─── Scoped profiles — fetch only the specific IDs you need ──────────────────
+// Use this instead of useProfiles() on pages that have a bounded list of rows
+// (Reports, Applications, Payouts). Scales perfectly regardless of total users.
+
+export function useScopedProfiles(ids: string[]) {
+  return useSupabaseFetch<DbProfile[]>(async () => {
+    if (ids.length === 0) return [];
+    const { data, error } = await supabase
+      .from("profiles")
+      .select(
+        "id, full_name, avatar_url, role, is_approved_creator, bio, bank_account_name",
+      )
+      .in("id", ids);
+    if (error) throw new Error(error.message);
+    return data || [];
+  }, [ids.join(",")]);
+}
+
 // ─── Quizzes (all — for pages that need the full list, e.g. Courses) ─────────
 // Hard limit of 2000 for pages that need every quiz (e.g. course quiz-counts).
 // The main admin quizzes listing uses useAdminQuizzes (server-side paginated).

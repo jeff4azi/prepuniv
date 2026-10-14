@@ -40,7 +40,7 @@ import type { DbQuiz, DbCourse, DbProfile } from "../lib/supabase";
 import {
   useAdminQuizzes,
   useCourses,
-  useProfiles,
+  useScopedProfiles,
   useUniversities,
   useWalletTransactions,
   adminUnpublishQuiz,
@@ -487,12 +487,10 @@ export function AdminQuizzesPage() {
   //    wallet txns for revenue column) ──────────────────────────────────────
   const { data: allUniversities, loading: unisLoading } = useUniversities();
   const { data: allCourses, loading: coursesLoading } = useCourses();
-  const { data: allProfiles, loading: profilesLoading } = useProfiles();
   const { data: allTxns, loading: txnsLoading } = useWalletTransactions();
 
   const universities = allUniversities || [];
   const courses = allCourses || [];
-  const profiles = allProfiles || [];
   const txns = allTxns || [];
 
   // ── Server-side paginated quizzes ────────────────────────────────────────
@@ -514,14 +512,24 @@ export function AdminQuizzesPage() {
   const totalQuizzes = quizzesPage?.total || 0;
   const totalPages = Math.max(1, Math.ceil(totalQuizzes / PAGE_SIZE));
 
+  // ── Scoped profiles — only the creator IDs on the current page ───────────
+  // This replaces useProfiles() so it never loads all users into memory.
+  // Each page has at most PAGE_SIZE=25 quizzes → at most 25 profile lookups.
+  const creatorIds = useMemo(
+    () => Array.from(new Set(quizzes.map((q) => q.creator_id))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [quizzes.map((q) => q.creator_id).join(",")],
+  );
+  const { data: pageProfiles } = useScopedProfiles(creatorIds);
+
   // ── Derived maps ──────────────────────────────────────────────────────────
   const coursesById = useMemo(
     () => new Map(courses.map((c) => [c.id, c])),
     [courses],
   );
   const profilesById = useMemo(
-    () => new Map(profiles.map((p) => [p.id, p])),
-    [profiles],
+    () => new Map((pageProfiles || []).map((p) => [p.id, p])),
+    [pageProfiles],
   );
 
   // Revenue map — already scoped to platform_revenue + completed in the hook
@@ -576,8 +584,7 @@ export function AdminQuizzesPage() {
     ? quizzes.find((q) => q.id === actionTarget.id)
     : null;
 
-  const supportLoading =
-    unisLoading || coursesLoading || profilesLoading || txnsLoading;
+  const supportLoading = unisLoading || coursesLoading || txnsLoading;
 
   if (supportLoading && quizzesLoading && !quizzesPage) {
     return (

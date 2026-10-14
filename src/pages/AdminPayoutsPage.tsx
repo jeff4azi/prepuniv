@@ -39,7 +39,7 @@ import { getBankName, fetchBanksListSimple } from "../lib/banks";
 import type { DbPayoutRequest, DbProfile } from "../lib/supabase";
 import {
   usePayoutRequests,
-  useProfiles,
+  useScopedProfiles,
   adminApprovePayoutRequest,
   adminRejectPayoutRequest,
   adminMarkPayoutPaidManually,
@@ -969,10 +969,19 @@ export function AdminPayoutsPage() {
     refetch: refetchPayouts,
     setData: setPayoutsData,
   } = usePayoutRequests();
-  const { data: allProfiles, loading: profilesLoading } = useProfiles();
+
+  const payouts = allPayouts || [];
+
+  // Collect only the creator IDs present in loaded payouts — scoped fetch
+  // instead of loading all profiles on the platform.
+  const creatorIds = useMemo(
+    () => Array.from(new Set(payouts.map((p) => p.creator_id))),
+    [payouts],
+  );
+  const { data: allProfiles, loading: profilesLoading } =
+    useScopedProfiles(creatorIds);
 
   const loading = payoutsLoading || profilesLoading;
-  const payouts = allPayouts || [];
   const profiles = allProfiles || [];
 
   const anyProcessing = useMemo(
