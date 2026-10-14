@@ -4,12 +4,16 @@
  * Platform-wide master list of every quiz, across all creators.
  * Distinct from /creator/quizzes (creator-owned) and /admin/courses (taxonomy).
  *
+ * Server-side paginated via /api/admin/quizzes to avoid Supabase's 1000-row cap.
+ * Filtering (university, status, dept, search) and sorting are passed as query
+ * params to the backend; the frontend only renders the current page's slice.
+ *
  * Status distinction:
  *   Published            — is_published && !unpublished_by_admin
  *   Unpublished (admin)  — unpublished_by_admin === true
  *   Unpublished (creator)— !is_published && !unpublished_by_admin
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { usePageTitle } from "../hooks/usePageTitle";
 import {
@@ -22,8 +26,6 @@ import {
   EyeOff,
   RotateCcw,
   ExternalLink,
-  AlertCircle,
-  CheckCircle2,
 } from "lucide-react";
 import { PageContainer } from "../components/PageContainer";
 import { Card } from "../components/Card";
@@ -34,15 +36,9 @@ import { Avatar } from "../components/Avatar";
 import { Toast, useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
 import { formatNaira } from "../components/QuizCard";
-import type {
-  DbQuiz,
-  DbCourse,
-  DbProfile,
-  DbWalletTxn,
-  DbUniversity,
-} from "../lib/supabase";
+import type { DbQuiz, DbCourse, DbProfile } from "../lib/supabase";
 import {
-  useQuizzes,
+  useAdminQuizzes,
   useCourses,
   useProfiles,
   useUniversities,
@@ -64,6 +60,8 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "price-desc", label: "Price: High to Low" },
   { value: "price-asc", label: "Price: Low to High" },
 ];
+
+const PAGE_SIZE = 25;
 
 // ─── Quiz status helpers ──────────────────────────────────────────────────────
 
@@ -201,9 +199,7 @@ function QuizTableRow({
 }: {
   quiz: DbQuiz;
   courseName: string;
-  creator:
-    | { id: string; full_name: string; avatar_url?: string | null }
-    | undefined;
+  creator: DbProfile | undefined;
   platformRevenue: number;
   onAction: (action: "unpublish" | "republish") => void;
 }) {
@@ -329,9 +325,7 @@ function QuizMobileCard({
 }: {
   quiz: DbQuiz;
   courseName: string;
-  creator:
-    | { id: string; full_name: string; avatar_url?: string | null }
-    | undefined;
+  creator: DbProfile | undefined;
   platformRevenue: number;
   onAction: (action: "unpublish" | "republish") => void;
 }) {
@@ -408,6 +402,27 @@ function QuizMobileCard({
   );
 }
 
+// ─── Skeleton rows (loading state) ────────────────────────────────────────────
+
+function TableSkeleton() {
+  return (
+    <div className="divide-y divide-border/30 animate-pulse">
+      {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 px-5 py-3.5">
+          <div className="flex-1 min-w-0 space-y-1.5">
+            <div className="h-3.5 w-48 rounded-lg bg-surface" />
+            <div className="h-3 w-24 rounded-lg bg-surface" />
+          </div>
+          <div className="h-3.5 w-20 rounded-lg bg-surface hidden md:block" />
+          <div className="h-3.5 w-16 rounded-lg bg-surface hidden lg:block" />
+          <div className="h-5 w-24 rounded-lg bg-surface" />
+          <div className="h-8 w-20 rounded-xl bg-surface" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
 function EmptyState() {
@@ -434,46 +449,76 @@ export function AdminQuizzesPage() {
   usePageTitle("Admin · Quizzes");
 
   const [toast, showToast, dismissToast] = useToast();
+
+  // ── Filter / sort state ──────────────────────────────────────────────────
   const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [courseFilter, setCourseFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("newest");
   const [activeUniId, setActiveUniId] = useState<string>("");
+  const [page, setPage] = useState(1);
+
+  // ── Action state ─────────────────────────────────────────────────────────
   const [actionTarget, setActionTarget] = useState<{
     id: string;
     action: "unpublish" | "republish";
+    title: string;
   } | null>(null);
   const [acting, setActing] = useState(false);
 
   if (currentUser.role !== "admin") return <Navigate to="/home" replace />;
 
-  const {
-    data: allQuizzes,
-    loading: quizzesLoading,
-    refetch: refetchQuizzes,
-  } = useQuizzes();
+  // ── Debounce search input (300 ms) ───────────────────────────────────────
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function handleSearchChange(val: string) {
+    setSearchInput(val);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      setDebouncedSearch(val);
+      setPage(1);
+    }, 300);
+  }
+
+  // ── Support data (universities, courses for dept chips, profiles for names,
+  //    wallet txns for revenue column) ──────────────────────────────────────
+  const { data: allUniversities, loading: unisLoading } = useUniversities();
   const { data: allCourses, loading: coursesLoading } = useCourses();
   const { data: allProfiles, loading: profilesLoading } = useProfiles();
-  const { data: allUniversities, loading: unisLoading } = useUniversities();
   const { data: allTxns, loading: txnsLoading } = useWalletTransactions();
 
-  const loading =
-    quizzesLoading ||
-    coursesLoading ||
-    profilesLoading ||
-    unisLoading ||
-    txnsLoading;
-  const quizzes = allQuizzes || [];
+  const universities = allUniversities || [];
   const courses = allCourses || [];
   const profiles = allProfiles || [];
-  const universities = allUniversities || [];
   const txns = allTxns || [];
 
-  // Set default uni ID once loaded
-  if (!activeUniId && universities.length > 0) {
+  // Set default uni once universities are loaded
+  const defaultUniSet = useRef(false);
+  if (!defaultUniSet.current && universities.length > 0) {
+    defaultUniSet.current = true;
     setActiveUniId(universities[0].id);
   }
 
+  // ── Server-side paginated quizzes ────────────────────────────────────────
+  const {
+    data: quizzesPage,
+    loading: quizzesLoading,
+    refetch: refetchQuizzes,
+  } = useAdminQuizzes({
+    page,
+    pageSize: PAGE_SIZE,
+    universityId: activeUniId,
+    status: statusFilter,
+    search: debouncedSearch,
+    sort: sortKey,
+    department: courseFilter,
+  });
+
+  const quizzes = quizzesPage?.quizzes || [];
+  const totalQuizzes = quizzesPage?.total || 0;
+  const totalPages = Math.max(1, Math.ceil(totalQuizzes / PAGE_SIZE));
+
+  // ── Derived maps ──────────────────────────────────────────────────────────
   const coursesById = useMemo(
     () => new Map(courses.map((c) => [c.id, c])),
     [courses],
@@ -483,110 +528,43 @@ export function AdminQuizzesPage() {
     [profiles],
   );
 
+  // Revenue map — already scoped to platform_revenue + completed in the hook
   const revenueMap = useMemo(() => {
     const m: Record<string, number> = {};
-    txns
-      .filter((t) => t.type === "platform_revenue" && t.status === "completed")
-      .forEach((t) => {
-        if (t.related_quiz_id) {
-          m[t.related_quiz_id] = (m[t.related_quiz_id] ?? 0) + Number(t.amount);
-        }
-      });
+    txns.forEach((t) => {
+      if (t.related_quiz_id) {
+        m[t.related_quiz_id] = (m[t.related_quiz_id] ?? 0) + Number(t.amount);
+      }
+    });
     return m;
   }, [txns]);
 
-  // Unique creator count
-  const creatorCount = useMemo(
-    () => new Set(quizzes.map((q) => q.creator_id)).size,
-    [quizzes],
-  );
-
-  // Distinct departments for filter chips
+  // Department chips — derived from ALL courses (not just current page)
   const departments = useMemo(() => {
     const s = new Set<string>();
-    quizzes.forEach((q) => {
-      const c = coursesById.get(q.course_id);
-      if (c) s.add(c.subject_area);
+    courses.forEach((c) => {
+      if (c.university_id === activeUniId && c.subject_area)
+        s.add(c.subject_area);
     });
     return Array.from(s).sort();
-  }, [quizzes, coursesById]);
-
-  const filtered = useMemo(() => {
-    let list = [...quizzes].filter((q) => q.university_id === activeUniId);
-
-    // Status filter
-    if (statusFilter === "published")
-      list = list.filter((q) => getQuizStatus(q) === "published");
-    if (statusFilter === "unpublished")
-      list = list.filter((q) => getQuizStatus(q) !== "published");
-
-    // Course/dept filter
-    if (courseFilter !== "all") {
-      list = list.filter((q) => {
-        const c = coursesById.get(q.course_id);
-        return c?.subject_area === courseFilter;
-      });
-    }
-
-    // Search
-    if (searchInput.trim()) {
-      const q = searchInput.trim().toLowerCase();
-      list = list.filter((quiz) => {
-        if (quiz.title.toLowerCase().includes(q)) return true;
-        const creator = profilesById.get(quiz.creator_id);
-        return creator?.full_name.toLowerCase().includes(q) ?? false;
-      });
-    }
-
-    // Sort
-    switch (sortKey) {
-      case "attempts":
-        list.sort((a, b) => (b.attempt_count ?? 0) - (a.attempt_count ?? 0));
-        break;
-      case "revenue":
-        list.sort((a, b) => (revenueMap[b.id] ?? 0) - (revenueMap[a.id] ?? 0));
-        break;
-      case "price-desc":
-        list.sort((a, b) => b.price - a.price);
-        break;
-      case "price-asc":
-        list.sort((a, b) => a.price - b.price);
-        break;
-      default:
-        list.sort(
-          (a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-        );
-    }
-    return list;
-  }, [
-    quizzes,
-    activeUniId,
-    statusFilter,
-    courseFilter,
-    searchInput,
-    sortKey,
-    coursesById,
-    profilesById,
-    revenueMap,
-  ]);
+  }, [courses, activeUniId]);
 
   const hasFilters =
-    searchInput.trim() !== "" ||
+    debouncedSearch.trim() !== "" ||
     courseFilter !== "all" ||
     statusFilter !== "all";
 
+  // ── Actions ───────────────────────────────────────────────────────────────
   async function handleConfirmAction() {
     if (!actionTarget) return;
     setActing(true);
-    const quiz = quizzes.find((q) => q.id === actionTarget.id);
     if (actionTarget.action === "unpublish") {
       await adminUnpublishQuiz(actionTarget.id);
-      showToast({ message: `"${quiz?.title}" unpublished.` });
+      showToast({ message: `"${actionTarget.title}" unpublished.` });
     } else {
       await adminRepublishQuiz(actionTarget.id);
       showToast({
-        message: `"${quiz?.title}" republished.`,
+        message: `"${actionTarget.title}" republished.`,
         variant: "success",
       });
     }
@@ -599,7 +577,10 @@ export function AdminQuizzesPage() {
     ? quizzes.find((q) => q.id === actionTarget.id)
     : null;
 
-  if (loading) {
+  const supportLoading =
+    unisLoading || coursesLoading || profilesLoading || txnsLoading;
+
+  if (supportLoading && !activeUniId) {
     return (
       <PageContainer className="max-w-315!">
         <AdminLoadingState label="Loading quizzes…" />
@@ -629,17 +610,16 @@ export function AdminQuizzesPage() {
               All Quizzes
             </h1>
             <p className="mt-1.5 text-sm text-text-soft">
-              {quizzes.length} total quizzes across {creatorCount} creators.
+              {totalQuizzes > 0
+                ? `${totalQuizzes.toLocaleString()} total quizzes.`
+                : "No quizzes yet."}
             </p>
           </div>
 
           {/* University tabs */}
-          <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 w-fit max-w-full overflow-x-auto no-scrollbar">
-            {universities.map((uni) => {
-              const count = quizzes.filter(
-                (q) => q.university_id === uni.id,
-              ).length;
-              return (
+          {universities.length > 0 && (
+            <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 w-fit max-w-full overflow-x-auto no-scrollbar">
+              {universities.map((uni) => (
                 <button
                   key={uni.id}
                   type="button"
@@ -648,6 +628,8 @@ export function AdminQuizzesPage() {
                     setCourseFilter("all");
                     setStatusFilter("all");
                     setSearchInput("");
+                    setDebouncedSearch("");
+                    setPage(1);
                   }}
                   className={`h-9 px-3.5 rounded-xl text-xs font-heading font-semibold transition-all duration-150 flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
                     activeUniId === uni.id
@@ -656,13 +638,10 @@ export function AdminQuizzesPage() {
                   }`}
                 >
                   {uni.abbreviation}
-                  <span className="inline-flex h-5 min-w-5 px-1 items-center justify-center rounded-full text-[10px] font-bold bg-border text-muted">
-                    {count}
-                  </span>
                 </button>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
 
           {/* Search + sort row */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -671,14 +650,18 @@ export function AdminQuizzesPage() {
               <input
                 type="search"
                 value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 placeholder="Search by title or creator…"
                 className="w-full h-11 pl-10 pr-10 rounded-2xl border border-border/60 bg-cream text-sm text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 transition-shadow"
               />
               {searchInput && (
                 <button
                   type="button"
-                  onClick={() => setSearchInput("")}
+                  onClick={() => {
+                    setSearchInput("");
+                    setDebouncedSearch("");
+                    setPage(1);
+                  }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 rounded-lg text-muted hover:text-text hover:bg-surface/60 flex items-center justify-center transition-colors"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -688,7 +671,10 @@ export function AdminQuizzesPage() {
             {/* Sort */}
             <FilterSelect
               value={sortKey}
-              onChange={(v) => setSortKey(v as SortKey)}
+              onChange={(v) => {
+                setSortKey(v as SortKey);
+                setPage(1);
+              }}
               options={SORT_OPTIONS}
               leadingIcon={<SlidersHorizontal className="w-3.5 h-3.5" />}
             />
@@ -703,7 +689,10 @@ export function AdminQuizzesPage() {
                   <button
                     key={s}
                     type="button"
-                    onClick={() => setStatusFilter(s)}
+                    onClick={() => {
+                      setStatusFilter(s);
+                      setPage(1);
+                    }}
                     className={`h-8 px-3 rounded-[10px] text-xs font-heading font-semibold transition-all duration-150 capitalize whitespace-nowrap ${
                       statusFilter === s
                         ? "bg-primary text-cream shadow-soft"
@@ -720,7 +709,10 @@ export function AdminQuizzesPage() {
             {/* Dept chips */}
             <button
               type="button"
-              onClick={() => setCourseFilter("all")}
+              onClick={() => {
+                setCourseFilter("all");
+                setPage(1);
+              }}
               className={`h-9 px-3.5 rounded-xl text-xs font-heading font-semibold border shrink-0 transition-all ${
                 courseFilter === "all"
                   ? "bg-primary text-cream border-primary shadow-soft"
@@ -733,7 +725,10 @@ export function AdminQuizzesPage() {
               <button
                 key={dept}
                 type="button"
-                onClick={() => setCourseFilter(dept)}
+                onClick={() => {
+                  setCourseFilter(dept);
+                  setPage(1);
+                }}
                 className={`h-9 px-3.5 rounded-xl text-xs font-heading font-semibold border shrink-0 transition-all whitespace-nowrap ${
                   courseFilter === dept
                     ? "bg-primary text-cream border-primary shadow-soft"
@@ -748,8 +743,10 @@ export function AdminQuizzesPage() {
                 type="button"
                 onClick={() => {
                   setSearchInput("");
+                  setDebouncedSearch("");
                   setCourseFilter("all");
                   setStatusFilter("all");
+                  setPage(1);
                 }}
                 className="h-9 px-3 rounded-xl text-xs font-heading font-semibold text-muted hover:text-text border border-dashed border-border/60 hover:border-border transition-all flex items-center gap-1.5 shrink-0"
               >
@@ -762,13 +759,17 @@ export function AdminQuizzesPage() {
           {/* Result count */}
           <p className="text-sm text-text-soft">
             <span className="font-heading font-semibold text-text">
-              {filtered.length}
+              {totalQuizzes.toLocaleString()}
             </span>{" "}
-            {filtered.length === 1 ? "quiz" : "quizzes"} found
+            {totalQuizzes === 1 ? "quiz" : "quizzes"} found
           </p>
 
           {/* Table (desktop) */}
-          {filtered.length === 0 ? (
+          {quizzesLoading ? (
+            <Card padded={false} className="overflow-hidden">
+              <TableSkeleton />
+            </Card>
+          ) : quizzes.length === 0 ? (
             <Card padded={false}>
               <EmptyState />
             </Card>
@@ -800,7 +801,7 @@ export function AdminQuizzesPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filtered.map((quiz) => {
+                        {quizzes.map((quiz) => {
                           const course = coursesById.get(quiz.course_id);
                           const creator = profilesById.get(quiz.creator_id);
                           return (
@@ -811,7 +812,11 @@ export function AdminQuizzesPage() {
                               creator={creator}
                               platformRevenue={revenueMap[quiz.id] ?? 0}
                               onAction={(action) =>
-                                setActionTarget({ id: quiz.id, action })
+                                setActionTarget({
+                                  id: quiz.id,
+                                  action,
+                                  title: quiz.title,
+                                })
                               }
                             />
                           );
@@ -825,7 +830,7 @@ export function AdminQuizzesPage() {
               {/* Cards (mobile) */}
               <div className="lg:hidden">
                 <Card padded={false} className="overflow-hidden">
-                  {filtered.map((quiz) => {
+                  {quizzes.map((quiz) => {
                     const course = coursesById.get(quiz.course_id);
                     const creator = profilesById.get(quiz.creator_id);
                     return (
@@ -836,7 +841,11 @@ export function AdminQuizzesPage() {
                         creator={creator}
                         platformRevenue={revenueMap[quiz.id] ?? 0}
                         onAction={(action) =>
-                          setActionTarget({ id: quiz.id, action })
+                          setActionTarget({
+                            id: quiz.id,
+                            action,
+                            title: quiz.title,
+                          })
                         }
                       />
                     );
@@ -844,6 +853,38 @@ export function AdminQuizzesPage() {
                 </Card>
               </div>
             </>
+          )}
+
+          {/* Pagination */}
+          {totalQuizzes > 0 && (
+            <div className="flex items-center justify-between gap-3 text-xs text-muted">
+              <p>
+                Showing {(page - 1) * PAGE_SIZE + 1}–
+                {Math.min(page * PAGE_SIZE, totalQuizzes)} of{" "}
+                {totalQuizzes.toLocaleString()} quizzes
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Previous
+                </Button>
+                <span>
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
           )}
         </div>
       </PageContainer>

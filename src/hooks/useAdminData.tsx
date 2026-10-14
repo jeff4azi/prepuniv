@@ -95,29 +95,78 @@ export function useAdminUsers(params: {
 }
 
 // ─── Profiles (direct Supabase — no email needed) ────────────────────────────
+// Hard limit raised to 3000: used as a lookup map by Reports & Applications.
+// Beyond 3000 users, unknown names would silently show for newer accounts.
 
 export function useProfiles() {
   return useSupabaseFetch<DbProfile[]>(async () => {
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(3000);
     if (error) throw new Error(error.message);
     return data || [];
   });
 }
 
-// ─── Quizzes ──────────────────────────────────────────────────────────────────
+// ─── Quizzes (all — for pages that need the full list, e.g. Courses) ─────────
+// Hard limit of 2000 for pages that need every quiz (e.g. course quiz-counts).
+// The main admin quizzes listing uses useAdminQuizzes (server-side paginated).
 
 export function useQuizzes() {
   return useSupabaseFetch<DbQuiz[]>(async () => {
     const { data, error } = await supabase
       .from("quizzes")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(2000);
     if (error) throw new Error(error.message);
     return data || [];
   });
+}
+
+// ─── Quizzes (server-side paginated — AdminQuizzesPage) ───────────────────────
+
+export type AdminQuizzesPage = {
+  quizzes: DbQuiz[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export function useAdminQuizzes(params: {
+  page: number;
+  pageSize: number;
+  universityId: string;
+  status: string;
+  search: string;
+  sort: string;
+  department: string;
+}) {
+  return useSupabaseFetch<AdminQuizzesPage>(async () => {
+    const query = new URLSearchParams({
+      page: String(params.page),
+      pageSize: String(params.pageSize),
+      universityId: params.universityId,
+      status: params.status,
+      search: params.search,
+      sort: params.sort,
+      department: params.department,
+    });
+    const res = await apiFetch<AdminQuizzesPage>(`/api/admin/quizzes?${query}`);
+    if (res.error || !res.data?.quizzes)
+      throw new Error(res.error || "Failed to fetch quizzes");
+    return res.data;
+  }, [
+    params.page,
+    params.pageSize,
+    params.universityId,
+    params.status,
+    params.search,
+    params.sort,
+    params.department,
+  ]);
 }
 
 // ─── Courses ──────────────────────────────────────────────────────────────────
@@ -127,7 +176,8 @@ export function useCourses() {
     const { data, error } = await supabase
       .from("courses")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(2000);
     if (error) throw new Error(error.message);
     return data || [];
   });
@@ -147,13 +197,19 @@ export function useUniversities() {
 }
 
 // ─── Wallet Transactions ──────────────────────────────────────────────────────
+// Scoped to platform_revenue + completed only — all other types are irrelevant
+// for admin revenue calculations, and this cuts volume dramatically.
+// The 5000 limit is a safety ceiling; revenue rows grow 1-per-purchase.
 
 export function useWalletTransactions() {
   return useSupabaseFetch<DbWalletTxn[]>(async () => {
     const { data, error } = await supabase
       .from("wallet_transactions")
       .select("*")
-      .order("created_at", { ascending: false });
+      .eq("type", "platform_revenue")
+      .eq("status", "completed")
+      .order("created_at", { ascending: false })
+      .limit(5000);
     if (error) throw new Error(error.message);
     return data || [];
   });
@@ -204,7 +260,8 @@ export function useReports() {
     const { data, error } = await supabase
       .from("reports")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(2000);
     if (error) throw new Error(error.message);
     return (data || []) as AdminReport[];
   });
