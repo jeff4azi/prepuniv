@@ -248,7 +248,7 @@ export function QuizDetailPage() {
   if (quiz === undefined) {
     // Still loading
     return (
-      <PageContainer>
+      <PageContainer className="!max-w-[720px]">
         <div className="space-y-4 animate-pulse">
           {/* Back button */}
           <div className="h-4 w-16 rounded-md bg-surface" />
@@ -630,7 +630,8 @@ export function QuizDetailPage() {
                     <Star className="w-3.5 h-3.5 fill-warning" />
                     {quizRating.avg_rating.toFixed(1)}
                     <span className="text-muted font-normal">
-                      · {quizRating.total_reviews.toLocaleString()} review{quizRating.total_reviews !== 1 ? "s" : ""}
+                      · {quizRating.total_reviews.toLocaleString()} review
+                      {quizRating.total_reviews !== 1 ? "s" : ""}
                     </span>
                   </a>
                 )}
@@ -1042,7 +1043,11 @@ export function QuizDetailPage() {
                             <p className="text-[10px] text-muted">
                               {new Date(r.created_at).toLocaleDateString(
                                 "en-NG",
-                                { month: "short", day: "numeric", year: "numeric" },
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                },
                               )}
                             </p>
                           </div>
@@ -1075,7 +1080,8 @@ export function QuizDetailPage() {
                     No reviews yet
                   </p>
                   <p className="text-xs text-muted mt-1 max-w-sm mx-auto">
-                    Complete this quiz to be among the first students to share feedback and help others prepare!
+                    Complete this quiz to be among the first students to share
+                    feedback and help others prepare!
                   </p>
                 </div>
               )}
