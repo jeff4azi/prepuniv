@@ -66,9 +66,7 @@ function toQuiz(row: any): Quiz {
   const rawIds = row.preview_question_ids;
   const previewIds: string[] | null =
     Array.isArray(rawIds) && rawIds.length > 0
-      ? (rawIds as unknown[]).filter(
-          (v): v is string => typeof v === "string",
-        )
+      ? (rawIds as unknown[]).filter((v): v is string => typeof v === "string")
       : null;
   return {
     id: row.id,
@@ -885,14 +883,16 @@ export interface QuizReviewItem {
 /** Recent approved reviews for a specific quiz (for QuizDetailPage reviews section). */
 export async function fetchQuizReviews(
   quizId: string,
-  limit = 8,
+  limit = 3,
 ): Promise<QuizReviewItem[]> {
   const { data, error } = await supabase
     .from("reviews")
-    .select(`
+    .select(
+      `
       id, rating, review_text, created_at,
       reviewer:reviewer_id ( full_name, avatar_url )
-    `)
+    `,
+    )
     .eq("review_target_type", "quiz")
     .eq("target_quiz_id", quizId)
     .eq("is_approved", true)
@@ -912,3 +912,38 @@ export async function fetchQuizReviews(
   }));
 }
 
+/** All approved reviews for a specific quiz, optionally filtered by star rating (for QuizReviewsPage). */
+export async function fetchAllQuizReviews(
+  quizId: string,
+  starFilter?: number,
+): Promise<QuizReviewItem[]> {
+  let query = supabase
+    .from("reviews")
+    .select(
+      `
+      id, rating, review_text, created_at,
+      reviewer:reviewer_id ( full_name, avatar_url )
+    `,
+    )
+    .eq("review_target_type", "quiz")
+    .eq("target_quiz_id", quizId)
+    .eq("is_approved", true)
+    .eq("is_hidden", false)
+    .order("created_at", { ascending: false });
+
+  if (starFilter !== undefined) {
+    query = query.eq("rating", starFilter);
+  }
+
+  const { data, error } = await query;
+  if (error || !Array.isArray(data)) return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return data.map((r: any) => ({
+    id: r.id,
+    rating: r.rating,
+    review_text: r.review_text,
+    created_at: r.created_at,
+    reviewer_name: r.reviewer?.full_name ?? "Learner",
+    reviewer_avatar_url: r.reviewer?.avatar_url,
+  }));
+}

@@ -1072,6 +1072,19 @@ export function QuizDetailPage() {
                       )}
                     </div>
                   ))}
+
+                  {/* See all reviews link */}
+                  {quizRating && quizRating.total_reviews > 3 && (
+                    <Link
+                      to={`/quiz/${quiz.id}/reviews`}
+                      state={{ from: location.pathname }}
+                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-2xl border border-border/50 bg-surface/20 hover:bg-surface/40 hover:border-border transition-all text-sm font-heading font-semibold text-text-soft hover:text-text"
+                    >
+                      See all {quizRating.total_reviews.toLocaleString()}{" "}
+                      reviews
+                      <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-6 px-4 rounded-2xl bg-surface/20 border border-border/30">
