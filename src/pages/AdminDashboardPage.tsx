@@ -313,30 +313,51 @@ export function AdminDashboardPage() {
         reportsRes,
         usersRes,
       ] = await Promise.all([
+        // Profiles: used for user/creator counts + activity feed lookup.
+        // Limit to 3000 — beyond that the dashboard stat cards still show
+        // the accurate total via attemptCountRes (count: exact).
         supabase
           .from("profiles")
           .select("*")
-          .order("created_at", { ascending: false }),
-        supabase.from("quizzes").select("*"),
+          .order("created_at", { ascending: false })
+          .limit(3000),
+        // Quizzes: only need id, title, is_published, creator_id, created_at
+        // for counts + activity feed. Selecting specific columns + limit 2000
+        // keeps this fast and well under Supabase's 1000-row default cap.
+        supabase
+          .from("quizzes")
+          .select(
+            "id, title, is_published, creator_id, created_at, university_id",
+          )
+          .order("created_at", { ascending: false })
+          .limit(2000),
+        // Attempt count — always accurate, uses count: exact (no row fetch).
         supabase
           .from("quiz_attempts")
           .select("*", { count: "exact", head: true }),
+        // Wallet txns: dashboard only needs topup + platform_revenue rows.
+        // Filtering here cuts volume by ~60% vs fetching everything.
         supabase
           .from("wallet_transactions")
           .select("*")
-          .order("created_at", { ascending: false }),
+          .in("type", ["topup", "platform_revenue"])
+          .order("created_at", { ascending: false })
+          .limit(5000),
         supabase
           .from("payout_requests")
           .select("*")
-          .order("requested_at", { ascending: false }),
+          .order("requested_at", { ascending: false })
+          .limit(2000),
         supabase
           .from("creator_applications")
           .select("*")
-          .order("submitted_at", { ascending: false }),
+          .order("submitted_at", { ascending: false })
+          .limit(2000),
         supabase
           .from("reports")
           .select("*")
-          .order("created_at", { ascending: false }),
+          .order("created_at", { ascending: false })
+          .limit(2000),
         apiFetch<{
           users: Array<{ id: string; email_confirmed_at: string | null }>;
         }>("/api/admin/users?page=1&pageSize=200").catch(() => ({

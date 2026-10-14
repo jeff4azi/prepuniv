@@ -456,7 +456,10 @@ export function AdminQuizzesPage() {
   const [courseFilter, setCourseFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("newest");
-  const [activeUniId, setActiveUniId] = useState<string>("");
+  // "all" means no university filter — this is also the initial value so the
+  // first fetch goes out immediately and correctly rather than waiting for the
+  // universities list to load before knowing which uni to default to.
+  const [activeUniId, setActiveUniId] = useState<string>("all");
   const [page, setPage] = useState(1);
 
   // ── Action state ─────────────────────────────────────────────────────────
@@ -491,13 +494,6 @@ export function AdminQuizzesPage() {
   const courses = allCourses || [];
   const profiles = allProfiles || [];
   const txns = allTxns || [];
-
-  // Set default uni once universities are loaded
-  const defaultUniSet = useRef(false);
-  if (!defaultUniSet.current && universities.length > 0) {
-    defaultUniSet.current = true;
-    setActiveUniId(universities[0].id);
-  }
 
   // ── Server-side paginated quizzes ────────────────────────────────────────
   const {
@@ -539,11 +535,14 @@ export function AdminQuizzesPage() {
     return m;
   }, [txns]);
 
-  // Department chips — derived from ALL courses (not just current page)
+  // Department chips — derived from ALL courses (filtered to active uni if set)
   const departments = useMemo(() => {
     const s = new Set<string>();
     courses.forEach((c) => {
-      if (c.university_id === activeUniId && c.subject_area)
+      if (
+        (activeUniId === "all" || c.university_id === activeUniId) &&
+        c.subject_area
+      )
         s.add(c.subject_area);
     });
     return Array.from(s).sort();
@@ -580,7 +579,7 @@ export function AdminQuizzesPage() {
   const supportLoading =
     unisLoading || coursesLoading || profilesLoading || txnsLoading;
 
-  if (supportLoading && !activeUniId) {
+  if (supportLoading && quizzesLoading && !quizzesPage) {
     return (
       <PageContainer className="max-w-315!">
         <AdminLoadingState label="Loading quizzes…" />
@@ -619,6 +618,25 @@ export function AdminQuizzesPage() {
           {/* University tabs */}
           {universities.length > 0 && (
             <div className="flex gap-1 p-1 rounded-2xl bg-surface/50 border border-border/40 w-fit max-w-full overflow-x-auto no-scrollbar">
+              {/* All universities tab */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveUniId("all");
+                  setCourseFilter("all");
+                  setStatusFilter("all");
+                  setSearchInput("");
+                  setDebouncedSearch("");
+                  setPage(1);
+                }}
+                className={`h-9 px-3.5 rounded-xl text-xs font-heading font-semibold transition-all duration-150 flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+                  activeUniId === "all"
+                    ? "bg-cream shadow-soft text-text"
+                    : "text-text-soft hover:text-text"
+                }`}
+              >
+                All
+              </button>
               {universities.map((uni) => (
                 <button
                   key={uni.id}
