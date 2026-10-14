@@ -59,11 +59,11 @@ interface AdminReviewRow {
 }
 
 const TABS: { value: ReviewStatusFilter; label: string }[] = [
-  { value: "pending", label: "Pending" },
+  { value: "all", label: "All" },
   { value: "approved", label: "Approved" },
   { value: "featured", label: "Featured" },
   { value: "hidden", label: "Hidden" },
-  { value: "all", label: "All" },
+  { value: "pending", label: "Pending" },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -518,7 +518,7 @@ export function AdminReviewsPage() {
 
   const [reviews, setReviews] = useState<AdminReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<ReviewStatusFilter>("pending");
+  const [activeTab, setActiveTab] = useState<ReviewStatusFilter>("all");
   const [search, setSearch] = useState("");
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
@@ -694,9 +694,9 @@ export function AdminReviewsPage() {
                 Review Moderation
               </h1>
               <p className="mt-1.5 text-sm text-text-soft leading-relaxed">
-                {counts.pending > 0
-                  ? `${counts.pending} review${counts.pending !== 1 ? "s" : ""} pending moderation.`
-                  : "All reviews are moderated — nothing pending."}
+                {counts.hidden > 0
+                  ? `${counts.hidden} review${counts.hidden !== 1 ? "s" : ""} currently hidden.`
+                  : `${counts.all} review${counts.all !== 1 ? "s" : ""} on the platform.`}
               </p>
             </div>
             {/* Search + Refresh */}
