@@ -6,6 +6,7 @@ Allow: /browse
 Allow: /login
 Allow: /signup
 Allow: /apply-creator
+Allow: /creator/agreement
 Allow: /terms
 Allow: /privacy
 
@@ -21,7 +22,6 @@ Allow: /profile/creator/
 
 # App shell routes that require login
 Disallow: /home
-Disallow: /browse$
 Disallow: /library
 Disallow: /wallet
 Disallow: /history
@@ -32,7 +32,7 @@ Disallow: /select-university
 # Quiz attempt and result — never crawlable (private session, meaningless out of context)
 Disallow: /attempt/
 
-# All creator dashboard routes
+# All creator dashboard routes (agreement page is explicitly allowed above)
 Disallow: /creator
 Disallow: /creator/
 Disallow: /creator/*
@@ -50,3 +50,4 @@ Disallow: /account-suspended
 Disallow: /connection-lost
 
 Sitemap: https://www.prepuniv.com/sitemap.xml
+
