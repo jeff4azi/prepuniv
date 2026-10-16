@@ -5,7 +5,11 @@ import { GraduationCap, ArrowRight } from "lucide-react";
 import { Button } from "../components/Button";
 import { UniversitySelect } from "../components/UniversitySelect";
 import { useAuth } from "../context/AuthContext";
-import { getDefaultDashboard } from "../lib/routeGuard";
+import {
+  getDefaultDashboard,
+  getSavedAuthRedirect,
+  clearSavedAuthRedirect,
+} from "../lib/routeGuard";
 import { fetchUniversities } from "../lib/queries";
 import type { University } from "../lib/queries";
 
@@ -32,7 +36,9 @@ export function SelectUniversityPage() {
     if (currentUser.university_id) {
       const savedRedirect = getSavedAuthRedirect();
       clearSavedAuthRedirect();
-      navigate(savedRedirect || getDefaultDashboard(currentUser), { replace: true });
+      navigate(savedRedirect || getDefaultDashboard(currentUser), {
+        replace: true,
+      });
     }
   }, [currentUser, navigate]);
 
@@ -54,7 +60,9 @@ export function SelectUniversityPage() {
     await refreshProfile();
     const savedRedirect = getSavedAuthRedirect();
     clearSavedAuthRedirect();
-    navigate(savedRedirect || getDefaultDashboard(currentUser), { replace: true });
+    navigate(savedRedirect || getDefaultDashboard(currentUser), {
+      replace: true,
+    });
   }
 
   return (
