@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { usePageTitle } from "../hooks/usePageTitle";
 import {
   Search,
@@ -193,118 +193,275 @@ function Hero({ stats, platformRating, creators, statsLoading }: HeroProps) {
   );
 }
 
+// ---------- HERO MOCK: interactive quiz card ----------
+const MOCK_QUESTIONS = [
+  {
+    q: "Choose the option that best completes the sentence:",
+    sub: "\u201cThe committee _____ submitted _____ final report last Friday.\u201d",
+    opts: [
+      { k: "A", t: "have submitted their", correct: false },
+      { k: "B", t: "has submitted its",    correct: true  },
+      { k: "C", t: "have submitted its",   correct: false },
+      { k: "D", t: "has submitted their",  correct: false },
+    ],
+  },
+  {
+    q: "Which word is an antonym of \u201cbenevolent\u201d?",
+    sub: "",
+    opts: [
+      { k: "A", t: "Generous",   correct: false },
+      { k: "B", t: "Charitable", correct: false },
+      { k: "C", t: "Malevolent", correct: true  },
+      { k: "D", t: "Cordial",    correct: false },
+    ],
+  },
+  {
+    q: "Identify the grammatically correct sentence.",
+    sub: "",
+    opts: [
+      { k: "A", t: "Neither of the boys have done it.",  correct: false },
+      { k: "B", t: "Each of the students are present.",  correct: false },
+      { k: "C", t: "The jury has reached its verdict.",  correct: true  },
+      { k: "D", t: "The team have lost their match.",    correct: false },
+    ],
+  },
+];
+
+const TOTAL_QS = 100;
+const INIT_SECS = 18 * 60 + 42; // 18:42
+
 function HeroMock() {
+  const [qIdx, setQIdx]           = useState(0);
+  const [selected, setSelected]   = useState<string | null>(null);
+  const [revealed, setRevealed]   = useState(false);
+  const [secs, setSecs]           = useState(INIT_SECS);
+  const [score, setScore]         = useState(81);
+  const advanceTimer              = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const countdownRef              = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // live countdown
+  useEffect(() => {
+    countdownRef.current = setInterval(() => {
+      setSecs((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, []);
+
+  const m = String(Math.floor(secs / 60)).padStart(2, "0");
+  const s = String(secs % 60).padStart(2, "0");
+  const isLow = secs < 120;
+
+  const question = MOCK_QUESTIONS[qIdx % MOCK_QUESTIONS.length];
+  // question number shown: starts at 23 and advances
+  const qNum = 23 + qIdx;
+  const progress = Math.min(((qNum - 1) / TOTAL_QS) * 100, 100);
+
+  const handleSelect = useCallback((k: string) => {
+    if (selected !== null) return; // already answered
+    setSelected(k);
+    setRevealed(true);
+    const isCorrect = question.opts.find((o) => o.k === k)?.correct ?? false;
+    if (isCorrect) setScore((prev) => prev + 1);
+    // auto-advance after 1.6s
+    advanceTimer.current = setTimeout(() => {
+      setSelected(null);
+      setRevealed(false);
+      setQIdx((i) => i + 1);
+    }, 1600);
+  }, [selected, question]);
+
+  useEffect(() => {
+    return () => {
+      if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    };
+  }, []);
+
+  // Circular countdown ring maths — r=26, 72×72 svg
+  const CIRC = 2 * Math.PI * 26;
+  const elapsed = INIT_SECS - secs;
+  const dashOffset = CIRC * (1 - elapsed / INIT_SECS);
+
   return (
     <div className="relative">
       <div className="absolute -top-6 -left-6 h-40 w-40 rounded-full bg-primary/15 blur-3xl" />
       <div className="absolute -bottom-8 -right-4 h-48 w-48 rounded-full bg-secondary/20 blur-3xl" />
       <div className="relative">
         <Card className="relative shadow-elevated border border-primary/10 p-0 overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-border/50 bg-surface/40">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="h-9 w-9 rounded-xl bg-primary text-cream flex items-center justify-center shrink-0">
-                <FileText className="w-4.5 h-4.5" strokeWidth={2.2} />
+
+          {/* ── Premium header band ── */}
+          <div
+            className="relative px-5 pt-5 pb-4 overflow-hidden rounded-t-[inherit]"
+            style={{
+              background: "linear-gradient(135deg, var(--color-primary) 0%, color-mix(in srgb, var(--color-primary) 70%, var(--color-secondary)) 100%)",
+            }}
+          >
+            {/* Decorative blur orbs inside header */}
+            <div className="absolute -top-4 -right-4 h-24 w-24 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+            <div className="absolute bottom-0 left-8 h-16 w-16 rounded-full bg-white/5 blur-xl pointer-events-none" />
+
+            <div className="relative flex items-center justify-between gap-4">
+              {/* Left — course info */}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-7 w-7 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+                    <FileText className="w-3.5 h-3.5 text-white" strokeWidth={2.2} />
+                  </div>
+                  <span className="text-[10px] font-heading font-bold tracking-widest uppercase text-white/70">
+                    GST 121 · Use of English
+                  </span>
+                </div>
+                <p className="font-heading font-bold text-white text-base leading-tight truncate">
+                  Full Mock Examination
+                </p>
+                <p className="text-white/60 text-[11px] mt-0.5 font-medium">
+                  100 questions · 2026 session
+                </p>
               </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold font-heading tracking-wider uppercase text-muted mb-0.5">
-                  GST 121 · Use of English · 2026
-                </p>
-                <p className="font-heading font-semibold text-sm text-text truncate">
-                  Full Mock — 100 questions
-                </p>
+
+              {/* Right — circular SVG countdown */}
+              <div className="relative shrink-0 flex items-center justify-center" style={{ width: 72, height: 72 }}>
+                {/* Track ring */}
+                <svg width="72" height="72" className="absolute inset-0 -rotate-90">
+                  <circle
+                    cx="36" cy="36" r="26"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.15)"
+                    strokeWidth="3"
+                  />
+                  {/* Progress arc */}
+                  <circle
+                    cx="36" cy="36" r="26"
+                    fill="none"
+                    stroke={isLow ? "#ff6b6b" : "rgba(255,255,255,0.9)"}
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeDasharray={CIRC}
+                    strokeDashoffset={dashOffset}
+                    style={{ transition: "stroke-dashoffset 1s linear, stroke 0.4s" }}
+                  />
+                </svg>
+                {/* Time text */}
+                <div className="relative text-center">
+                  <p
+                    className="font-heading font-bold leading-none text-[11px] tabular-nums"
+                    style={{ color: isLow ? "#ff6b6b" : "white" }}
+                  >
+                    {m}:{s}
+                  </p>
+                  <p className="text-white/45 text-[8px] font-semibold tracking-widest uppercase mt-0.5">
+                    left
+                  </p>
+                </div>
               </div>
             </div>
-            <Badge variant="success" dot size="sm">
-              Live
-            </Badge>
+
+            {/* Progress bar — lives inside the header band */}
+            <div className="mt-4 flex items-center gap-3">
+              <div className="flex-1 h-1.5 rounded-full bg-white/15 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-white/80 transition-all duration-700"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <span className="text-[10px] font-heading font-semibold text-white/60 shrink-0 tabular-nums">
+                Q{qNum}/{TOTAL_QS}
+              </span>
+            </div>
           </div>
-          <div className="px-5 sm:px-6 py-6">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[11px] font-heading font-semibold tracking-wider uppercase text-muted">
-                Question 23 of 100
-              </span>
-              <div className="flex items-center gap-1.5 text-xs font-semibold font-heading text-warning bg-warning-bg px-2.5 py-1 rounded-lg border border-warning/15">
-                <Zap className="w-3.5 h-3.5" /> 18:42
-              </div>
-            </div>
-            <div className="h-1.5 w-full rounded-full bg-surface overflow-hidden mb-6">
-              <div className="h-full w-[23%] rounded-full bg-primary" />
-            </div>
+
+          {/* ── Body ── */}
+          <div className="px-5 sm:px-6 pt-5 pb-6">
+            {/* Question text */}
             <h4 className="font-heading font-semibold text-base sm:text-lg text-text leading-snug mb-5">
-              Choose the option that best completes the sentence:
-              <br />
-              <span className="text-text-soft font-normal">
-                &ldquo;The committee _____ reached_____ final report last
-                Friday.&rdquo;
-              </span>
+              {question.q}
+              {question.sub && (
+                <>
+                  <br />
+                  <span className="text-text-soft font-normal">&ldquo;{question.sub}&rdquo;</span>
+                </>
+              )}
             </h4>
-            <ol className="space-y-2.5">
-              {[
-                {
-                  k: "A",
-                  t: "have submitted their",
-                  correct: false,
-                  selected: false,
-                },
-                {
-                  k: "B",
-                  t: "has submitted its",
-                  correct: true,
-                  selected: true,
-                },
-                {
-                  k: "C",
-                  t: "have submitted its",
-                  correct: false,
-                  selected: false,
-                },
-                {
-                  k: "D",
-                  t: "has submitted their",
-                  correct: false,
-                  selected: false,
-                },
-              ].map(function mapOpt(opt) {
-                const selected = !!opt.selected;
-                const rowBase =
-                  "group flex items-start gap-3 rounded-2xl border px-4 py-3 transition-all cursor-pointer";
-                const rowTone = selected
-                  ? "bg-primary/10 border-primary/30 shadow-soft"
-                  : "bg-cream border-border/60 hover:border-border hover:bg-surface/40";
-                const letterBase =
-                  "mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-lg font-heading font-bold text-[13px] shrink-0";
-                const letterTone = selected
-                  ? "bg-primary text-cream"
-                  : "bg-surface text-secondary";
+
+            {/* Options */}
+            <ol className="space-y-2">
+              {question.opts.map((opt) => {
+                const isSelected = selected === opt.k;
+                const isCorrect  = opt.correct;
+                const show       = revealed;
+
+                let rowTone = "bg-surface/30 border-border/60 hover:border-primary/40 hover:bg-primary/5 cursor-pointer";
+                if (show && isSelected && isCorrect)
+                  rowTone = "bg-success/10 border-success/40 cursor-default";
+                else if (show && isSelected && !isCorrect)
+                  rowTone = "bg-danger/10 border-danger/30 cursor-default";
+                else if (show && isCorrect)
+                  rowTone = "bg-success/10 border-success/40 cursor-default";
+                else if (show)
+                  rowTone = "bg-surface/30 border-border/40 opacity-50 cursor-default";
+
+                let letterTone = "bg-surface text-secondary";
+                if (show && isSelected && isCorrect)
+                  letterTone = "bg-success text-cream";
+                else if (show && isSelected && !isCorrect)
+                  letterTone = "bg-danger text-cream";
+                else if (show && isCorrect)
+                  letterTone = "bg-success text-cream";
+
                 return (
-                  <div key={opt.k} className={rowBase + " " + rowTone}>
-                    <span className={letterBase + " " + letterTone}>
+                  <div
+                    key={opt.k}
+                    onClick={() => handleSelect(opt.k)}
+                    className={`group flex items-center gap-3 rounded-2xl border px-4 py-3 transition-all duration-200 select-none ${
+                      isSelected ? "scale-[1.01]" : "hover:scale-[1.005]"
+                    } ${rowTone}`}
+                  >
+                    <span
+                      className={`inline-flex h-7 w-7 items-center justify-center rounded-lg font-heading font-bold text-[13px] shrink-0 transition-colors duration-200 ${letterTone}`}
+                    >
                       {opt.k}
                     </span>
-                    <span className="pt-0.5 text-sm text-text">{opt.t}</span>
-                    {selected && (
-                      <Check className="w-4 h-4 text-primary shrink-0 mt-1 ml-auto" />
+                    <span className="text-sm text-text flex-1">{opt.t}</span>
+                    {show && isCorrect && (
+                      <Check className="w-4 h-4 text-success shrink-0 ml-auto" />
                     )}
                   </div>
                 );
               })}
             </ol>
-            <div className="mt-6 flex items-center justify-between pt-5 border-t border-border/50">
+
+            {/* Footer */}
+            <div className="mt-5 flex items-center justify-between pt-4 border-t border-border/50">
               <div className="flex items-center gap-2">
                 <Avatar name="Dr. Amaka Okafor" size="xs" />
                 <span className="text-xs text-muted">
                   by{" "}
-                  <span className="font-semibold text-text-soft">
-                    Dr. Amaka O.
-                  </span>
+                  <span className="font-semibold text-text-soft">Dr. Amaka O.</span>
                 </span>
               </div>
-              <Button size="sm" className="h-9 px-3">
-                Submit
-              </Button>
+              <div className="text-xs">
+                {revealed ? (
+                  <span
+                    className={`font-semibold ${
+                      question.opts.find((o) => o.k === selected)?.correct
+                        ? "text-success"
+                        : "text-danger"
+                    }`}
+                  >
+                    {question.opts.find((o) => o.k === selected)?.correct
+                      ? "✓ Correct!"
+                      : "✗ Wrong"}
+                  </span>
+                ) : (
+                  <span className="text-muted italic">Pick an answer</span>
+                )}
+              </div>
             </div>
           </div>
         </Card>
+
+        {/* Score chip */}
         <Card className="mt-4 sm:mt-5 -ml-4 sm:-ml-10 relative w-[82%] sm:w-[70%] shadow-card">
           <div className="flex items-center gap-4">
             <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl bg-success-bg text-success flex items-center justify-center shrink-0">
@@ -312,19 +469,19 @@ function HeroMock() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-heading uppercase tracking-wider font-semibold text-muted mb-1">
-                Last attempt · Score
+                Live score · This attempt
               </p>
               <div className="flex items-end gap-2">
                 <p className="font-heading font-bold text-2xl sm:text-3xl text-text leading-none">
-                  81<sub className="text-muted font-semibold text-sm">/100</sub>
+                  {score}<sub className="text-muted font-semibold text-sm">/{qNum - 1}</sub>
                 </p>
                 <Badge variant="success" size="sm">
                   <Zap className="w-3 h-3" />
-                  +9 pts better
+                  Improving!
                 </Badge>
               </div>
               <p className="text-xs text-muted mt-1.5">
-                You unlocked this quiz forever. Retake anytime.
+                Unlocked forever · Retake anytime.
               </p>
             </div>
           </div>
