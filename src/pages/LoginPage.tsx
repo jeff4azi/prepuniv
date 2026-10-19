@@ -12,9 +12,14 @@ import {
 } from "../components/Form";
 import { useAuth } from "../context/AuthContext";
 import {
+  GoogleSignInButton,
+  AuthDivider,
+} from "../components/GoogleSignInButton";
+import {
   getDefaultDashboard,
   sanitizeAuthRedirect,
   getSavedAuthRedirect,
+  saveAuthRedirect,
   clearSavedAuthRedirect,
 } from "../lib/routeGuard";
 
@@ -23,13 +28,14 @@ const RESEND_COOLDOWN = 60;
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logIn, resendSignup } = useAuth();
+  const { logIn, signInWithGoogle, resendSignup } = useAuth();
 
   usePageTitle("Log In");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [errors, setErrors] = useState<{
     email?: string | null;
     password?: string | null;
@@ -38,6 +44,28 @@ export function LoginPage() {
   const [touched, setTouched] = useState<{ email: boolean; password: boolean }>(
     { email: false, password: false },
   );
+
+  // Check for OAuth error redirected back from Google / Supabase
+  useEffect(() => {
+    const hash = window.location.hash.substring(1);
+    const hashParams = new URLSearchParams(hash);
+    const searchParams = new URLSearchParams(location.search);
+    const rawError =
+      searchParams.get("error_description") ||
+      hashParams.get("error_description") ||
+      searchParams.get("error") ||
+      hashParams.get("error");
+    if (rawError) {
+      const decoded = decodeURIComponent(rawError).replace(/\+/g, " ");
+      const friendly =
+        decoded.toLowerCase().includes("denied") ||
+        decoded.toLowerCase().includes("cancelled")
+          ? "Google sign-in was cancelled."
+          : decoded;
+      setErrors((prev) => ({ ...prev, form: friendly }));
+      window.history.replaceState(null, "", location.pathname);
+    }
+  }, [location]);
 
   // Unconfirmed-email state
   const [unconfirmedId, setUnconfirmedId] = useState<string | null>(null);
@@ -127,6 +155,25 @@ export function LoginPage() {
     setLoading(false);
   }
 
+  async function handleGoogleSignIn() {
+    setGoogleLoading(true);
+    setErrors((prev) => ({ ...prev, form: null }));
+    const searchParams = new URLSearchParams(location.search);
+    const validRedirect =
+      sanitizeAuthRedirect(searchParams.get("redirect")) ??
+      getSavedAuthRedirect();
+
+    if (validRedirect) {
+      saveAuthRedirect(validRedirect);
+    }
+
+    const { error } = await signInWithGoogle(validRedirect ?? undefined);
+    if (error) {
+      setErrors((prev) => ({ ...prev, form: error.message }));
+      setGoogleLoading(false);
+    }
+  }
+
   async function handleResend() {
     if (resending || cooldown > 0 || !unconfirmedEmail) return;
     setResending(true);
@@ -139,7 +186,8 @@ export function LoginPage() {
     }
   }
 
-  const liveErrors = touched.email || touched.password ? runValidation() : {};
+  const liveErrors: { email?: string | null; password?: string | null } =
+    touched.email || touched.password ? runValidation() : {};
   const finalErrors = {
     email: errors.email ?? liveErrors.email,
     password: errors.password ?? liveErrors.password,
@@ -236,11 +284,20 @@ export function LoginPage() {
         title="Log in to PrepUniv"
         subtitle="Pick up right where you left off — every quiz you've unlocked is still yours."
       >
-        <form
-          onSubmit={handleSubmit}
-          noValidate
-          className="space-y-4 sm:space-y-[18px]"
-        >
+        <div className="space-y-4">
+          <GoogleSignInButton
+            isLoading={googleLoading}
+            disabled={loading}
+            onClick={handleGoogleSignIn}
+          />
+
+          <AuthDivider text="or with email" />
+
+          <form
+            onSubmit={handleSubmit}
+            noValidate
+            className="space-y-4 sm:space-y-[18px]"
+          >
           <TextInput
             id="email"
             name="email"
@@ -309,6 +366,7 @@ export function LoginPage() {
             </Link>
           </p>
         </form>
+        </div>
       </AuthCard>
     </AuthShell>
   );

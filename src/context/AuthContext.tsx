@@ -24,6 +24,7 @@ import {
   trackLogout,
   trackQuizPurchase,
 } from "../lib/analytics";
+import { saveAuthRedirect } from "../lib/routeGuard";
 
 export type UserRole = "user" | "creator" | "admin";
 
@@ -108,7 +109,12 @@ interface AuthContextValue {
     error: AuthError | null;
     emailNotConfirmed: boolean;
     accountSuspended: boolean;
+    profile: Profile | null;
   }>;
+
+  signInWithGoogle: (
+    targetRedirect?: string,
+  ) => Promise<{ error: AuthError | null }>;
 
   logOut: () => Promise<void>;
 
@@ -185,6 +191,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .maybeSingle();
     if (error || !data) {
       console.warn("profile fetch failed:", error?.message);
+      // Fallback: build a temporary profile from OAuth session metadata so new OAuth users are never stuck
+      if (!data) {
+        const { data: authData } = await supabase.auth.getUser();
+        const meta = authData?.user?.user_metadata;
+        setProfile({
+          id: userId,
+          full_name: meta?.full_name || meta?.name || "New User",
+          role: "user",
+          is_approved_creator: false,
+          is_suspended: false,
+          university_id: null,
+          agreement_accepted_at: null,
+          bank_account_number: null,
+          bank_code: null,
+          bank_name: null,
+          bank_account_name: null,
+          bio: null,
+          avatar_url: meta?.avatar_url || meta?.picture || null,
+          created_at: new Date().toISOString(),
+        });
+        return;
+      }
       setProfile(null);
       return;
     }
@@ -224,9 +252,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const currentUser: CurrentUser = useMemo(() => {
     if (!sessionUser || !profile) return GUEST_USER;
+    const derivedFullName =
+      profile.full_name && profile.full_name !== "New User"
+        ? profile.full_name
+        : sessionUser.user_metadata?.full_name ||
+          sessionUser.user_metadata?.name ||
+          profile.full_name ||
+          "User";
+
+    const derivedAvatarUrl =
+      profile.avatar_url ||
+      sessionUser.user_metadata?.avatar_url ||
+      sessionUser.user_metadata?.picture ||
+      undefined;
+
     return {
       id: profile.id,
-      full_name: profile.full_name,
+      full_name: derivedFullName,
       email: sessionUser.email ?? "",
       role: profile.role as UserRole,
       is_approved_creator:
@@ -240,7 +282,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       bank_name: profile.bank_name ?? undefined,
       bank_account_name: profile.bank_account_name ?? undefined,
       bio: profile.bio ?? undefined,
-      avatar_url: profile.avatar_url ?? undefined,
+      avatar_url: derivedAvatarUrl,
       joined_at: profile.created_at,
     };
   }, [sessionUser, profile]);
@@ -387,6 +429,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           window.sessionStorage.removeItem(PASSWORD_RECOVERY_FLAG_KEY);
         } catch {
           // no-op
+        }
+      } else if (event === "SIGNED_IN") {
+        if (s?.user?.app_metadata?.provider === "google") {
+          trackLogin("google");
         }
       }
 
@@ -564,6 +610,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const signInWithGoogle = useCallback(
+    async (targetRedirect?: string) => {
+      if (targetRedirect) {
+        saveAuthRedirect(targetRedirect);
+      }
+      const redirectUrl = `${window.location.origin}/login`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
+      return { error };
+    },
+    [],
+  );
+
   const logOut = useCallback(async () => {
     trackLogout();
     await supabase.auth.signOut();
@@ -666,6 +733,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       signUp,
       logIn,
+      signInWithGoogle,
       logOut,
       resendSignup,
       resetPasswordRequest,
@@ -698,6 +766,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       creatorThisMonthEarnings,
       signUp,
       logIn,
+      signInWithGoogle,
       logOut,
       resendSignup,
       resetPasswordRequest,

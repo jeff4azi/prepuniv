@@ -13,6 +13,10 @@ import {
   validateFullName,
 } from "../components/Form";
 import { useAuth } from "../context/AuthContext";
+import {
+  GoogleSignInButton,
+  AuthDivider,
+} from "../components/GoogleSignInButton";
 import { useApplyPendingUniversity } from "../hooks/useApplyPendingUniversity";
 import {
   sanitizeAuthRedirect,
@@ -31,7 +35,8 @@ interface SignupErrors {
 const RESEND_COOLDOWN = 60;
 
 export function SignupPage() {
-  const { signUp, resendSignup } = useAuth();
+  const { signUp, signInWithGoogle, resendSignup } = useAuth();
+  const location = useLocation();
 
   usePageTitle("Sign Up");
 
@@ -46,6 +51,7 @@ export function SignupPage() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<SignupErrors>({});
 
@@ -54,11 +60,52 @@ export function SignupPage() {
   const [resent, setResent] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
+  // Check for OAuth error redirected back from Google / Supabase
+  useEffect(() => {
+    const hash = window.location.hash.substring(1);
+    const hashParams = new URLSearchParams(hash);
+    const searchParams = new URLSearchParams(location.search);
+    const rawError =
+      searchParams.get("error_description") ||
+      hashParams.get("error_description") ||
+      searchParams.get("error") ||
+      hashParams.get("error");
+    if (rawError) {
+      const decoded = decodeURIComponent(rawError).replace(/\+/g, " ");
+      const friendly =
+        decoded.toLowerCase().includes("denied") ||
+        decoded.toLowerCase().includes("cancelled")
+          ? "Google sign-in was cancelled."
+          : decoded;
+      setErrors((prev) => ({ ...prev, form: friendly }));
+      window.history.replaceState(null, "", location.pathname);
+    }
+  }, [location]);
+
   useEffect(() => {
     if (cooldown <= 0) return;
     const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
     return () => clearTimeout(t);
   }, [cooldown]);
+
+  async function handleGoogleSignIn() {
+    setGoogleLoading(true);
+    setErrors((prev) => ({ ...prev, form: null }));
+    const searchParams = new URLSearchParams(location.search);
+    const validRedirect =
+      sanitizeAuthRedirect(searchParams.get("redirect")) ??
+      getSavedAuthRedirect();
+
+    if (validRedirect) {
+      saveAuthRedirect(validRedirect);
+    }
+
+    const { error } = await signInWithGoogle(validRedirect ?? undefined);
+    if (error) {
+      setErrors((prev) => ({ ...prev, form: error.message }));
+      setGoogleLoading(false);
+    }
+  }
 
   function runValidation(): SignupErrors {
     return {
@@ -196,7 +243,6 @@ export function SignupPage() {
     );
   }
 
-  const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const currentRedirect =
     sanitizeAuthRedirect(searchParams.get("redirect")) ?? getSavedAuthRedirect();
@@ -245,11 +291,21 @@ export function SignupPage() {
           </span>
         }
       >
-        <form
-          onSubmit={handleSubmit}
-          noValidate
-          className="space-y-4 sm:space-y-[18px]"
-        >
+        <div className="space-y-4">
+          <GoogleSignInButton
+            text="Sign up with Google"
+            isLoading={googleLoading}
+            disabled={loading}
+            onClick={handleGoogleSignIn}
+          />
+
+          <AuthDivider text="or with email" />
+
+          <form
+            onSubmit={handleSubmit}
+            noValidate
+            className="space-y-4 sm:space-y-[18px]"
+          >
           <TextInput
             id="full_name"
             name="full_name"
@@ -352,6 +408,7 @@ export function SignupPage() {
             </Link>
           </p>
         </form>
+        </div>
       </AuthCard>
     </AuthShell>
   );
