@@ -256,6 +256,7 @@ export function SignupPage() {
   // ── Signup form ───────────────────────────────────────────────────────────
   return (
     <AuthShell
+      splitDesktop
       crossLink={{
         label: "Already have an account?",
         to: loginLink,
@@ -263,10 +264,11 @@ export function SignupPage() {
       }}
     >
       <AuthCard
-        tag="Welcome"
-        tagTone="primary"
-        title="Create your PrepUniv account"
-        subtitle="Start practicing smarter — it takes less than 60 seconds to join."
+        splitDesktop
+        title="Create your account"
+        subtitle="Start practicing smarter in less than 60 seconds."
+        showcaseHeadline="Join thousands of university students"
+        showcaseSubline="Unlock curated quizzes, past exam questions, and measure your preparation."
         footer={
           <span>
             By signing up you agree to our{" "}
@@ -291,21 +293,11 @@ export function SignupPage() {
           </span>
         }
       >
-        <div className="space-y-4">
-          <GoogleSignInButton
-            text="Sign up with Google"
-            isLoading={googleLoading}
-            disabled={loading}
-            onClick={handleGoogleSignIn}
-          />
-
-          <AuthDivider text="or with email" />
-
-          <form
-            onSubmit={handleSubmit}
-            noValidate
-            className="space-y-4 sm:space-y-[18px]"
-          >
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          className="space-y-4 sm:space-y-[18px]"
+        >
           <TextInput
             id="full_name"
             name="full_name"
@@ -322,13 +314,14 @@ export function SignupPage() {
                 }));
             }}
             error={live.full_name ?? undefined}
+            inputClassName="!rounded-2xl !bg-cream/90"
           />
 
           <TextInput
             id="email"
             name="email"
-            label="Email address"
-            placeholder="you@school.edu.ng"
+            label="Email"
+            placeholder="Enter your email"
             autoComplete="email"
             inputMode="email"
             value={email}
@@ -341,44 +334,48 @@ export function SignupPage() {
                 }));
             }}
             error={live.email ?? undefined}
+            inputClassName="!rounded-2xl !bg-cream/90"
           />
 
-          <PasswordInput
-            id="password"
-            name="password"
-            label="Password"
-            placeholder="At least 8 characters"
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              if (submitted)
-                setErrors((p) => ({
-                  ...p,
-                  password: validatePassword(e.target.value),
-                }));
-            }}
-            error={live.password ?? undefined}
-            hint="We'll never ask you to share this."
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
+            <PasswordInput
+              id="password"
+              name="password"
+              label="Password"
+              placeholder="At least 8 chars"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (submitted)
+                  setErrors((p) => ({
+                    ...p,
+                    password: validatePassword(e.target.value),
+                  }));
+              }}
+              error={live.password ?? undefined}
+              inputClassName="!rounded-2xl !bg-cream/90"
+            />
 
-          <PasswordInput
-            id="confirm"
-            name="confirm"
-            label="Confirm password"
-            placeholder="Re-enter password"
-            autoComplete="new-password"
-            value={confirm}
-            onChange={(e) => {
-              setConfirm(e.target.value);
-              if (submitted)
-                setErrors((p) => ({
-                  ...p,
-                  confirm: validatePasswordMatch(password, e.target.value),
-                }));
-            }}
-            error={live.confirm ?? undefined}
-          />
+            <PasswordInput
+              id="confirm"
+              name="confirm"
+              label="Confirm password"
+              placeholder="Re-enter password"
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => {
+                setConfirm(e.target.value);
+                if (submitted)
+                  setErrors((p) => ({
+                    ...p,
+                    confirm: validatePasswordMatch(password, e.target.value),
+                  }));
+              }}
+              error={live.confirm ?? undefined}
+              inputClassName="!rounded-2xl !bg-cream/90"
+            />
+          </div>
 
           {errors.form && (
             <p className="text-xs text-danger flex items-center gap-1.5 px-1">
@@ -392,23 +389,30 @@ export function SignupPage() {
             size="lg"
             isLoading={loading}
             type="submit"
-            className="h-12 mt-1"
+            className="h-12 !rounded-2xl text-base font-semibold shadow-soft mt-1"
           >
             Create account
-            {!loading && <ArrowRight className="w-[18px] h-[18px]" />}
           </Button>
 
-          <p className="text-center text-xs text-muted pt-1">
+          <AuthDivider text="Or continue with" />
+
+          <GoogleSignInButton
+            text="Sign in with Google"
+            isLoading={googleLoading}
+            disabled={loading}
+            onClick={handleGoogleSignIn}
+          />
+
+          <p className="text-center text-xs sm:text-sm text-muted pt-2">
             Already on PrepUniv?{" "}
             <Link
-              to="/login"
+              to={loginLink}
               className="font-semibold text-primary hover:underline"
             >
               Log in
             </Link>
           </p>
         </form>
-        </div>
       </AuthCard>
     </AuthShell>
   );

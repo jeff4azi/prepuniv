@@ -36,6 +36,7 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [errors, setErrors] = useState<{
     email?: string | null;
     password?: string | null;
@@ -272,6 +273,7 @@ export function LoginPage() {
   // ── Normal login form ─────────────────────────────────────────────────────
   return (
     <AuthShell
+      splitDesktop
       crossLink={{
         label: "Don't have an account?",
         to: signupLink,
@@ -279,63 +281,62 @@ export function LoginPage() {
       }}
     >
       <AuthCard
-        tag="Welcome back"
-        tagTone="success"
-        title="Log in to PrepUniv"
-        subtitle="Pick up right where you left off — every quiz you've unlocked is still yours."
+        splitDesktop
+        title="Login to your account"
+        subtitle="Welcome back! Enter your details to log in to your account"
+        showcaseHeadline="Master your courses & past exams"
+        showcaseSubline="Practice with verified questions created by high-performing university creators."
       >
-        <div className="space-y-4">
-          <GoogleSignInButton
-            isLoading={googleLoading}
-            disabled={loading}
-            onClick={handleGoogleSignIn}
-          />
-
-          <AuthDivider text="or with email" />
-
-          <form
-            onSubmit={handleSubmit}
-            noValidate
-            className="space-y-4 sm:space-y-[18px]"
-          >
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          className="space-y-4 sm:space-y-[18px]"
+        >
           <TextInput
             id="email"
             name="email"
-            label="Email address"
-            placeholder="you@school.edu.ng"
+            label="Email"
+            placeholder="Enter your email"
             autoComplete="email"
             inputMode="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onBlur={() => setTouched((t) => ({ ...t, email: true }))}
             error={finalErrors.email ?? undefined}
+            inputClassName="!rounded-2xl !bg-cream/90"
           />
 
           <div>
-            <div className="flex items-end justify-between mb-1.5">
-              <label
-                htmlFor="password"
-                className="text-xs sm:text-[13px] font-heading font-semibold text-text-soft tracking-tight"
-              >
-                Password
-              </label>
-              <Link
-                to="/forgot-password"
-                className="text-xs font-semibold text-primary hover:underline"
-              >
-                Forgot password?
-              </Link>
-            </div>
             <PasswordInput
               id="password"
               name="password"
-              placeholder="Enter your password"
+              label="Password"
+              placeholder="Enter your Password"
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onBlur={() => setTouched((t) => ({ ...t, password: true }))}
               error={finalErrors.password ?? undefined}
+              inputClassName="!rounded-2xl !bg-cream/90"
             />
+          </div>
+
+          <div className="flex items-center justify-between text-xs sm:text-[13px] pt-0.5">
+            <label className="flex items-center gap-2 cursor-pointer select-none text-text-soft font-heading font-medium">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded-md border-border text-primary focus:ring-primary/30 accent-primary cursor-pointer"
+              />
+              <span>Remember login</span>
+            </label>
+            <Link
+              to="/forgot-password"
+              className="font-heading font-semibold text-primary hover:underline text-xs"
+            >
+              Forgot Password?
+            </Link>
           </div>
 
           {errors.form && (
@@ -350,23 +351,30 @@ export function LoginPage() {
             size="lg"
             isLoading={loading}
             type="submit"
-            className="h-12 mt-1"
+            className="h-12 !rounded-2xl text-base font-semibold shadow-soft mt-1"
           >
-            Log in
-            {!loading && <ArrowRight className="w-[18px] h-[18px]" />}
+            Login
           </Button>
 
-          <p className="text-center text-xs text-muted pt-1">
-            Don&apos;t have an account?{" "}
+          <AuthDivider text="Or continue with" />
+
+          <GoogleSignInButton
+            text="Sign in with Google"
+            isLoading={googleLoading}
+            disabled={loading}
+            onClick={handleGoogleSignIn}
+          />
+
+          <p className="text-center text-xs sm:text-sm text-muted pt-2">
+            New here?{" "}
             <Link
-              to="/signup"
+              to={signupLink}
               className="font-semibold text-primary hover:underline"
             >
-              Sign up
+              Create account
             </Link>
           </p>
         </form>
-        </div>
       </AuthCard>
     </AuthShell>
   );
